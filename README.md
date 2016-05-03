@@ -52,6 +52,18 @@ optional arguments:
 
 ```
 
+#### Testing changes
+
+After making changes to the SMI, run the test script to ensure that all functionality
+remains intact before uploading the patch. This can be done using:
+```shell
+./test-rocm-smi.sh/opt/rocm/bin/rocm-smi
+```
+
+The test can run all flags for the SMI, or specific flags can be tested with the -s option.
+
+Any new functionality added to the SMI should have a corresponding test added to the test script.
+
 #### Disclaimer
 
 The information contained herein is for informational purposes only, and is subject to change without notice. While every precaution has been taken in the preparation of this document, it may contain technical inaccuracies, omissions and typographical errors, and AMD is under no obligation to update or otherwise correct this information. Advanced Micro Devices, Inc. makes no representations or warranties with respect to the accuracy or completeness of the contents of this document, and assumes no liability of any kind, including the implied warranties of noninfringement, merchantability or fitness for particular purposes, with respect to the operation or use of AMD hardware, software or other products described herein. No license, including implied or arising by estoppel, to any intellectual property rights is granted by this document. Terms and limitations applicable to the purchase or use of AMD's products are as set forth in a signed agreement between the parties or in AMD's Standard Terms and Conditions of Sale.
