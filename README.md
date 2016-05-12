@@ -1,0 +1,60 @@
+### ROC System Management Interface
+
+This repository includes the roc-smi tool. This tool exposes functionality for
+clock and temperature management of your ROCm enabled system.
+
+#### Installation
+
+You may find rocm-smi at the following location after installing the rocm package:
+```shell
+/opt/rocm/bin/rocm-smi
+```
+
+Alternatively, you may clone this repository and run the tool directly.
+
+#### Usage
+
+For detailed and up to date usage information, we recommend consulting the help:
+```shell
+/opt/rocm/bin/rocm-smi -h
+```
+
+For convenience purposes, following is a quick excerpt:
+```shell
+
+usage: rocm-smi [-h] [-d DEVICE] [-i] [-t] [-c] [-f] [-p] [-s] [-a] [-r] [--setsclk LEVEL]
+                [--setmclk LEVEL] [--setfan LEVEL] [--setperflevel LEVEL]
+                [--loadclocks FILE | --saveclocks FILE]
+
+AMD ROCm System Management Interface
+
+optional arguments:
+  -h, --help                  show this help message and exit
+  --loadclocks FILE           Load clock settings from FILE
+  --saveclocks FILE           Save current clock settings to FILE
+
+  -d DEVICE, --device DEVICE  Execute command on specified device
+
+  -i, --showid                Show GPU ID
+  -t, --showtemp              Show current temperature
+  -c, --showclocks            Show current clock frequencies
+  -f, --showfan               Show current fan speed
+  -p, --showperflevel         Show current PowerPlay Performance Level
+  -s, --showclkfrq            Show supported GPU and Memory Clock
+  -a, --showallinfo           Show Temperature, Fan and Clock values
+
+  -r, --resetclocks           Reset clocks to default values
+  --setsclk LEVEL             Set GPU Clock Frequency Level(s)
+  --setmclk LEVEL             Set GPU Memory Clock Frequency Level(s)
+  --setfan LEVEL              Set GPU Fan Speed Level
+  --setperflevel LEVEL        Set PowerPlay Performance Level
+
+```
+
+#### Disclaimer
+
+The information contained herein is for informational purposes only, and is subject to change without notice. While every precaution has been taken in the preparation of this document, it may contain technical inaccuracies, omissions and typographical errors, and AMD is under no obligation to update or otherwise correct this information. Advanced Micro Devices, Inc. makes no representations or warranties with respect to the accuracy or completeness of the contents of this document, and assumes no liability of any kind, including the implied warranties of noninfringement, merchantability or fitness for particular purposes, with respect to the operation or use of AMD hardware, software or other products described herein. No license, including implied or arising by estoppel, to any intellectual property rights is granted by this document. Terms and limitations applicable to the purchase or use of AMD's products are as set forth in a signed agreement between the parties or in AMD's Standard Terms and Conditions of Sale.
+
+AMD, the AMD Arrow logo, and combinations thereof are trademarks of Advanced Micro Devices, Inc. Other product names used in this publication are for identification purposes only and may be trademarks of their respective companies.
+
+Copyright (c) 2014-2016 Advanced Micro Devices, Inc. All rights reserved.
