@@ -155,8 +155,11 @@ def getPerfLevel(device):
     Parameters:
     device -- Device to return the current PowerPlay Performance Level
     """
-    with open(os.path.join(drmprefix, device, 'device', 'power_dpm_force_performance_level'), 'r') as perflevel:
-        ret = perflevel.read().rstrip('\n')
+    ret = ''
+    perfPath = os.path.join(drmprefix, device, 'device', 'power_dpm_force_performance_level')
+    if os.path.isfile(perfPath):
+        with open(perfPath, 'r') as perflevel:
+            ret = perflevel.read().rstrip('\n')
     return ret
 
 
@@ -168,11 +171,14 @@ def setPerfLevel(device, level):
     level -- PowerPlay Performance Level to set
     """
     validLevels = ['auto', 'low', 'high', 'manual']
+    perfPath = os.path.join(drmprefix, device, 'device', 'power_dpm_force_performance_level')
 
     if level not in validLevels:
         print(device, 'Invalid Performance level:' + level)
         return False
-    writeToSysfs(os.path.join(drmprefix, device, 'device', 'power_dpm_force_performance_level'), level)
+    if not os.path.isfile(perfPath):
+        return False
+    writeToSysfs(perfPath, level)
     return True
 
 
@@ -203,14 +209,13 @@ def getFanSpeed(device, type):
     """
     fan = ''
 
-    if not isPowerplayEnabled(device):
-        printLog(device, 'PowerPlay not enabled - Cannot get Fan Speed')
-        return None
     hwmon = getHwmonFromDevice(device)
     if not hwmon:
         return None
     fanpath = os.path.join(hwmon, 'pwm1')
     fanmax = os.path.join(hwmon, 'pwm1_max')
+    if not os.path.isfile(fanpath):
+        return ''
     with open(fanpath, 'r') as fanfile:
         currFan = int(fanfile.read().rstrip('\n'))
         if type == 'level':
@@ -349,9 +354,6 @@ def showCurrentFans(deviceList):
     """
     print(logSpacer)
     for device in deviceList:
-        if not isPowerplayEnabled(device):
-            printLog(device, 'PowerPlay not enabled - Cannot display fan speed')
-            continue
         fanspeed = getFanSpeed(device, 'speed')
         fanlevel = getFanSpeed(device, 'level')
         if not fanspeed:
@@ -392,11 +394,11 @@ def showPerformanceLevel(deviceList):
     """
     print(logSpacer)
     for device in deviceList:
-        if not isPowerplayEnabled(device):
-            printLog(device, 'PowerPlay not enabled - Cannot display Performance Level')
-            continue
         level = getPerfLevel(device)
-        printLog(device, 'Current PowerPlay Level: ' + level)
+        if not level:
+            printLog(device, 'Cannot get Performance Level: Performance Level not supported')
+        else:
+            printLog(device, 'Current PowerPlay Level: ' + level)
     print(logSpacer)
 
 
@@ -409,9 +411,6 @@ def setPerformanceLevel(deviceList, level):
     """
     print(logSpacer)
     for device in deviceList:
-        if not isPowerplayEnabled(device):
-            printLog(device, 'PowerPlay not enabled - Cannot set PowerPlay Performance Level')
-            continue
         if setPerfLevel(device, level):
             printLog(device, 'Successfully set current PowerPlay Level to ' + level)
         else:
@@ -472,7 +471,7 @@ def setFanSpeed(deviceList, fan):
         hwmon = getHwmonFromDevice(device)
         if not hwmon:
             printLog(device, 'No corresponding HW Monitor found')
-            return None
+            continue
         fanpath = os.path.join(hwmon, 'pwm1')
         maxfan = getMaxLevel(device, 'fan')
         if int(fan) > maxfan:
@@ -495,10 +494,8 @@ def resetClocks(deviceList):
     """
     for device in deviceList:
         devpath = os.path.join(drmprefix, device, 'device')
-        if not isPowerplayEnabled(device):
-            printLog(device, 'PowerPlay not enabled - Cannot reset clocks')
-            continue
-        if os.path.isfile(os.path.join(devpath, 'pp_table')) == 0:
+        if not getPerfLevel(device):
+            printLog(device, 'Cannot reset clocks: Performance Level not supported')
             continue
         if getPerfLevel(device) == 'auto':
             printLog(device, 'Performance level already set to [auto]')
