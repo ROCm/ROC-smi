@@ -26,6 +26,7 @@ groupDev.add_argument('-d', '--device', help='Execute command on specified devic
 groupDisplay.add_argument('-i', '--showid', help='Show GPU ID', action='store_true')
 groupDisplay.add_argument('-t', '--showtemp', help='Show current temperature', action='store_true')
 groupDisplay.add_argument('-c', '--showclocks', help='Show current clock frequencies', action='store_true')
+groupDisplay.add_argument('-g', '--showgpuclocks', help='Show current GPU clock frequencies', action='store_true')
 groupDisplay.add_argument('-f', '--showfan', help='Show current fan speed', action='store_true')
 groupDisplay.add_argument('-p', '--showperflevel', help='Show current PowerPlay Performance Level', action='store_true')
 groupDisplay.add_argument('-s', '--showclkfrq', help='Show supported GPU and Memory Clock', action='store_true')
@@ -300,6 +301,28 @@ def showId(deviceList):
         with open(os.path.join(drmprefix, device, 'device', 'device'), 'r') as devname:
             gpuId = devname.read().rstrip('\n')
         printLog(device, 'GPU ID: ' + gpuId)
+    print(logSpacer)
+
+
+def showCurrentGpuClocks(deviceList):
+    """ Display the current GPU clock frequencies for a list of devices.
+
+    Parameters:
+    deviceList -- List of devices to return the current clock frequencies (can be a single-item list)
+    """
+    print(logSpacer)
+    for device in deviceList:
+        if not isPowerplayEnabled(device):
+            printLog(device, 'PowerPlay not enabled - Cannot display GPU clocks')
+            continue
+        gpuclk = getCurrentClock(device, 'gpu', 'freq')
+        gpulevel = getCurrentClock(device, 'gpu', 'level')
+
+        if gpuclk == '':
+            printLog(device, 'Unable to determine current GPU clocks. Check dmesg or GPU temperature')
+            return
+
+        printLog(device, 'GPU Clock Level: ' + str(gpulevel) + ' (' + str(gpuclk) + ')')
     print(logSpacer)
 
 
@@ -589,6 +612,8 @@ if args.showtemp:
     showCurrentTemps(deviceList)
 if args.showclocks:
     showCurrentClocks(deviceList)
+if args.showgpuclocks:
+    showCurrentGpuClocks(deviceList)
 if args.showfan:
     showCurrentFans(deviceList)
 if args.showperflevel:

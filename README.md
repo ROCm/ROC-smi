@@ -38,6 +38,7 @@ optional arguments:
   -i, --showid                Show GPU ID
   -t, --showtemp              Show current temperature
   -c, --showclocks            Show current clock frequencies
+  -g, --showgpuclocks         Show current GPU clock frequencies
   -f, --showfan               Show current fan speed
   -p, --showperflevel         Show current PowerPlay Performance Level
   -s, --showclkfrq            Show supported GPU and Memory Clock
