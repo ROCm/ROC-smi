@@ -16,11 +16,12 @@ if os.geteuid() != 0:
     os.execvp('sudo', ['sudo'] + sys.argv)
 
 parser = argparse.ArgumentParser(description='AMD ROCm System Management Interface',
-         formatter_class=lambda prog: argparse.HelpFormatter(prog, max_help_position=90, width=90))
+         formatter_class=lambda prog: argparse.HelpFormatter(prog, max_help_position=90, width=110))
 groupDev = parser.add_argument_group()
 groupDisplay = parser.add_argument_group()
 groupAction = parser.add_argument_group()
 groupFile = parser.add_mutually_exclusive_group()
+groupResponse = parser.add_argument_group()
 
 groupDev.add_argument('-d', '--device', help='Execute command on specified device', type=int)
 groupDisplay.add_argument('-i', '--showid', help='Show GPU ID', action='store_true')
@@ -29,6 +30,7 @@ groupDisplay.add_argument('-c', '--showclocks', help='Show current clock frequen
 groupDisplay.add_argument('-g', '--showgpuclocks', help='Show current GPU clock frequencies', action='store_true')
 groupDisplay.add_argument('-f', '--showfan', help='Show current fan speed', action='store_true')
 groupDisplay.add_argument('-p', '--showperflevel', help='Show current PowerPlay Performance Level', action='store_true')
+groupDisplay.add_argument('-o', '--showoverdrive', help='Show current OverDrive level', action='store_true')
 groupDisplay.add_argument('-s', '--showclkfrq', help='Show supported GPU and Memory Clock', action='store_true')
 groupDisplay.add_argument('-a' ,'--showallinfo', help='Show Temperature, Fan and Clock values', action='store_true')
 
@@ -37,9 +39,13 @@ groupAction.add_argument('--setsclk', help='Set GPU Clock Frequency Level(s)', m
 groupAction.add_argument('--setmclk', help='Set GPU Memory Clock Frequency Level(s)', metavar='LEVEL')
 groupAction.add_argument('--setfan', help='Set GPU Fan Speed Level', metavar='LEVEL')
 groupAction.add_argument('--setperflevel', help='Set PowerPlay Performance Level', metavar='LEVEL')
+groupAction.add_argument('--setoverdrive', help='Set GPU OverDrive level', metavar='%')
 
 groupFile.add_argument('--loadclocks', help='Load clock settings from FILE', metavar='FILE')
 groupFile.add_argument('--saveclocks', help='Save current clock settings to FILE', metavar='FILE')
+
+groupResponse.add_argument('--autorespond', help='Response to automatically provide for all prompts (NOT RECOMMENDED)', metavar='RESPONSE')
+
 args = parser.parse_args()
 
 drmprefix = '/sys/class/drm'
@@ -86,6 +92,34 @@ def doesDeviceExist(device):
         return False
     return True
 
+
+def confirmOverDrive(autoRespond):
+    """ Print the warning for OverDrive functionality and prompt user to accept the terms.
+
+    Parameters:
+    autoRespond -- Response to automatically provide for all prompts
+    """
+
+    print('''
+          ******WARNING******\n
+          Operating your AMD GPU outside of official AMD specifications or outside of
+          factory settings, including but not limited to the conducting of overclocking
+          (including use of this overclocking software, even if such software has been
+          directly or indirectly provided by AMD or otherwise affiliated in any way
+          with AMD), may cause damage to your AMD GPU, system components and/or result
+          in system failure, as well as cause other problems. DAMAGES CAUSED BY USE OF
+          YOUR AMD GPU OUTSIDE OF OFFICIAL AMD SPECIFICATIONS OR OUTSIDE OF FACTORY
+          SETTINGS ARE NOT COVERED UNDER ANY AMD PRODUCT WARRANTY AND MAY NOT BE COVERED
+          BY YOUR BOARD OR SYSTEM MANUFACTURER'S WARRANTY. Please use this utility with caution.
+          ''')
+    if not autoRespond:
+        user_input = input('Do you accept these terms? [y/N] ')
+    else:
+        user_input = autoRespond
+    if user_input in ['Yes', 'yes', 'y', 'Y', 'YES']:
+        return
+    else:
+        sys.exit('Confirmation not given. Exiting without setting OverDrive value')
 
 def isPowerplayEnabled(device):
     """ Check if PowerPlay is enabled for a specified device.
@@ -277,6 +311,25 @@ def getCurrentClock(device, clock, type):
     return currClk
 
 
+def getCurrentOverDrive(device, clock):
+    """ Return the current OverDrive level for a specified device.
+
+    Parameters:
+    device -- Device to return the clock frequency
+    clock -- [gpu|mem] Return either the GPU (gpu) or GPU Memory (mem) OverDrive value
+    """
+
+    od = "-1"
+    if not clock == 'gpu':
+        printLog(device, "Unable to set OverDrive for non-GPU clocks")
+        return od
+    odpath = os.path.join(drmprefix, device, 'device', 'pp_sclk_od')
+    if os.path.isfile(odpath):
+        with open(odpath, 'r') as odFile:
+            od = odFile.read().rstrip('\n')
+    return od
+
+
 def getMaxLevel(device, type):
     """ Return the maximum level for a specified device.
 
@@ -425,6 +478,23 @@ def showPerformanceLevel(deviceList):
     print(logSpacer)
 
 
+def showOverDrive(deviceList):
+    """ Display current OverDrive level for a list of devices.
+
+    Parameters:
+    deviceList -- List of devices to display current OverDrive values (can be a single-item list)
+    """
+
+    print(logSpacer)
+    for device in deviceList:
+        od = int(getCurrentOverDrive(device, 'gpu'))
+        if od < 0:
+            printLog(device, 'Cannot get OverDrive value: OverDrive not supported')
+        else:
+            printLog(device, 'Current OverDrive value: ' + str(od) + '%')
+    print(logSpacer)
+
+
 def setPerformanceLevel(deviceList, level):
     """ Set the PowerPlay Performance Level for a list of devices.
 
@@ -480,6 +550,49 @@ def setClocks(deviceList, clktype, clk):
             printLog(device, 'Unable to set ' + clktype + ' clock to Level ' + str(value))
 
 
+def setClockOverDrive(deviceList, clktype, value, autoRespond):
+    """ Set clock speed to OverDrive for a list of devices
+
+    Parameters:
+    deviceList -- List of devices to set to OverDrive
+    type -- Clock type to set to OverDrive (currently only GPU supported)
+    value -- Percentage amount to set for OverDrive (0-20)
+    autoRespond -- Response to automatically provide for all prompts
+    """
+
+    try:
+        int(value)
+    except ValueError:
+        print('Cannot set OverDrive to value', value, ', it is not an integer!')
+        return
+    confirmOverDrive(autoRespond)
+
+    for device in deviceList:
+        if not isPowerplayEnabled(device):
+            printLog(device, 'PowerPlay not enabled - Cannot set OverDrive')
+            continue
+        devpath = os.path.join(drmprefix, device, 'device')
+        if clktype == 'gpu':
+            odPath = os.path.join(devpath, 'pp_sclk_od')
+        else:
+            printLog(device, 'Unsupported clock type ' + clktype + ' - Cannot set OverDrive')
+            continue
+
+        if int(value) < 0:
+            printLog(device, 'Unable to set OverDrive less than 0%')
+            return
+
+        if int(value) > 20:
+            printLog(device, 'Unable to set OverDrive greater than 20%. Changing to 20')
+            value = '20'
+
+        if (writeToSysfs(odPath, value)):
+            printLog(device, 'Successfully set OverDrive to ' + value + '%')
+            setClocks([device], clktype, getMaxLevel(device, 'gpu'))
+        else:
+            printLog(device, 'Unable to set OverDrive to ' + value + '%')
+
+
 def setFanSpeed(deviceList, fan):
     """ Set fan speed for a list of devices.
 
@@ -517,9 +630,15 @@ def resetClocks(deviceList):
     """
     for device in deviceList:
         devpath = os.path.join(drmprefix, device, 'device')
+        odpath = os.path.join(devpath, 'pp_sclk_od')
         if not getPerfLevel(device):
             printLog(device, 'Cannot reset clocks: Performance Level not supported')
             continue
+        # Setting perf level to auto will reset all manual values except for OverDrive
+        if os.path.isfile(odpath):
+            if not writeToSysfs(odpath, '0'):
+                printLog(device, 'Unable to reset OverDrive')
+                continue
         if getPerfLevel(device) == 'auto':
             printLog(device, 'Performance level already set to [auto]')
             continue
@@ -529,11 +648,12 @@ def resetClocks(deviceList):
         printLog(device, 'Successfully reset GPU and Memory clocks')
 
 
-def loadClocks(savefilepath):
+def loadClocks(savefilepath, autoRespond):
     """ Load clock frequencies and fan speeds from a specified file.
 
     Parameters:
     savefilepath -- Path to a file with saved clock frequencies and fan speeds
+    autoRespond -- Response to automatically provide for all prompts
     """
     gpuClocks = {}
     memClocks = {}
@@ -552,6 +672,7 @@ def loadClocks(savefilepath):
             setClocks([device], 'gpu', values['gpu'])
             setClocks([device], 'mem', values['mem'])
             setFanSpeed([device], values['fan'])
+            setClockOverDrive([device], 'gpu', values['overdrivegpu'], autoRespond)
             printLog(device, 'Successfully loaded values from ' + savefilepath)
 
 
@@ -565,6 +686,7 @@ def saveClocks(deviceList, savefilepath):
     gpuClocks = {}
     memClocks = {}
     fanSpeeds = {}
+    overDriveGpu = {}
     jsonData = {}
 
     if os.path.isfile(savefilepath):
@@ -577,7 +699,8 @@ def saveClocks(deviceList, savefilepath):
         gpuClocks[device] = getCurrentClock(device, 'gpu', 'level')
         memClocks[device] = getCurrentClock(device, 'mem', 'level')
         fanSpeeds[device] = getFanSpeed(device, 'level')
-        jsonData[device] = {'vJson': JSON_VERSION, 'gpu': gpuClocks[device], 'mem': memClocks[device], 'fan': fanSpeeds[device]}
+        overDriveGpu[device] = getCurrentOverDrive(device, 'gpu')
+        jsonData[device] = {'vJson': JSON_VERSION, 'gpu': gpuClocks[device], 'mem': memClocks[device], 'fan': fanSpeeds[device], 'overdrivegpu': overDriveGpu[device]}
         printLog(device, 'Current settings successfully saved to ' + savefilepath)
     with open(savefilepath, 'w') as savefile:
         json.dump(jsonData, savefile, ensure_ascii=True)
@@ -604,6 +727,7 @@ if args.showallinfo:
     args.list = True
     args.showclkfrq = True
     args.showperflevel = True
+    args.showoverdrive = True
 if args.showid:
     showId(deviceList)
 if args.resetclocks:
@@ -618,6 +742,8 @@ if args.showfan:
     showCurrentFans(deviceList)
 if args.showperflevel:
     showPerformanceLevel(deviceList)
+if args.showoverdrive:
+    showOverDrive(deviceList)
 if args.showclkfrq:
     showClocks(deviceList)
 if args.setsclk:
@@ -628,8 +754,10 @@ if args.setfan:
     setFanSpeed(deviceList, args.setfan)
 if args.setperflevel:
     setPerformanceLevel(deviceList, args.setperflevel)
+if args.setoverdrive:
+    setClockOverDrive(deviceList, 'gpu', args.setoverdrive, args.autorespond)
 if args.loadclocks:
-    loadClocks(args.loadclocks)
+    loadClocks(args.loadclocks, args.autorespond)
 if args.saveclocks:
     saveClocks(deviceList, args.saveclocks)
 
