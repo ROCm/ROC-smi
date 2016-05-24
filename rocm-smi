@@ -12,8 +12,9 @@ JSON_VERSION = 1
 
 # To write to sysfs, we need to run this script as root. If the script is not run as
 # root, re-launch it via execvp to give the script sudo privileges.
-if os.geteuid() != 0:
-    os.execvp('sudo', ['sudo'] + sys.argv)
+def relaunchAsSudo():
+    if os.geteuid() != 0:
+        os.execvp('sudo', ['sudo'] + sys.argv)
 
 parser = argparse.ArgumentParser(description='AMD ROCm System Management Interface',
          formatter_class=lambda prog: argparse.HelpFormatter(prog, max_help_position=90, width=110))
@@ -728,6 +729,10 @@ if args.showallinfo:
     args.showclkfrq = True
     args.showperflevel = True
     args.showoverdrive = True
+
+if args.setsclk or args.setmclk or args.setfan or args.setperflevel or args.resetclocks or args.loadclocks or args.setoverdrive:
+    relaunchAsSudo()
+
 if args.showid:
     showId(deviceList)
 if args.resetclocks:
