@@ -49,6 +49,13 @@ getHwmonFromDevice() {
     echo "$monitor"
 }
 
+# Set up the test environment by resetting all settings to default
+setupTestEnv() {
+    local smiPath="$1"; shift
+    $($smiPath --reset) &> /dev/null
+    sleep 1
+}
+
 # Parse the line from the SMI output to remove the GPU prefix
 # Each line is of the form "GPU[X] \t\t: $ATTRIBUTE: $VALUE", so we return $VALUE
 #  param rocmLine       Line from the SMI log to parse
@@ -362,6 +369,32 @@ testGetPerf() {
     return 0
 }
 
+# Test that the current OverDrive Level reported by the SMI matches the current
+# OverDrive Level of the corresponding device(s)
+#  param smiPath        Path to the SMI
+testGetGpuOverDrive() {
+    local smiPath="$1"; shift;
+    local smiCmd="-o"
+    echo -e "\nTesting $smiPath $smiCmd..."
+    local perfs="$($smiPath $smiCmd)"
+    IFS=$'\n'
+    for line in $perfs; do
+        if [ "$(checkLogLine $line)" != "true" ]; then
+            continue
+        fi
+        local rocmOd="$(extractRocmValue $line)"
+        local rocmGpu="$(getGpuFromRocm $line)"
+
+        local sysOd="$(cat $DRM_PREFIX/card$rocmGpu/device/pp_sclk_od)%"
+        if [ "$sysOd" != "$rocmOd" ]; then
+            echo "FAILURE: OverDrive level from $SMI_NAME $rocmOd does not match $sysOd"
+            NUM_FAILURES=$(($NUM_FAILURES+1))
+        fi
+    done
+    echo -e "Test complete: $smiPath $smiCmd\n"
+    return 0
+}
+
 # Test that the setting the fan speed through the SMI changes the current fan speed of the
 # corresponding device(s)
 #  param smiPath        Path to the SMI
@@ -501,6 +534,43 @@ testSetClock() {
     return 0
 }
 
+# Test that the setting the OverDrive Level through the SMI changes the current
+# OverDrive Level of the corresponding device(s), and sets the current GPU Clock level
+# to level 7 to use this new value
+#  param smiPath        Path to the SMI
+testSetGpuOverDrive() {
+    local smiPath="$1"; shift;
+    local smiCmd="--setoverdrive"
+    echo -e "\nTesting $smiPath $smiCmd..."
+    IFS=$'\n'
+    local clocks=$($smiPath "-g") # Get a list of current GPU clock frequencies
+    for line in $clocks; do
+        if [ "$(checkLogLine $line)" != "true" ]; then
+            continue
+        elif [[ "$line" == *"PowerPlay not enabled"* ]]; then
+            continue
+        fi
+        local rocmGpu="$(getGpuFromRocm $line)"
+        local hwmon="$(getHwmonFromDevice $rocmGpu)"
+        local odPath="$DRM_PREFIX/card$rocmGpu/device/pp_sclk_od"
+
+        local currOd="$(cat $odPath)" # OverDrive level
+        local newOd="3"
+        if [ "$currOd" == "3" ]; then
+            local newOd="6"
+        fi
+
+        local od="$($smiPath $smiCmd $newOd --autorespond YES)"
+        local newSysOd="$(cat $odPath)"
+        if [ "$newSysOd" != "$newOd" ]; then
+            echo "FAILURE: Could not set OverDrive Level"
+            NUM_FAILURES=$(($NUM_FAILURES+1))
+        fi
+    done
+    echo -e "Test complete: $smiPath $smiCmd\n"
+    return 0
+}
+
 # Test that the resetting the GPU and GPU Memory clock frequencies through the SMI
 # resets the clock frequencies of the corresponding device(s)
 #  param smiPath        Path to the SMI
@@ -541,6 +611,7 @@ testReset() {
 testSave() {
     local smiPath="$1"; shift;
     local smiCmd="--saveclocks"
+    setupTestEnv "$smiPath" # Make sure that we have a clean state before saving values
     IFS=$'\n'
     echo -e "\nTesting $smiPath $smiCmd..."
 
@@ -568,9 +639,11 @@ testSave() {
         local fan="$(extractJsonValue "$device" "$tempSaveFile" "fan")"
         local gpu="$(extractJsonValue "$device" "$tempSaveFile" "gpu")"
         local mem="$(extractJsonValue "$device" "$tempSaveFile" "mem")"
+        local od="$(extractJsonValue "$device" "$tempSaveFile" "overdrivegpu")"
         local sysFan="$(cat $HWMON_PREFIX/$hwmon/pwm1)"
         local sysGpu="$(cat $DRM_PREFIX/card$device/device/pp_dpm_sclk)"
         local sysMem="$(cat $DRM_PREFIX/card$device/device/pp_dpm_mclk)"
+        local sysOd="$(cat $DRM_PREFIX/card$device/device/pp_sclk_od)"
         if [ "$fan" != "$sysFan" ]; then
             echo "FAILURE: Saved fan $fan does not match current fan setting $sysFan"
             NUM_FAILURES=$(($NUM_FAILURES+1))
@@ -579,6 +652,9 @@ testSave() {
             NUM_FAILURES=$(($NUM_FAILURES+1))
         elif [ "$gpu" != "${sysMem:0:1}" ]; then
             echo "FAILURE: Saved GPU Memory frequency $mem does not match current GPU Memory clock ${sysMem:0:1}"
+            NUM_FAILURES=$(($NUM_FAILURES+1))
+        elif [ "$od" != "$sysOd" ]; then
+            echo "FAILURE: Saved OverDrive $od does not match current fan setting $sysOd"
             NUM_FAILURES=$(($NUM_FAILURES+1))
         fi
     done
@@ -603,6 +679,7 @@ testLoad() {
     local high="$($smiPath --setperflevel high)"
     sleep 1 # Give the system 1sec to ramp the clocks up to high
     local save="$($smiPath --saveclocks $tempSaveFile)"
+    local od="$($smiPath --setoverdrive 8 --autorespond YES)"
     for line in $clocks; do
         if [ "$(checkLogLine $line)" != "true" ]; then
             continue
@@ -615,14 +692,17 @@ testLoad() {
         local perfPath="$DRM_PREFIX/card$device/device/power_dpm_force_performance_level"
         local gpuPath="$DRM_PREFIX/card$device/device/pp_dpm_sclk"
         local memPath="$DRM_PREFIX/card$device/device/pp_dpm_mclk"
+        local oldOd="$(cat $DRM_PREFIX/card$device/device/pp_sclk_od)"
         local oldGpuClock="$(getCurrentClock level $gpuPath)"
         local oldMemClock="$(getCurrentClock level $memPath)"
-        local load="$($smiPath $smiCmd $tempSaveFile)"
+        local load="$($smiPath $smiCmd $tempSaveFile --autorespond YES)"
         sleep 1 # Give the system 1sec to ramp the clocks up to the desired values
         local newGpuClock="$(getCurrentClock level $gpuPath)"
         local newMemClock="$(getCurrentClock level $memPath)"
+        local newOd="$(cat $DRM_PREFIX/card$device/device/pp_sclk_od)"
         local jsonGpu="$(extractJsonValue $device $tempSaveFile gpu)"
         local jsonMem="$(extractJsonValue $device $tempSaveFile mem)"
+        local jsonOd="$(extractJsonValue $device $tempSaveFile overdrivegpu)"
         if [ "$oldGpuClock" == "$newGpuClock" ]; then
             if [ "$(getNumLevels $gpuPath)" -gt "1" ]; then
                 echo "FAILURE: Failed to change GPU clocks when loading values from save file $tempSaveFile"
@@ -633,12 +713,18 @@ testLoad() {
                 echo "FAILURE: Failed to change GPU Memory clocks when loading values from save file $tempSaveFile"
                 NUM_FAILURES=$(($NUM_FAILURES+1))
             fi
+        elif [ "$oldOd" == "$newOd" ]; then
+            echo "FAILURE: Failed to change GPU OverDrive when loading values from save file $tempSaveFile"
+            NUM_FAILURES=$(($NUM_FAILURES+1))
         fi
         if [ "$newGpuClock" != "$jsonGpu" ]; then
-            echo "FAILURE: Failed to load values from save file $tempSaveFile"
+            echo "FAILURE: Failed to load GPU clock values from save file $tempSaveFile"
             NUM_FAILURES=$(($NUM_FAILURES+1))
         elif [ "$newMemClock" != "$jsonMem" ]; then
-            echo "FAILURE: Failed to load values from save file $tempSaveFile"
+            echo "FAILURE: Failed to load GPU Memory clock values from save file $tempSaveFile"
+            NUM_FAILURES=$(($NUM_FAILURES+1))
+        elif [ "$newOd" != "$jsonOd" ]; then
+            echo "FAILURE: Failed to load OverDrive values from save file $tempSaveFile"
             NUM_FAILURES=$(($NUM_FAILURES+1))
         fi
     done
@@ -650,6 +736,7 @@ testLoad() {
 runTestSuite() {
     local smiPath="$1"; shift;
     local subsetList="$1"; shift;
+    setupTestEnv "$smiPath"
 
     for subset in $subsetList; do
         case $subset in
@@ -663,6 +750,8 @@ runTestSuite() {
                 testGetFan "$smiPath" ;;
             -p | --showperf)
                 testGetPerf "$smiPath" ;;
+            -o | --showoverdrive)
+                testGetGpuOverDrive "$smiPath" ;;
             -s | --showclkfrq)
                 testGetSupportedClocks "$smiPath" ;;
             -r | --reset)
@@ -675,6 +764,8 @@ runTestSuite() {
                 testSetFan "$smiPath" ;;
             --setperflevel)
                 testSetPerf "$smiPath" ;;
+            --setoverdrive)
+                testSetGpuOverDrive "$smiPath" ;;
             --saveclocks)
                 testSave "$smiPath" ;;
             --loadclocks)
@@ -686,11 +777,13 @@ runTestSuite() {
                 testGetFan "$smiPath" ;
                 testGetPerf "$smiPath" ;
                 testGetSupportedClocks "$smiPath" ;
+                testGetGpuOverDrive "$smiPath" ;
                 testSetFan "$smiPath" ;
                 testSetClock "gpu" "$smiPath" ;
                 testSetClock "mem" "$smiPath" ;
                 testReset "$smiPath" ;
                 testSetPerf "$smiPath" ;
+                testSetGpuOverDrive "$smiPath" ;
                 testSave "$smiPath" ;
                 testLoad "$smiPath" ;
                 break
