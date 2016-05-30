@@ -722,6 +722,7 @@ else:
     deviceList = listDevices()
 
 if args.showallinfo:
+    args.showid = True
     args.showtemp = True
     args.showclocks = True
     args.showfan = True
