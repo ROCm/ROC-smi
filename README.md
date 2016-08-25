@@ -1,4 +1,4 @@
-### ROC System Management Interface
+### ROCm System Management Interface
 
 This repository includes the roc-smi tool. This tool exposes functionality for
 clock and temperature management of your ROCm enabled system.
