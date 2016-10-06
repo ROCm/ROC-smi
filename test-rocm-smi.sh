@@ -52,7 +52,7 @@ getHwmonFromDevice() {
 # Set up the test environment by resetting all settings to default
 setupTestEnv() {
     local smiPath="$1"; shift
-    $($smiPath --reset) &> /dev/null
+    $($smiPath --resetclocks) &> /dev/null
     sleep 1
 }
 
@@ -571,6 +571,96 @@ testSetGpuOverDrive() {
     return 0
 }
 
+# Test that setting the Power Profile through the SMI applies the desired profile,
+# but only when Performance Level is set to auto
+testSetProfile() {
+    local smiPath="$1"; shift;
+    local smiCmd="--setprofile"
+    echo -e "\nTesting $smiPath $smiCmd..."
+    IFS=$'\n'
+    local clocks=$($smiPath "-g") # Get a list of current GPU clock frequencies
+    for line in $clocks; do
+        if [ "$(checkLogLine $line)" != "true" ]; then
+            continue
+        elif [[ "$line" == *"PowerPlay not enabled"* ]]; then
+            continue
+        fi
+        local perf="$($smiPath --setperflevel auto)"
+        local rocmGpu="$(getGpuFromRocm $line)"
+        local hwmon="$(getHwmonFromDevice $rocmGpu)"
+        local profilePath="$DRM_PREFIX/card$rocmGpu/device/pp_compute_power_profile"
+
+        local currProfile="$(cat $profilePath)"
+        local newProfile=(750 500 1 2 3)
+        if [ "$currProfile" == "750 500 1 2 3" ]; then
+            local newProfile=(800 500 2 3 4)
+        fi
+
+        local profile=$($smiPath $smiCmd ${newProfile[@]})
+        local newSysProfile="$(cat $profilePath)"
+        if [ "$newSysProfile" != "$(echo ${newProfile[@]})" ]; then
+            echo "FAILURE: Could not set Profile"
+            NUM_FAILURES=$(($NUM_FAILURES+1))
+            continue
+        fi
+        local currClock="$(getCurrentClock level $DRM_PREFIX/card$rocmGpu/device/pp_dpm_sclk)"
+        if [ "$currClock" == "3" ]; then
+            local setClock="$($smiPath --setsclk 4)"
+        else
+            local setClock="$($smiPath --setsclk 3)"
+        fi
+        local newClock="$(getCurrentClock level $DRM_PREFIX/card$rocmGpu/device/pp_dpm_sclk)"
+        if [ "$currClock" == "$newClock" ]; then
+            echo "FAILURE: Profile not overridden with Performance Level set to manual"
+            NUM_FAILURES=$(($NUM_FAILURES+1))
+        fi
+    done
+    echo -e "Test complete: $smiPath $smiCmd\n"
+    return 0
+}
+
+# Test that resetting the profile actually resets the profile
+testResetProfile() {
+    local smiPath="$1"; shift;
+    local smiCmd="--resetprofile"
+    echo -e "\nTesting $smiPath $smiCmd..."
+    IFS=$'\n'
+    local clocks=$($smiPath "-g") # Get a list of current GPU clock frequencies
+    for line in $clocks; do
+        if [ "$(checkLogLine $line)" != "true" ]; then
+            continue
+        elif [[ "$line" == *"PowerPlay not enabled"* ]]; then
+            continue
+        fi
+        local perf="$($smiPath --setperflevel auto)"
+        local rocmGpu="$(getGpuFromRocm $line)"
+        local hwmon="$(getHwmonFromDevice $rocmGpu)"
+        local profilePath="$DRM_PREFIX/card$rocmGpu/device/pp_compute_power_profile"
+
+        local newProfile=(750 500 1 2 3)
+
+        local resetProfile=$($smiPath $smiCmd)
+        local resetSysProfile="$(cat $profilePath)"
+        local setProfile=$($smiPath --setprofile ${newProfile[@]})
+        local setSysProfile="$(cat $profilePath)"
+
+        if [ "$resetSysProfile" == "$setSysProfile" ]; then
+            echo "FAILURE: Could not set Profile"
+            NUM_FAILURES=$(($NUM_FAILURES+1))
+            continue
+        fi
+        resetProfile="$($smiPath $smiCmd)"
+        resetSysProfile="$(cat $profilePath)"
+        if [ "$resetSysProfile" == "$setSysProfile" ]; then
+            echo "FAILURE: Could not reset profile"
+            NUM_FAILURES=$(($NUM_FAILURES+1))
+        fi
+    done
+    echo -e "Test complete: $smiPath $smiCmd\n"
+    return 0
+}
+
+
 # Test that the resetting the GPU and GPU Memory clock frequencies through the SMI
 # resets the clock frequencies of the corresponding device(s)
 #  param smiPath        Path to the SMI
@@ -610,7 +700,7 @@ testReset() {
 #  param smiPath        Path to the SMI
 testSave() {
     local smiPath="$1"; shift;
-    local smiCmd="--saveclocks"
+    local smiCmd="--save"
     setupTestEnv "$smiPath" # Make sure that we have a clean state before saving values
     IFS=$'\n'
     echo -e "\nTesting $smiPath $smiCmd..."
@@ -640,10 +730,14 @@ testSave() {
         local gpu="$(extractJsonValue "$device" "$tempSaveFile" "gpu")"
         local mem="$(extractJsonValue "$device" "$tempSaveFile" "mem")"
         local od="$(extractJsonValue "$device" "$tempSaveFile" "overdrivegpu")"
+        local profile="$(extractJsonValue "$device" "$tempSaveFile" "profile")"
+        local perf="$(extractJsonValue "$device" "$tempSaveFile" "perflevel")"
         local sysFan="$(cat $HWMON_PREFIX/$hwmon/pwm1)"
         local sysGpu="$(cat $DRM_PREFIX/card$device/device/pp_dpm_sclk)"
         local sysMem="$(cat $DRM_PREFIX/card$device/device/pp_dpm_mclk)"
         local sysOd="$(cat $DRM_PREFIX/card$device/device/pp_sclk_od)"
+        local sysProfile="$(cat $DRM_PREFIX/card$device/device/pp_compute_power_profile)"
+        local sysPerf="$(cat $DRM_PREFIX/card$device/device/power_dpm_force_performance_level)"
         if [ "$fan" != "$sysFan" ]; then
             echo "FAILURE: Saved fan $fan does not match current fan setting $sysFan"
             NUM_FAILURES=$(($NUM_FAILURES+1))
@@ -655,6 +749,12 @@ testSave() {
             NUM_FAILURES=$(($NUM_FAILURES+1))
         elif [ "$od" != "$sysOd" ]; then
             echo "FAILURE: Saved OverDrive $od does not match current fan setting $sysOd"
+            NUM_FAILURES=$(($NUM_FAILURES+1))
+        elif [ "$profile" != "$sysProfile" ]; then
+            echo "FAILURE: Saved Profile $profile does not match current fan setting $sysProfile"
+            NUM_FAILURES=$(($NUM_FAILURES+1))
+        elif [ "$perf" != "$sysPerf" ]; then
+            echo "FAILURE: Saved Performance Level $perf does not match current Performance Level $sysPerf"
             NUM_FAILURES=$(($NUM_FAILURES+1))
         fi
     done
@@ -668,7 +768,7 @@ testSave() {
 #  param smiPath        Path to the SMI
 testLoad() {
     local smiPath="$1"; shift;
-    local smiCmd="--loadclocks"
+    local smiCmd="--load"
     IFS=$'\n'
     echo -e "\nTesting $smiPath $smiCmd..."
 
@@ -676,10 +776,11 @@ testLoad() {
     local tempSaveFile="$tempSaveDir/clocks.tmp"
 
     local clocks="$($smiPath -g)" # Get a list of current GPU clock speeds
-    local high="$($smiPath --setperflevel high)"
-    sleep 1 # Give the system 1sec to ramp the clocks up to high
-    local save="$($smiPath --saveclocks $tempSaveFile)"
     local od="$($smiPath --setoverdrive 8 --autorespond YES)"
+    local high="$($smiPath --setperflevel high)"
+    local profile="$($smiPath --setprofile 1000 500 0 2 4)"
+    sleep 1 # Give the system 1sec to ramp the clocks up to high
+    local save="$($smiPath --save $tempSaveFile)"
     for line in $clocks; do
         if [ "$(checkLogLine $line)" != "true" ]; then
             continue
@@ -687,22 +788,30 @@ testLoad() {
             continue
         fi
         local reset="$($smiPath --setperflevel auto)"
+        reset="$($smiPath --resetprofile)"
         local device="$(getGpuFromRocm $line)"
         local hwmon="$(getHwmonFromDevice $device)"
         local perfPath="$DRM_PREFIX/card$device/device/power_dpm_force_performance_level"
         local gpuPath="$DRM_PREFIX/card$device/device/pp_dpm_sclk"
         local memPath="$DRM_PREFIX/card$device/device/pp_dpm_mclk"
-        local oldOd="$(cat $DRM_PREFIX/card$device/device/pp_sclk_od)"
+        local odPath="$DRM_PREFIX/card$device/device/pp_sclk_od"
+        local profilePath="$DRM_PREFIX/card$device/device/pp_compute_power_profile"
+        local oldOd="$(cat $odPath)"
         local oldGpuClock="$(getCurrentClock level $gpuPath)"
         local oldMemClock="$(getCurrentClock level $memPath)"
+        local oldProfile="$(cat $profilePath)"
         local load="$($smiPath $smiCmd $tempSaveFile --autorespond YES)"
         sleep 1 # Give the system 1sec to ramp the clocks up to the desired values
         local newGpuClock="$(getCurrentClock level $gpuPath)"
         local newMemClock="$(getCurrentClock level $memPath)"
-        local newOd="$(cat $DRM_PREFIX/card$device/device/pp_sclk_od)"
+        local newOd="$(cat $odPath)"
+        local newProfile="$(cat $profilePath)"
+        local newPerf="$(cat $perfPath)"
         local jsonGpu="$(extractJsonValue $device $tempSaveFile gpu)"
         local jsonMem="$(extractJsonValue $device $tempSaveFile mem)"
         local jsonOd="$(extractJsonValue $device $tempSaveFile overdrivegpu)"
+        local jsonProfile="$(extractJsonValue $device $tempSaveFile profile)"
+        local jsonPerf="$(extractJsonValue $device $tempSaveFile perflevel)"
         if [ "$oldGpuClock" == "$newGpuClock" ]; then
             if [ "$(getNumLevels $gpuPath)" -gt "1" ]; then
                 echo "FAILURE: Failed to change GPU clocks when loading values from save file $tempSaveFile"
@@ -725,6 +834,12 @@ testLoad() {
             NUM_FAILURES=$(($NUM_FAILURES+1))
         elif [ "$newOd" != "$jsonOd" ]; then
             echo "FAILURE: Failed to load OverDrive values from save file $tempSaveFile"
+            NUM_FAILURES=$(($NUM_FAILURES+1))
+        elif [ "$newProfile" != "$jsonProfile" ]; then
+            echo "FAILURE: Failed to load Profile values from save file $tempSaveFile"
+            NUM_FAILURES=$(($NUM_FAILURES+1))
+        elif [ "$newPerf" != "$jsonPerf" ]; then
+            echo "FAILURE: Failed to load Performance Level value from save file $tempSaveFile"
             NUM_FAILURES=$(($NUM_FAILURES+1))
         fi
     done
@@ -754,7 +869,7 @@ runTestSuite() {
                 testGetGpuOverDrive "$smiPath" ;;
             -s | --showclkfrq)
                 testGetSupportedClocks "$smiPath" ;;
-            -r | --reset)
+            -r | --resetclocks)
                 testReset "$smiPath" ;;
             --setsclk)
                 testSetClock "gpu" "$smiPath" ;;
@@ -766,9 +881,13 @@ runTestSuite() {
                 testSetPerf "$smiPath" ;;
             --setoverdrive)
                 testSetGpuOverDrive "$smiPath" ;;
-            --saveclocks)
+            --setprofile)
+                testSetProfile "$smiPath" ;;
+            --resetprofile)
+                testResetProfile "$smiPath" ;;
+            --save)
                 testSave "$smiPath" ;;
-            --loadclocks)
+            --load)
                 testLoad "$smiPath" ;;
             all)
                 testGetId "$smiPath" ;
@@ -817,4 +936,8 @@ echo "===Start of ROCM-SMI test suite==="
 runTestSuite "$SMI_DIR/$SMI_NAME" "$SMI_SUBSET"
 echo "$NUM_FAILURES failure(s) occurred"
 echo "===End of ROCM-SMI test suite==="
+
+# Reset the system to get it back to a sane state
+reset="$($SMI_DIR/$SMI_NAME -r && $SMI_DIR/$SMI_NAME --resetprofile)"
+
 exit $NUM_FAILURES

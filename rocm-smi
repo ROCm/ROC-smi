@@ -10,6 +10,9 @@ import json
 # Version of the JSON output used to save clocks
 JSON_VERSION = 1
 
+# Currently we have 5 values for PowerPlay Profiles
+NUM_PROFILE_ARGS = 5
+
 # To write to sysfs, we need to run this script as root. If the script is not run as
 # root, re-launch it via execvp to give the script sudo privileges.
 def relaunchAsSudo():
@@ -32,6 +35,7 @@ groupDisplay.add_argument('-g', '--showgpuclocks', help='Show current GPU clock 
 groupDisplay.add_argument('-f', '--showfan', help='Show current fan speed', action='store_true')
 groupDisplay.add_argument('-p', '--showperflevel', help='Show current PowerPlay Performance Level', action='store_true')
 groupDisplay.add_argument('-o', '--showoverdrive', help='Show current OverDrive level', action='store_true')
+groupDisplay.add_argument('-l', '--showprofile', help='Show Compute Profile attributes', action='store_true')
 groupDisplay.add_argument('-s', '--showclkfrq', help='Show supported GPU and Memory Clock', action='store_true')
 groupDisplay.add_argument('-a' ,'--showallinfo', help='Show Temperature, Fan and Clock values', action='store_true')
 
@@ -41,9 +45,11 @@ groupAction.add_argument('--setmclk', help='Set GPU Memory Clock Frequency Level
 groupAction.add_argument('--setfan', help='Set GPU Fan Speed Level', metavar='LEVEL')
 groupAction.add_argument('--setperflevel', help='Set PowerPlay Performance Level', metavar='LEVEL')
 groupAction.add_argument('--setoverdrive', help='Set GPU OverDrive level', metavar='%')
+groupAction.add_argument('--setprofile', help='Specify Compute Profile attributes', metavar='#', nargs=NUM_PROFILE_ARGS)
+groupAction.add_argument('--resetprofile', help='Reset Compute Profile', action='store_true')
 
-groupFile.add_argument('--loadclocks', help='Load clock settings from FILE', metavar='FILE')
-groupFile.add_argument('--saveclocks', help='Save current clock settings to FILE', metavar='FILE')
+groupFile.add_argument('--load', help='Load Clock, Fan, Performance and Profile settings from FILE', metavar='FILE')
+groupFile.add_argument('--save', help='Save Clock, Fan, Performance and Profile settings to FILE', metavar='FILE')
 
 groupResponse.add_argument('--autorespond', help='Response to automatically provide for all prompts (NOT RECOMMENDED)', metavar='RESPONSE')
 
@@ -133,6 +139,30 @@ def isPowerplayEnabled(device):
     return True
 
 
+def verifyProfileData(device, profile):
+    if not isPowerplayEnabled(device):
+        printLog(device, 'PowerPlay not enabled, cannot specify profile.')
+        return False
+
+    if profile != 'reset' and len(profile) != NUM_PROFILE_ARGS:
+        printLog(device, 'Unsupported profile argument : ' + str(profile))
+        return False
+
+    return True
+
+
+def writeProfileSysfs(device, value):
+    profilePath = os.path.join(drmprefix, device, 'device', 'pp_compute_power_profile')
+    profileString = value
+
+    if value != 'reset':
+        profileString = ' '.join(value)
+    if (writeToSysfs(profilePath, profileString)):
+        return True
+
+    return False
+
+
 def writeToSysfs(fsFile, fsValue):
     """ Write to a sysfs file.
 
@@ -145,8 +175,8 @@ def writeToSysfs(fsFile, fsValue):
         return False
     with open(fsFile, 'w') as fs:
         try:
-            fs.write(fsValue + "\n") # Certain sysfs files require \n at the end
-        except:
+            fs.write(fsValue + '\n') # Certain sysfs files require \n at the end
+        except OSError:
             print('Unable to write to sysfs file' + fsFile)
             return False
     return True
@@ -183,6 +213,17 @@ def getHwmonFromDevice(device):
         if os.path.realpath(os.path.join(hwmon, 'device')) == drmdev:
             return hwmon
     return None
+
+
+def getId(device):
+    """ Return the device ID for a specified device.
+
+    Parameters:
+    device -- Device to return the device ID
+    """
+    with open(os.path.join(drmprefix, device, 'device', 'device'), 'r') as devname:
+        gpuId = devname.read().rstrip('\n')
+    return gpuId[2:]
 
 
 def getPerfLevel(device):
@@ -320,9 +361,9 @@ def getCurrentOverDrive(device, clock):
     clock -- [gpu|mem] Return either the GPU (gpu) or GPU Memory (mem) OverDrive value
     """
 
-    od = "-1"
+    od = '-1'
     if not clock == 'gpu':
-        printLog(device, "Unable to set OverDrive for non-GPU clocks")
+        printLog(device, 'Unable to set OverDrive for non-GPU clocks')
         return od
     odpath = os.path.join(drmprefix, device, 'device', 'pp_sclk_od')
     if os.path.isfile(odpath):
@@ -344,6 +385,20 @@ def getMaxLevel(device, type):
     return int(levels[-1][0])
 
 
+def getProfile(device):
+    """ Return the current profile values for a specified device.
+
+    Parameters:
+    device -- Device to return the current Compute Profile attributes
+    """
+    profilePath = os.path.join(drmprefix, device, 'device', 'pp_compute_power_profile')
+    profile = ''
+    if os.path.isfile(profilePath):
+        with open(profilePath, 'r') as profileFile:
+            profile = profileFile.read().rstrip('\n')
+    return profile
+
+
 def showId(deviceList):
     """ Display the device ID for a list of devices.
 
@@ -352,9 +407,7 @@ def showId(deviceList):
     """
     print(logSpacer)
     for device in deviceList:
-        with open(os.path.join(drmprefix, device, 'device', 'device'), 'r') as devname:
-            gpuId = devname.read().rstrip('\n')
-        printLog(device, 'GPU ID: ' + gpuId)
+        printLog(device, 'GPU ID: 0x' + getId(device))
     print(logSpacer)
 
 
@@ -496,6 +549,33 @@ def showOverDrive(deviceList):
     print(logSpacer)
 
 
+def showProfile(deviceList):
+    """ Display current Compute Power Profile for a list of devices.
+
+    Parameters:
+    deviceList -- List of devices to display current Compute Power Profile attributes (can be a single-item list)
+    """
+
+    print(logSpacer)
+    for device in deviceList:
+        if not isPowerplayEnabled(device):
+            printLog(device, 'PowerPlay not enabled - Compute Power Profile not supported')
+            continue
+        profile = getProfile(device)
+        vals = profile.split()
+        if len(vals) == NUM_PROFILE_ARGS:
+            printLog(device, 'Minimum SCLK: ' + vals[0] + 'MHz')
+            printLog(device, 'Minimum MCLK: ' + vals[1] + 'MHz')
+            printLog(device, 'Activity threshold: ' + vals[2] + '%')
+            printLog(device, 'Hysteresis Up: ' + vals[3] + 'ms')
+            printLog(device, 'Hysteresis Down: ' + vals[4] + 'ms')
+        elif not profile:
+            printLog(device, 'Compute Power Profile not supported')
+        else:
+            printLog(device, 'Invalid return value from pp_compute_power_profile')
+    print(logSpacer)
+
+
 def setPerformanceLevel(deviceList, level):
     """ Set the PowerPlay Performance Level for a list of devices.
 
@@ -620,6 +700,37 @@ def setFanSpeed(deviceList, fan):
             printLog(device, 'Unable to set fan speed to Level ' + str(fan))
 
 
+def setProfile(deviceList, profile):
+    """ Set Compute Power Profile values for a list of devices.
+
+    Parameters:
+    deviceList -- List of devices to specify the Compute Power Profile for (can be a single-item list)
+    profile -- The profile to set
+    """
+    for device in deviceList:
+        if not verifyProfileData(device, profile):
+            continue
+        if (writeProfileSysfs(device, profile)):
+            printLog(device, 'Successfully set Compute Power Profile values')
+        else:
+            printLog(device, 'Unable to set Compute Power Profile values')
+
+
+def resetProfile(deviceList):
+    """ Reset profile for a list of a devices.
+
+    Parameters:
+    deviceList -- List of devices to reset the Compute Power Profile for (can be a single-item list)
+    """
+    for device in deviceList:
+        if not verifyProfileData(device, 'reset'):
+            continue
+        if writeProfileSysfs(device, 'reset'):
+            printLog(device, 'Successfully reset Compute Power Profile values')
+        else:
+            printLog(device, 'Unable to reset Compute Power Profile values')
+
+
 def resetClocks(deviceList):
     """ Reset performance level to default for a list of devices.
 
@@ -649,7 +760,7 @@ def resetClocks(deviceList):
         printLog(device, 'Successfully reset GPU and Memory clocks')
 
 
-def loadClocks(savefilepath, autoRespond):
+def load(savefilepath, autoRespond):
     """ Load clock frequencies and fan speeds from a specified file.
 
     Parameters:
@@ -659,6 +770,7 @@ def loadClocks(savefilepath, autoRespond):
     gpuClocks = {}
     memClocks = {}
     fanSpeeds = {}
+    profiles = {}
 
     if not os.path.isfile(savefilepath):
         print('No settings file found at ', savefilepath)
@@ -670,24 +782,32 @@ def loadClocks(savefilepath, autoRespond):
                 print('Unable to load legacy clock file - file v' + str(values['vJson']) +
                       ' != current v' + str(JSON_VERSION))
                 break
-            setClocks([device], 'gpu', values['gpu'])
-            setClocks([device], 'mem', values['mem'])
             setFanSpeed([device], values['fan'])
             setClockOverDrive([device], 'gpu', values['overdrivegpu'], autoRespond)
+            setClocks([device], 'gpu', values['gpu'])
+            setClocks([device], 'mem', values['mem'])
+            setProfile([device], values['profile'].split())
+
+            # Set Perf level last, since setting OverDrive sets the Performance level
+            # it to manual, and Profiles only work when the Performance level is auto
+            setPerfLevel(device, values['perflevel'])
+
             printLog(device, 'Successfully loaded values from ' + savefilepath)
 
 
-def saveClocks(deviceList, savefilepath):
+def save(deviceList, savefilepath):
     """ Save clock frequencies and fan speeds for a list of devices to a specified file path.
 
     Parameters:
     deviceList -- List of devices to save the clock frequencies and fan speeds
     savefilepath -- Location to save the clock frequencies and fan speeds
     """
+    perfLevels = {}
     gpuClocks = {}
     memClocks = {}
     fanSpeeds = {}
     overDriveGpu = {}
+    profiles = {}
     jsonData = {}
 
     if os.path.isfile(savefilepath):
@@ -697,11 +817,13 @@ def saveClocks(deviceList, savefilepath):
         if not isPowerplayEnabled(device):
             printLog(device, 'PowerPlay not enabled - Cannot save clocks')
             continue
+        perfLevels[device] = getPerfLevel(device)
         gpuClocks[device] = getCurrentClock(device, 'gpu', 'level')
         memClocks[device] = getCurrentClock(device, 'mem', 'level')
         fanSpeeds[device] = getFanSpeed(device, 'level')
         overDriveGpu[device] = getCurrentOverDrive(device, 'gpu')
-        jsonData[device] = {'vJson': JSON_VERSION, 'gpu': gpuClocks[device], 'mem': memClocks[device], 'fan': fanSpeeds[device], 'overdrivegpu': overDriveGpu[device]}
+        profiles[device] = getProfile(device)
+        jsonData[device] = {'vJson': JSON_VERSION, 'gpu': gpuClocks[device], 'mem': memClocks[device], 'fan': fanSpeeds[device], 'overdrivegpu': overDriveGpu[device], 'profile': profiles[device], 'perflevel': perfLevels[device]}
         printLog(device, 'Current settings successfully saved to ' + savefilepath)
     with open(savefilepath, 'w') as savefile:
         json.dump(jsonData, savefile, ensure_ascii=True)
@@ -730,8 +852,9 @@ if args.showallinfo:
     args.showclkfrq = True
     args.showperflevel = True
     args.showoverdrive = True
+    args.showprofile = True
 
-if args.setsclk or args.setmclk or args.setfan or args.setperflevel or args.resetclocks or args.loadclocks or args.setoverdrive:
+if args.setsclk or args.setmclk or args.setfan or args.setperflevel or args.resetclocks or args.load or args.setoverdrive or args.setprofile or args.resetprofile:
     relaunchAsSudo()
 
 if args.showid:
@@ -750,6 +873,8 @@ if args.showperflevel:
     showPerformanceLevel(deviceList)
 if args.showoverdrive:
     showOverDrive(deviceList)
+if args.showprofile:
+    showProfile(deviceList)
 if args.showclkfrq:
     showClocks(deviceList)
 if args.setsclk:
@@ -762,10 +887,14 @@ if args.setperflevel:
     setPerformanceLevel(deviceList, args.setperflevel)
 if args.setoverdrive:
     setClockOverDrive(deviceList, 'gpu', args.setoverdrive, args.autorespond)
-if args.loadclocks:
-    loadClocks(args.loadclocks, args.autorespond)
-if args.saveclocks:
-    saveClocks(deviceList, args.saveclocks)
+if args.setprofile:
+    setProfile(deviceList, args.setprofile)
+if args.resetprofile:
+    resetProfile(deviceList)
+if args.load:
+    load(args.load, args.autorespond)
+if args.save:
+    save(deviceList, args.save)
 
 # Footer for the SMI
 print(headerSpacer, '          End of ROCm SMI Log         ', headerSpacer, '\n', sep='')
