@@ -22,9 +22,9 @@ For detailed and up to date usage information, we recommend consulting the help:
 For convenience purposes, following is a quick excerpt:
 ```shell
 
-usage: rocm-smi [-h] [-d DEVICE] [-i] [-t] [-c] [-f] [-p] [-s] [-a] [-r] [--setsclk LEVEL]
-                [--setmclk LEVEL] [--setfan LEVEL] [--setperflevel LEVEL]
-                [--loadclocks FILE | --saveclocks FILE]
+usage: rocm-smi [-h] [-d DEVICE] [-i] [-t] [-c] [-g] [-f] [-p] [-o] [-s] [-a] [-r] [--setsclk LEVEL]
+                [--setmclk LEVEL] [--setfan LEVEL] [--setperflevel LEVEL] [--setoverdrive %]
+                [--loadclocks FILE | --saveclocks FILE] [--autorespond RESPONSE]
 
 AMD ROCm System Management Interface
 
@@ -41,6 +41,7 @@ optional arguments:
   -g, --showgpuclocks         Show current GPU clock frequencies
   -f, --showfan               Show current fan speed
   -p, --showperflevel         Show current PowerPlay Performance Level
+  -o, --showoverdrive         Show current OverDrive level
   -s, --showclkfrq            Show supported GPU and Memory Clock
   -a, --showallinfo           Show Temperature, Fan and Clock values
 
@@ -49,7 +50,9 @@ optional arguments:
   --setmclk LEVEL             Set GPU Memory Clock Frequency Level(s)
   --setfan LEVEL              Set GPU Fan Speed Level
   --setperflevel LEVEL        Set PowerPlay Performance Level
+  --setoverdrive %            Set GPU OverDrive level
 
+  --autorespond RESPONSE      Response to automatically provide for all prompts (NOT RECOMMENDED)
 ```
 
 #### Testing changes
