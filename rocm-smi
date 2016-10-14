@@ -134,7 +134,7 @@ def isPowerplayEnabled(device):
     Parameters:
     device -- Device to check for PowerPlay enablement
     """
-    if not doesDeviceExist(device) or os.path.isfile(os.path.join(drmprefix, device, 'device', 'pp_table')) == 0:
+    if not doesDeviceExist(device) or os.path.isfile(os.path.join(drmprefix, device, 'device', 'power_dpm_force_performance_level')) == 0:
         return False
     return True
 
