@@ -221,7 +221,10 @@ def getId(device):
     Parameters:
     device -- Device to return the device ID
     """
-    with open(os.path.join(drmprefix, device, 'device', 'device'), 'r') as devname:
+    idPath=os.path.join(drmprefix, device, 'device', 'device')
+    if not os.path.isfile(idPath):
+        return ''
+    with open(idPath, 'r') as devname:
         gpuId = devname.read().rstrip('\n')
     return gpuId[2:]
 
@@ -271,9 +274,10 @@ def getTemp(device):
     if not hwmon:
         return None
     temppath = os.path.join(hwmon, 'temp1_input')
-    with open(temppath, 'r') as tempfile:
-        # Temperature in sysfs is in millidegrees
-        temp = int(tempfile.read().rstrip('\n'))/1000
+    if os.path.isfile(temppath):
+        with open(temppath, 'r') as tempfile:
+            # Temperature in sysfs is in millidegrees
+            temp = int(tempfile.read().rstrip('\n'))/1000
     return temp
 
 
@@ -291,7 +295,7 @@ def getFanSpeed(device, type):
         return None
     fanpath = os.path.join(hwmon, 'pwm1')
     fanmax = os.path.join(hwmon, 'pwm1_max')
-    if not os.path.isfile(fanpath):
+    if not os.path.isfile(fanpath) or not os.path.isfile(fanmax):
         return ''
     with open(fanpath, 'r') as fanfile:
         currFan = int(fanfile.read().rstrip('\n'))
@@ -319,12 +323,14 @@ def getClocks(device, type):
         print('Invalid clock type:', type)
         return None
     devpath = os.path.join(drmprefix, device, 'device')
+    clkPath = os.path.join(devpath, clkFile)
     if not isPowerplayEnabled(device):
         printLog(device, 'PowerPlay not enabled - Cannot get supported clocks')
         return None
-    with open(os.path.join(devpath, clkFile), 'r') as clk:
-        for line in clk:
-            clocks.append(line.strip('\n'))
+    if os.path.isfile(clkPath):
+        with open(clkPath, 'r') as clk:
+            for line in clk:
+                clocks.append(line.strip('\n'))
     return clocks
 
 
@@ -502,12 +508,16 @@ def showClocks(deviceList):
     print(logSpacer)
     for device in deviceList:
         devpath = os.path.join(drmprefix, device, 'device')
+        sclkPath = os.path.join(devpath, 'pp_dpm_sclk')
+        mclkPath = os.path.join(devpath, 'pp_dpm_mclk')
         if not isPowerplayEnabled(device):
             printLog(device, 'PowerPlay not enabled - Cannot display clocks')
             continue
-        with open(os.path.join(devpath, 'pp_dpm_sclk'), 'r') as sclk:
+        if not os.path.isfile(sclkPath) or not os.path.isfile(mclkPath):
+            continue
+        with open(sclkPath, 'r') as sclk:
             sclkLog = 'Supported GPU clock frequencies on GPU' + parseDeviceName(device) + '\n' + sclk.read()
-        with open(os.path.join(devpath, 'pp_dpm_mclk'), 'r') as mclk:
+        with open(mclkPath, 'r') as mclk:
             mclkLog = 'Supported GPU Memory clock frequencies on GPU' + parseDeviceName(device) + '\n' + mclk.read()
         for line in sclkLog.split('\n'):
             printLog(device, line)
