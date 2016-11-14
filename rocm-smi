@@ -577,8 +577,8 @@ def showProfile(deviceList):
             printLog(device, 'Minimum SCLK: ' + vals[0] + 'MHz')
             printLog(device, 'Minimum MCLK: ' + vals[1] + 'MHz')
             printLog(device, 'Activity threshold: ' + vals[2] + '%')
-            printLog(device, 'Hysteresis Up: ' + vals[3] + 'ms')
-            printLog(device, 'Hysteresis Down: ' + vals[4] + 'ms')
+            printLog(device, 'UpHyst: ' + vals[3] + 'ms')
+            printLog(device, 'DownHyst: ' + vals[4] + 'ms')
         elif not profile:
             printLog(device, 'Compute Power Profile not supported')
         else:
