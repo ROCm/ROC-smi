@@ -60,12 +60,12 @@ optional arguments:
 
 #### Compute Profile Attributes
 
-The Compute Profile accepts 5 parameters, which are (in order):
-Minimum SCLK       - Minimum GPU clock speed in MHz
-Minimum MCLK       - Minimum GPU Memory clock speed in MHz
-Activity threshold - Workload required before clock levels change (%)
-UpHyst             - Delay before clock level is increased in milliseconds
-DownHyst           - Delay before clock level is decresed in milliseconds
+The Compute Profile accepts 5 parameters, which are (in order):  
+Minimum SCLK       - Minimum GPU clock speed in MHz  
+Minimum MCLK       - Minimum GPU Memory clock speed in MHz  
+Activity threshold - Workload required before clock levels change (%)  
+UpHyst             - Delay before clock level is increased in milliseconds  
+DownHyst           - Delay before clock level is decresed in milliseconds  
 
 When a compute queue is detected, these values will be automatically applied to the system.
 
