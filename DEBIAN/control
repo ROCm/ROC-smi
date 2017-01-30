@@ -2,6 +2,6 @@ Package: rocm-smi
 Architecture: amd64
 Maintainer: Advanced Micro Devices Inc.
 Priority: optional
-Version: 1.0
+Version: MODULE_VERSION
 Description: System Management Interface for ROCm
 

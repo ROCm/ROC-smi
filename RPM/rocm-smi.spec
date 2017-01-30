@@ -1,7 +1,7 @@
 %define name        rocm-smi
-%define version     1.0
 %define packageroot $RPM_BUILD_ROOT
 %define smiroot     $SMI_ROOT
+%define version     %(echo $MODULE_VERSION | sed "s/-/_/g")
 
 Name:       %{name}
 Version:    %{version}
