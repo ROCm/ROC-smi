@@ -25,7 +25,7 @@ deb: package-common
 	@sed 's/^Version: MODULE_VERSION/Version: $(MODULE_VERSION)/' $(DEBIAN_DIR)/control > $(PACKAGE_DIR)/DEBIAN/control
 	@cp $(SMI_ROOT)/rocm-smi $(SMI_LOCATION)
 	@fakeroot dpkg-deb --build $(PACKAGE_DIR) \
-		$(BUILDDIR)/rocm-smi.deb
+		$(BUILDDIR)/rocm-smi-$(MODULE_VERSION).deb
 	@rm -rf $(PACKAGE_DIR)
 
 rpm: package-common
