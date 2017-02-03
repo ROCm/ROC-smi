@@ -22,7 +22,7 @@ For detailed and up to date usage information, we recommend consulting the help:
 For convenience purposes, following is a quick excerpt:
 ```shell
 
-usage: rocm-smi [-h] [-d DEVICE] [-i] [-t] [-c] [-g] [-f] [-p] [-o] [-l] [-s] [-a] [-r] [--setsclk LEVEL]
+usage: rocm-smi [-h] [-d DEVICE] [-i] [-t] [-c] [-g] [-f] [-p] [-P] [-o] [-l] [-s] [-a] [-r] [--setsclk LEVEL]
                 [--setmclk LEVEL] [--setfan LEVEL] [--setperflevel LEVEL] [--setoverdrive %]
                 [--setprofile # # # # #] [--resetprofile] [--load FILE | --save FILE] [--autorespond RESPONSE]
 
@@ -41,6 +41,7 @@ optional arguments:
   -g, --showgpuclocks         Show current GPU clock frequencies
   -f, --showfan               Show current fan speed
   -p, --showperflevel         Show current PowerPlay Performance Level
+  -P, --showpower             Show current power consumption
   -o, --showoverdrive         Show current OverDrive level
   -l, --showprofile           Show Compute Profile attributes
   -s, --showclkfrq            Show supported GPU and Memory Clock
