@@ -22,9 +22,10 @@ For detailed and up to date usage information, we recommend consulting the help:
 For convenience purposes, following is a quick excerpt:
 ```shell
 
-usage: rocm-smi [-h] [-d DEVICE] [-i] [-t] [-c] [-g] [-f] [-p] [-P] [-o] [-l] [-s] [-a] [-r] [--setsclk LEVEL]
-                [--setmclk LEVEL] [--setfan LEVEL] [--setperflevel LEVEL] [--setoverdrive %]
-                [--setprofile # # # # #] [--resetprofile] [--load FILE | --save FILE] [--autorespond RESPONSE]
+usage: rocm-smi [-h] [-d DEVICE] [-i] [-t] [-c] [-g] [-f] [-p] [-P] [-o] [-l] [-s] [-a] [-r]
+                [--setsclk LEVEL [LEVEL ...]] [--setmclk LEVEL [LEVEL ...]] [--setfan LEVEL]
+                [--setperflevel LEVEL] [--setoverdrive %] [--setprofile # # # # #] [--resetprofile]
+                [--load FILE | --save FILE] [--autorespond RESPONSE]
 
 AMD ROCm System Management Interface
 
@@ -48,8 +49,8 @@ optional arguments:
   -a, --showallinfo           Show Temperature, Fan and Clock values
 
   -r, --resetclocks           Reset clocks to default values
-  --setsclk LEVEL             Set GPU Clock Frequency Level(s)
-  --setmclk LEVEL             Set GPU Memory Clock Frequency Level(s)
+  --setsclk LEVEL [LEVEL ...] Set GPU Clock Frequency Level(s)
+  --setmclk LEVEL [LEVEL ...] Set GPU Memory Clock Frequency Level(s)
   --setfan LEVEL              Set GPU Fan Speed Level
   --setperflevel LEVEL        Set PowerPlay Performance Level
   --setoverdrive %            Set GPU OverDrive level

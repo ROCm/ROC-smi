@@ -43,8 +43,8 @@ groupDisplay.add_argument('-s', '--showclkfrq', help='Show supported GPU and Mem
 groupDisplay.add_argument('-a' ,'--showallinfo', help='Show Temperature, Fan and Clock values', action='store_true')
 
 groupAction.add_argument('-r', '--resetclocks', help='Reset clocks to default values', action='store_true')
-groupAction.add_argument('--setsclk', help='Set GPU Clock Frequency Level(s)', metavar='LEVEL')
-groupAction.add_argument('--setmclk', help='Set GPU Memory Clock Frequency Level(s)', metavar='LEVEL')
+groupAction.add_argument('--setsclk', help='Set GPU Clock Frequency Level(s)', type=int, metavar='LEVEL', nargs='+')
+groupAction.add_argument('--setmclk', help='Set GPU Memory Clock Frequency Level(s)', type=int, metavar='LEVEL', nargs='+')
 groupAction.add_argument('--setfan', help='Set GPU Fan Speed Level', metavar='LEVEL')
 groupAction.add_argument('--setperflevel', help='Set PowerPlay Performance Level', metavar='LEVEL')
 groupAction.add_argument('--setoverdrive', help='Set GPU OverDrive level', metavar='%')
@@ -682,10 +682,11 @@ def setClocks(deviceList, clktype, clk):
     clktype -- [gpu|mem] Set the GPU (gpu) or GPU Memory (mem) clock frequency level
     clk -- Clock frequency level to set
     """
+    value = ''.join(str(x) for x in clk)
     try:
-        value = int(clk)
+        int(value)
     except ValueError:
-        print('Cannot set clock to value', clk, ', it is not an integer!')
+        print('Cannot set OverDrive to value', value, ', it is not an integer!')
         return
     for device in deviceList:
         if not isPowerplayEnabled(device):
@@ -698,19 +699,19 @@ def setClocks(deviceList, clktype, clk):
             clkFile = os.path.join(devpath, 'pp_dpm_mclk')
 
         # GPU clocks can be set to multiple levels at the same time (of the format
-        # 456 for levels 4, 5 and 6). Don't compare against the max level for gpu
+        # 4 5 6 for levels 4, 5 and 6). Don't compare against the max level for gpu
         # clocks in this case
-        if value > getMaxLevel(device, clktype) and clktype != 'gpu':
-            printLog(device, 'Unable to set clock to unsupported Level ' + str(value))
+        if any(int(item) > getMaxLevel(device, clktype) for item in clk):
+            printLog(device, 'Unable to set clock to unsupported Level - Max Level is ' + str(getMaxLevel(device, clktype)))
             continue
         setPerfLevel(device, 'manual')
-        if writeToSysfs(clkFile, str(clk)):
+        if writeToSysfs(clkFile, value):
             if clktype == 'gpu':
-                printLog(device, 'Successfully set GPU Clock frequency to Level ' + str(value))
+                printLog(device, 'Successfully set GPU Clock frequency mask to Level ' + value)
             else:
-                printLog(device, 'Successfully set GPU Memory Clock frequency to Level ' + str(value))
+                printLog(device, 'Successfully set GPU Memory Clock frequency mask to Level ' + value)
         else:
-            printLog(device, 'Unable to set ' + clktype + ' clock to Level ' + str(value))
+            printLog(device, 'Unable to set ' + clktype + ' clock to Level ' + value)
 
 
 def setClockOverDrive(deviceList, clktype, value, autoRespond):
@@ -722,7 +723,6 @@ def setClockOverDrive(deviceList, clktype, value, autoRespond):
     value -- Percentage amount to set for OverDrive (0-20)
     autoRespond -- Response to automatically provide for all prompts
     """
-
     try:
         int(value)
     except ValueError:
@@ -751,7 +751,7 @@ def setClockOverDrive(deviceList, clktype, value, autoRespond):
 
         if (writeToSysfs(odPath, value)):
             printLog(device, 'Successfully set OverDrive to ' + value + '%')
-            setClocks([device], clktype, getMaxLevel(device, 'gpu'))
+            setClocks([device], clktype, [getMaxLevel(device, 'gpu')])
         else:
             printLog(device, 'Unable to set OverDrive to ' + value + '%')
 
