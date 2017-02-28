@@ -192,7 +192,9 @@ testGetTemp() {
 
         local rocmTemp="${rocmTemp%%.*}" # Truncate the value, as bash rounds to the nearest int
         local sysTemp="$(cat $HWMON_PREFIX/$hwmon/temp1_input)" # Temp in millidegrees
-        sysTemp=$(($sysTemp/1000)) # Convert to degrees
+        if [ "$sysTemp" != "" ]; then
+            sysTemp=$(($sysTemp/1000)) # Convert to degrees
+        fi
         if [ "$rocmTemp" != "$sysTemp" ]; then
             echo "FAILURE: Temperature from $SMI_NAME $rocmTemp does not match $sysTemp"
             NUM_FAILURES=$(($NUM_FAILURES+1))
