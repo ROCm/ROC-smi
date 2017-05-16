@@ -62,7 +62,7 @@ drmprefix = '/sys/class/drm'
 hwmonprefix = '/sys/class/hwmon'
 powerprefix = '/sys/kernel/debug/dri/'
 
-headerSpacer = '==================='
+headerSpacer = '='*20
 logSpacer = headerSpacer * 4
 
 
@@ -658,6 +658,58 @@ def showPower(deviceList):
     print(logSpacer)
 
 
+def showAllConcise(deviceList):
+    """ Display critical info for all devices in a concise format.
+
+    Parameters:
+    deviceList -- List of all devices
+    """
+    print(logSpacer)
+    print(' GPU  DID    Temp     AvgPwr   SCLK     MCLK     Fan      Perf    OverDrive  ECC')
+    for device in deviceList:
+        gpuid = getId(device)
+
+        temp = getTemp(device)
+        if not temp:
+            temp = 'N/A'
+        else:
+            temp = str(temp) + 'c'
+
+        power = str.lstrip(getPower(device))
+        if not power:
+            power = 'N/A'
+        else:
+            power = power[:-2] + 'W'
+
+        sclk = getCurrentClock(device, 'gpu', 'freq')
+        if not sclk:
+            sclk = 'N/A'
+
+        mclk = getCurrentClock(device, 'mem', 'freq')
+        if not mclk:
+            mclk = 'N/A'
+
+        fan = str(getFanSpeed(device, 'speed'))
+        if not fan:
+            fan = 'N/A'
+        else:
+            fan = fan + '%'
+
+        perf = getPerfLevel(device)
+
+        od = getCurrentOverDrive(device, 'gpu')
+        if od == '-1':
+            od = 'N/A'
+        else:
+            od = od + '%'
+        """ To support later """
+        ecc = 'N/A'
+
+        print("  %-4s%-7s%-9s%-9s%-9s%-9s%-9s%-10s%-9s%-9s" % (device[4:], gpuid, temp,
+            power, sclk, mclk, fan, perf, od, ecc))
+    print(logSpacer)
+
+
 def setPerformanceLevel(deviceList, level):
     """ Set the PowerPlay Performance Level for a list of devices.
 
@@ -910,12 +962,9 @@ def save(deviceList, savefilepath):
     with open(savefilepath, 'w') as savefile:
         json.dump(jsonData, savefile, ensure_ascii=True)
 
-# Header for the SMI
-print('\n\n', headerSpacer, '   ROCm System Management Interface   ', headerSpacer, sep='')
-
 # If there is a single device specified, use that for all commands, otherwise use a
-# list of all available devices. Also use "is not None" as device 0 would be
-# have args.device=0, and if 0 returns false.
+# list of all available devices. Also use "is not None" as device 0 would
+# have args.device=0, and "if 0" returns false.
 if args.device is not None:
     device = parseDeviceNumber(args.device)
     if not doesDeviceExist(device):
@@ -938,9 +987,14 @@ if args.showallinfo:
     args.showpower = True
 
 if args.setsclk or args.setmclk or args.setfan or args.setperflevel or args.resetclocks or args.load or \
-   args.setoverdrive or args.setprofile or args.resetprofile or args.showpower:
-    relaunchAsSudo()
+   args.setoverdrive or args.setprofile or args.resetprofile or args.showpower or len(sys.argv) == 1:
+       relaunchAsSudo()
 
+# Header for the SMI
+print('\n\n', headerSpacer, '    ROCm System Management Interface    ', headerSpacer, sep='')
+
+if len(sys.argv) == 1:
+    showAllConcise(deviceList)
 if args.showid:
     showId(deviceList)
 if args.resetclocks:
@@ -983,4 +1037,4 @@ if args.save:
     save(deviceList, args.save)
 
 # Footer for the SMI
-print(headerSpacer, '          End of ROCm SMI Log         ', headerSpacer, '\n', sep='')
+print(headerSpacer, '           End of ROCm SMI Log          ', headerSpacer, '\n', sep='')
