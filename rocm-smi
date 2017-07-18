@@ -12,6 +12,9 @@ import glob
 # Version of the JSON output used to save clocks
 JSON_VERSION = 1
 
+# Set to 1 if an error occurs
+RETCODE = 0
+
 # Currently we have 5 values for PowerPlay Profiles
 NUM_PROFILE_ARGS = 5
 
@@ -180,14 +183,17 @@ def writeToSysfs(fsFile, fsValue):
     fsFile -- Path to the sysfs file to modify
     fsValue -- Value to write to the sysfs file
     """
+    global RETCODE
     if not os.path.isfile(fsFile):
         print('Cannot write to sysfs file ' + fsFile + '. File does not exist', sep='')
+        RETCODE = 1
         return False
     with open(fsFile, 'w') as fs:
         try:
             fs.write(fsValue + '\n') # Certain sysfs files require \n at the end
         except OSError:
             print('Unable to write to sysfs file' + fsFile)
+            RETCODE = 1
             return False
     return True
 
@@ -324,6 +330,7 @@ def getClocks(device, type):
     device -- Device to return the supported clock frequencies
     type -- [gpu|mem] Return the list of either the GPU (gpu) or GPU Memory (mem) clock frequencies
     """
+    global RETCODE
     clocks = []
     clockDict = {'gpu': 'pp_dpm_sclk', 'mem': 'pp_dpm_mclk'}
 
@@ -331,6 +338,7 @@ def getClocks(device, type):
         clkFile = clockDict[type]
     except:
         print('Invalid clock type:', type)
+        RETCODE = 1
         return None
     devpath = os.path.join(drmprefix, device, 'device')
     clkPath = os.path.join(devpath, clkFile)
@@ -734,6 +742,7 @@ def setClocks(deviceList, clktype, clk):
     clktype -- [gpu|mem] Set the GPU (gpu) or GPU Memory (mem) clock frequency level
     clk -- Clock frequency level to set
     """
+    global RETCODE
     value = ''.join(str(x) for x in clk)
     try:
         int(value)
@@ -755,6 +764,7 @@ def setClocks(deviceList, clktype, clk):
         # clocks in this case
         if any(int(item) > getMaxLevel(device, clktype) for item in clk):
             printLog(device, 'Unable to set clock to unsupported Level - Max Level is ' + str(getMaxLevel(device, clktype)))
+            RETCODE = 1
             continue
         setPerfLevel(device, 'manual')
         if writeToSysfs(clkFile, value):
@@ -775,10 +785,12 @@ def setClockOverDrive(deviceList, clktype, value, autoRespond):
     value -- Percentage amount to set for OverDrive (0-20)
     autoRespond -- Response to automatically provide for all prompts
     """
+    global RETCODE
     try:
         int(value)
     except ValueError:
         print('Cannot set OverDrive to value', value, ', it is not an integer!')
+        RETCODE = 1
         return
     confirmOverDrive(autoRespond)
 
@@ -791,10 +803,12 @@ def setClockOverDrive(deviceList, clktype, value, autoRespond):
             odPath = os.path.join(devpath, 'pp_sclk_od')
         else:
             printLog(device, 'Unsupported clock type ' + clktype + ' - Cannot set OverDrive')
+            RETCODE = 1
             continue
 
         if int(value) < 0:
             printLog(device, 'Unable to set OverDrive less than 0%')
+            RETCODE = 1
             return
 
         if int(value) > 20:
@@ -815,6 +829,7 @@ def setFanSpeed(deviceList, fan):
     deviceList -- List of devices to set the fan speed (can be a single-item list)
     level -- Fan speed level to set (0-255)
     """
+    global RETCODE
     for device in deviceList:
         if not isPowerplayEnabled(device):
             printLog(device, 'PowerPlay not enabled - Cannot set fan speed')
@@ -822,11 +837,13 @@ def setFanSpeed(deviceList, fan):
         hwmon = getHwmonFromDevice(device)
         if not hwmon:
             printLog(device, 'No corresponding HW Monitor found')
+            RETCODE = 1
             continue
         fanpath = os.path.join(hwmon, 'pwm1')
         maxfan = getMaxLevel(device, 'fan')
         if int(fan) > maxfan:
             printLog(device, 'Unable to set fan speed to ' + fan + ' : Max Level = ' + str(maxfan))
+            RETCODE = 1
             continue
         if writeToSysfs(fanpath, str(fan)):
             printLog(device, 'Successfully set fan speed to Level ' + str(fan))
@@ -1036,5 +1053,10 @@ if args.load:
 if args.save:
     save(deviceList, args.save)
 
+# If RETCODE isn't 0, inform the user
+if RETCODE:
+    print('WARNING: One or more commands failed')
+
 # Footer for the SMI
 print(headerSpacer, '           End of ROCm SMI Log          ', headerSpacer, '\n', sep='')
+sys.exit(RETCODE)
