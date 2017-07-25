@@ -48,6 +48,7 @@ groupDisplay.add_argument('-a' ,'--showallinfo', help='Show Temperature, Fan and
 groupAction.add_argument('-r', '--resetclocks', help='Reset clocks to default values', action='store_true')
 groupAction.add_argument('--setsclk', help='Set GPU Clock Frequency Level(s)', type=int, metavar='LEVEL', nargs='+')
 groupAction.add_argument('--setmclk', help='Set GPU Memory Clock Frequency Level(s)', type=int, metavar='LEVEL', nargs='+')
+groupAction.add_argument('--resetfans', help='Reset fans to automatic (driver) control', action='store_true')
 groupAction.add_argument('--setfan', help='Set GPU Fan Speed Level', metavar='LEVEL')
 groupAction.add_argument('--setperflevel', help='Set PowerPlay Performance Level', metavar='LEVEL')
 groupAction.add_argument('--setoverdrive', help='Set GPU OverDrive level', metavar='%')
@@ -822,6 +823,27 @@ def setClockOverDrive(deviceList, clktype, value, autoRespond):
             printLog(device, 'Unable to set OverDrive to ' + value + '%')
 
 
+def resetFans(deviceList):
+    """ Reset fans to driver control for a list of devices.
+
+    Parameters:
+    deviceList -- List of devices to set the fan speed (can be a single-item list)
+    """
+    for device in deviceList:
+        if not isPowerplayEnabled(device):
+            printLog(device, 'PowerPlay not enabled - Cannot reset fan speed')
+            continue
+        hwmon = getHwmonFromDevice(device)
+        if not hwmon:
+            printLog(device, 'No corresponding HW Monitor found')
+            continue
+        fanpath = os.path.join(hwmon, 'pwm1_enable')
+        if writeToSysfs(fanpath, '2'):
+            printLog(device, 'Successfully reset fan speed to driver control')
+        else:
+            printLog(device, 'Unable to reset fan speed to driver control')
+
+
 def setFanSpeed(deviceList, fan):
     """ Set fan speed for a list of devices.
 
@@ -1003,7 +1025,7 @@ if args.showallinfo:
     args.showprofile = True
     args.showpower = True
 
-if args.setsclk or args.setmclk or args.setfan or args.setperflevel or args.resetclocks or args.load or \
+if args.setsclk or args.setmclk or args.resetfans or args.setfan or args.setperflevel or args.resetclocks or args.load or \
    args.setoverdrive or args.setprofile or args.resetprofile or args.showpower or len(sys.argv) == 1:
        relaunchAsSudo()
 
@@ -1038,6 +1060,8 @@ if args.setsclk:
     setClocks(deviceList, 'gpu', args.setsclk)
 if args.setmclk:
     setClocks(deviceList, 'mem', args.setmclk)
+if args.resetfans:
+    resetFans(deviceList)
 if args.setfan:
     setFanSpeed(deviceList, args.setfan)
 if args.setperflevel:
