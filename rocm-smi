@@ -863,6 +863,8 @@ def setFanSpeed(deviceList, fan):
             continue
         fanpath = os.path.join(hwmon, 'pwm1')
         maxfan = getMaxLevel(device, 'fan')
+        if fan.endswith('%'):
+            fan = str(int((int(fan[:-1])*maxfan)/100))
         if int(fan) > maxfan:
             printLog(device, 'Unable to set fan speed to ' + fan + ' : Max Level = ' + str(maxfan))
             RETCODE = 1
