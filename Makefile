@@ -11,7 +11,7 @@ BUILDDIR = $(BUILD_ROOT)/$(MAKECMDGOALS)
 PACKAGE_DIR = $(BUILD_ROOT)/rocm-smi
 DEBIAN_DIR = $(SMI_ROOT)/DEBIAN
 SMI_LOCATION = $(PACKAGE_DIR)/opt/rocm/bin
-MODULE_VERSION = $(shell git -C "$(SMI_ROOT)" describe --long --dirty --match [0-9]*)
+MODULE_VERSION = $(shell cd ${SMI_ROOT} && git describe --long --dirty --match [0-9]*)
 
 export SMI_ROOT
 export MODULE_VERSION
