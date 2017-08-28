@@ -34,6 +34,7 @@ groupResponse = parser.add_argument_group()
 
 groupDev.add_argument('-d', '--device', help='Execute command on specified device', type=int)
 groupDisplay.add_argument('-i', '--showid', help='Show GPU ID', action='store_true')
+groupDisplay.add_argument('-v', '--showvbios', help='Show VBIOS version', action='store_true')
 groupDisplay.add_argument('-t', '--showtemp', help='Show current temperature', action='store_true')
 groupDisplay.add_argument('-c', '--showclocks', help='Show current clock frequencies', action='store_true')
 groupDisplay.add_argument('-g', '--showgpuclocks', help='Show current GPU clock frequencies', action='store_true')
@@ -243,6 +244,20 @@ def getId(device):
     with open(idPath, 'r') as devname:
         gpuId = devname.read().rstrip('\n')
     return gpuId[2:]
+
+
+def getVbiosVersion(device):
+    """ Return the VBIOS versionfor a specified device.
+
+    Parameters:
+    device -- Device to return the VBIOS version
+    """
+    ret = ''
+    vbiosPath = os.path.join(drmprefix, device, 'device', 'vbios_version')
+    if os.path.isfile(vbiosPath):
+        with open(vbiosPath, 'r') as vbiosversion:
+            ret = vbiosversion.read().rstrip('\n')
+    return ret
 
 
 def getPerfLevel(device):
@@ -477,6 +492,18 @@ def showId(deviceList):
     print(logSpacer)
 
 
+def showVbiosVersion(deviceList):
+    """ Display the VBIOS version for a list of devices.
+
+    Parameters:
+    deviceList -- List of devices to return the VBIOS version (can be a single-item list)
+    """
+    print(logSpacer)
+    for device in deviceList:
+        printLog(device, 'VBIOS version: ' + getVbiosVersion(device))
+    print(logSpacer)
+
+
 def showCurrentGpuClocks(deviceList):
     """ Display the current GPU clock frequencies for a list of devices.
 
@@ -673,7 +700,7 @@ def showAllConcise(deviceList):
     deviceList -- List of all devices
     """
     print(logSpacer)
-    print(' GPU  DID    Temp     AvgPwr   SCLK     MCLK     Fan      Perf    OverDrive  ECC')
+    print(' GPU  DID    Temp     AvgPwr   SCLK     MCLK     Fan      Perf    OverDrive  ECC   VBIOS')
     for device in deviceList:
         gpuid = getId(device)
 
@@ -1014,6 +1041,8 @@ if len(sys.argv) == 1:
     showAllConcise(deviceList)
 if args.showid:
     showId(deviceList)
+if args.showvbios:
+    showVbiosVersion(deviceList)
 if args.resetclocks:
     resetClocks(deviceList)
 if args.showtemp:
