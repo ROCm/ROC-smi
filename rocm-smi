@@ -35,6 +35,7 @@ groupResponse = parser.add_argument_group()
 groupDev.add_argument('-d', '--device', help='Execute command on specified device', type=int)
 groupDisplay.add_argument('-i', '--showid', help='Show GPU ID', action='store_true')
 groupDisplay.add_argument('-v', '--showvbios', help='Show VBIOS version', action='store_true')
+groupDisplay.add_argument('-hw', '--showhw', help='Show Hardware details', action='store_true')
 groupDisplay.add_argument('-t', '--showtemp', help='Show current temperature', action='store_true')
 groupDisplay.add_argument('-c', '--showclocks', help='Show current clock frequencies', action='store_true')
 groupDisplay.add_argument('-g', '--showgpuclocks', help='Show current GPU clock frequencies', action='store_true')
@@ -693,6 +694,25 @@ def showPower(deviceList):
     print(logSpacer)
 
 
+def showAllConciseHw(deviceList):
+    """ Display critical Hardware info for all devices in a concise format.
+
+    Parameters:
+    deviceList -- List of all devices
+    """
+    print(logSpacer)
+    print(' GPU  DID    ECC        VBIOS')
+    for device in deviceList:
+        gpuid = getId(device)
+
+        """ To support later """
+        ecc = 'N/A'
+
+        vbios = getVbiosVersion(device)
+
+        print("  %-4s%-7s%-6s%-17s" % (device[4:], gpuid, ecc, vbios))
+
+
 def showAllConcise(deviceList):
     """ Display critical info for all devices in a concise format.
 
@@ -700,9 +720,8 @@ def showAllConcise(deviceList):
     deviceList -- List of all devices
     """
     print(logSpacer)
-    print(' GPU  DID    Temp     AvgPwr   SCLK     MCLK     Fan      Perf    OverDrive  ECC   VBIOS')
+    print(' GPU  Temp     AvgPwr   SCLK     MCLK     Fan      Perf    OverDrive')
     for device in deviceList:
-        gpuid = getId(device)
 
         temp = getTemp(device)
         if not temp:
@@ -737,11 +756,9 @@ def showAllConcise(deviceList):
             od = 'N/A'
         else:
             od = od + '%'
-        """ To support later """
-        ecc = 'N/A'
 
-        print("  %-4s%-7s%-9s%-9s%-9s%-9s%-9s%-10s%-9s%-9s" % (device[4:], gpuid, temp,
-            power, sclk, mclk, fan, perf, od, ecc))
+        print("  %-4s%-9s%-9s%-9s%-9s%-9s%-10s%-9s" % (device[4:], temp,
+            power, sclk, mclk, fan, perf, od))
     print(logSpacer)
 
 
@@ -1039,6 +1056,8 @@ print('\n\n', headerSpacer, '    ROCm System Management Interface    ', headerSp
 
 if len(sys.argv) == 1:
     showAllConcise(deviceList)
+if args.showhw:
+    showAllConciseHw(deviceList)
 if args.showid:
     showId(deviceList)
 if args.showvbios:
