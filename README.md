@@ -117,6 +117,7 @@ optional arguments:
         When a compute queue is detected, these values will be automatically applied to the system
 
         Compute Power Profiles are only applied when the Performance Level is set to "auto"
+        so using this flag will automatically set the performance level to "auto"
 
 
 #### Testing changes

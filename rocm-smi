@@ -9,6 +9,7 @@ import json
 from subprocess import check_output
 import glob
 import time
+import collections
 
 # Version of the JSON output used to save clocks
 JSON_VERSION = 1
@@ -228,15 +229,37 @@ def isPowerplayEnabled(device):
     return True
 
 
-def verifyProfileData(device, profile):
+def verifySetProfile(device, profile):
+    """ Verify data from user to set as Power Profile.
+
+    Ensure that we can set the profile, with Profiles being supported and
+    the profile being passed in being valid
+
+    Parameters:
+    device -- Device to check for PowerPlay enablement
+    """
     global RETCODE
     if not isPowerplayEnabled(device):
         printLog(device, 'PowerPlay not enabled, cannot specify profile.')
         RETCODE = 1
         return False
 
-    if profile != 'reset' and len(profile) != NUM_PROFILE_ARGS:
+    # This is the only string that can be passed in that isn't a set of 5 numbers
+    if profile == 'reset':
+        return True
+
+    # If we get a string, split it into elements to make it a list
+    if isinstance(profile, str):
+        profileList = profile.strip().split(' ')
+    elif isinstance(profile, collections.Iterable):
+        profileList = profile
+    else:
         printLog(device, 'Unsupported profile argument : ' + str(profile))
+        return False
+
+    # If we can iterate over it, it's a list. Check that it has the right number of args
+    if len(profile) != NUM_PROFILE_ARGS:
+        printLog(device, 'Cannot set profile, must be' + NUM_PROFILE_ARGS + 'values')
         RETCODE = 1
         return False
 
@@ -244,11 +267,19 @@ def verifyProfileData(device, profile):
 
 
 def writeProfileSysfs(device, value):
-    profilePath = os.path.join(drmprefix, device, 'device', 'pp_compute_power_profile')
-    profileString = value
+    if not verifySetProfile(device, value):
+        return
 
-    if value != 'reset':
+    profilePath = os.path.join(drmprefix, device, 'device', 'pp_compute_power_profile')
+    # If we can iterate it, it's a list, so turn it into a string
+    if isinstance(value, str):
+        profileString = value
+    elif isinstance(value, collections.Iterable):
         profileString = ' '.join(value)
+    else:
+        printLog(device, 'Invalid input argument' + value)
+        return False
+
     if (writeToSysfs(profilePath, profileString)):
         return True
 
@@ -856,9 +887,9 @@ def setProfile(deviceList, profile):
     profile -- The profile to set
     """
     for device in deviceList:
-        if not verifyProfileData(device, profile):
-            continue
-        if (writeProfileSysfs(device, profile)):
+        # Performance level must be set to auto to set Power Profiles
+        setPerfLevel(device, 'auto')
+        if writeProfileSysfs(device, profile):
             printLog(device, 'Successfully set Compute Power Profile values')
         else:
             printLog(device, 'Unable to set Compute Power Profile values')
@@ -871,8 +902,8 @@ def resetProfile(deviceList):
     deviceList -- List of devices to reset the Compute Power Profile for (can be a single-item list)
     """
     for device in deviceList:
-        if not verifyProfileData(device, 'reset'):
-            continue
+        # Performance level must be set to auto for a reset of the profile to work
+        setPerfLevel(device, 'auto')
         if writeProfileSysfs(device, 'reset'):
             printLog(device, 'Successfully reset Compute Power Profile values')
         else:

@@ -606,11 +606,13 @@ testSetProfile() {
             continue
         fi
         local currClock="$(getCurrentClock level $DRM_PREFIX/card$rocmGpu/device/pp_dpm_sclk)"
+        sleep 1
         if [ "$currClock" == "3" ]; then
             local setClock="$($smiPath --setsclk 4)"
         else
             local setClock="$($smiPath --setsclk 3)"
         fi
+        sleep 1
         local newClock="$(getCurrentClock level $DRM_PREFIX/card$rocmGpu/device/pp_dpm_sclk)"
         if [ "$currClock" == "$newClock" ]; then
             echo "FAILURE: Profile not overridden with Performance Level set to manual"
@@ -905,6 +907,8 @@ runTestSuite() {
                 testReset "$smiPath" ;
                 testSetPerf "$smiPath" ;
                 testSetGpuOverDrive "$smiPath" ;
+                testSetProfile "$smiPath" ;
+                testResetProfile "$smiPath" ;
                 testSave "$smiPath" ;
                 testLoad "$smiPath" ;
                 break
