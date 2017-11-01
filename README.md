@@ -48,13 +48,13 @@ optional arguments:
   -s, --showclkfrq            Show supported GPU and Memory Clock
   -a, --showallinfo           Show all SMI-supported values values
 
-  -r, --resetclocks           Reset clocks to default values
-  --setsclk LEVEL [LEVEL ...] Set GPU Clock Frequency Level Mask
-  --setmclk LEVEL [LEVEL ...] Set GPU Memory Clock Frequency Mask
+  -r, --resetclocks           Reset clocks to default (auto)
+  --setsclk LEVEL [LEVEL ...] Set GPU Clock Frequency Level Mask (manual)
+  --setmclk LEVEL [LEVEL ...] Set GPU Memory Clock Frequency Mask (manual)
   --setfan LEVEL              Set GPU Fan Speed Level
   --setperflevel LEVEL        Set PowerPlay Performance Level
-  --setoverdrive %            Set GPU OverDrive level
-  --setprofile # # # # #      Specify Compute Profile attributes
+  --setoverdrive %            Set GPU OverDrive level (manual|high)
+  --setprofile # # # # #      Specify Compute Profile attributes (auto)
   --resetprofile              Reset Compute Profile
 
   --autorespond RESPONSE      Response to automatically provide for all prompts (NOT RECOMMENDED)
@@ -86,10 +86,10 @@ optional arguments:
 
 --setperflevel LEVEL:
     This lets you use the pre-defined Performance Level values, which can include:
-        auto (Automatically change PowerPlay values based on GPU workload
+        auto (Automatically change PowerPlay values based on GPU workload)
         low (Keep PowerPlay values low, regardless of workload)
         high (Keep PowerPlay values high, regardless of workload)
-        manual (Only use values defined in sysfs values)
+        manual (Only use values defined by --setsclk and --setmclk)
 
 --setoverdrive #:
     This sets the percentage above maximum for the max Performance Level.
@@ -101,6 +101,9 @@ optional arguments:
 
         Operating the GPU outside of specifications can cause irreparable damage to your hardware
         Please observe the warning displayed when using this option
+
+        This flag automatically sets the sclk to the highest level, as only the highest level is
+        increased by the OverDrive value
 
 --setprofile # # # # #:
     The Compute Profile accepts 5 parameters, which are (in order):

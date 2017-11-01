@@ -48,14 +48,14 @@ groupDisplay.add_argument('-l', '--showprofile', help='Show Compute Profile attr
 groupDisplay.add_argument('-s', '--showclkfrq', help='Show supported GPU and Memory Clock', action='store_true')
 groupDisplay.add_argument('-a' ,'--showallinfo', help='Show Temperature, Fan and Clock values', action='store_true')
 
-groupAction.add_argument('-r', '--resetclocks', help='Reset clocks to default values', action='store_true')
-groupAction.add_argument('--setsclk', help='Set GPU Clock Frequency Level(s)', type=int, metavar='LEVEL', nargs='+')
-groupAction.add_argument('--setmclk', help='Set GPU Memory Clock Frequency Level(s)', type=int, metavar='LEVEL', nargs='+')
+groupAction.add_argument('-r', '--resetclocks', help='Reset sclk and mclk to default (auto)', action='store_true')
+groupAction.add_argument('--setsclk', help='Set GPU Clock Frequency Level(s) (manual)', type=int, metavar='LEVEL', nargs='+')
+groupAction.add_argument('--setmclk', help='Set GPU Memory Clock Frequency Level(s) (manual)', type=int, metavar='LEVEL', nargs='+')
 groupAction.add_argument('--setfan', help='Set GPU Fan Speed Level', metavar='LEVEL')
 groupAction.add_argument('--setperflevel', help='Set PowerPlay Performance Level', metavar='LEVEL')
-groupAction.add_argument('--setoverdrive', help='Set GPU OverDrive level', metavar='%')
-groupAction.add_argument('--setprofile', help='Specify Compute Profile attributes', metavar='#', nargs=NUM_PROFILE_ARGS)
-groupAction.add_argument('--resetprofile', help='Reset Compute Profile', action='store_true')
+groupAction.add_argument('--setoverdrive', help='Set GPU OverDrive level (manual|high)', metavar='%')
+groupAction.add_argument('--setprofile', help='Specify Compute Profile attributes (auto)', metavar='#', nargs=NUM_PROFILE_ARGS)
+groupAction.add_argument('--resetprofile', help='Reset Compute Profile to default values', action='store_true')
 
 groupFile.add_argument('--load', help='Load Clock, Fan, Performance and Profile settings from FILE', metavar='FILE')
 groupFile.add_argument('--save', help='Save Clock, Fan, Performance and Profile settings to FILE', metavar='FILE')
@@ -1013,8 +1013,9 @@ if args.showallinfo:
     args.showprofile = True
     args.showpower = True
 
-if args.setsclk or args.setmclk or args.setfan or args.setperflevel or args.resetclocks or args.load or \
-   args.setoverdrive or args.setprofile or args.resetprofile or args.showpower or len(sys.argv) == 1:
+if args.setsclk or args.setmclk or args.setfan or args.setperflevel or args.load or \
+   args.resetclocks or args.setprofile or args.resetprofile or args.setoverdrive or \
+   len(sys.argv) == 1:
        relaunchAsSudo()
 
 # Header for the SMI
