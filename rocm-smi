@@ -8,6 +8,7 @@ import subprocess
 import json
 from subprocess import check_output
 import glob
+import time
 
 # Version of the JSON output used to save clocks
 JSON_VERSION = 1
@@ -735,11 +736,11 @@ def setClocks(deviceList, clktype, clk):
     clk -- Clock frequency level to set
     """
     global RETCODE
-    value = ''.join(str(x) for x in clk)
+    value = ''.join(map(str, clk))
     try:
         int(value)
     except ValueError:
-        print('Cannot set OverDrive to value', value, ', it is not an integer!')
+        print('Cannot set Clock level to value', value, ', non-integer characters are present!')
         RETCODE = 1
         return
     for device in deviceList:
@@ -878,30 +879,46 @@ def resetProfile(deviceList):
             printLog(device, 'Unable to reset Compute Power Profile values')
 
 
-def resetClocks(deviceList):
-    """ Reset performance level to default for a list of devices.
-
-    Resetting the performance level to 'auto' will reset the GPU and GPU Memory clock
-    frequencies to their default values.
+def resetOverDrive(deviceList):
+    """ Reset OverDrive to 0 if needed. We check first as setting OD requires sudo
 
     Parameters:
-    deviceList -- List of devices to reset performance level (can be a single-item list)
+    deviceList -- List of devices to reset OverDrive (can be a single-item list)
     """
     for device in deviceList:
         devpath = os.path.join(drmprefix, device, 'device')
         odpath = os.path.join(devpath, 'pp_sclk_od')
-        if not getSysfsValue(device, 'perf'):
-            printLog(device, 'Cannot reset clocks: Performance Level not supported')
+        if not os.path.isfile(odpath):
+            printLog(device, 'Unable to reset OverDrive; OverDrive not available')
             continue
-        # Setting perf level to auto will reset all manual values except for OverDrive
-        if os.path.isfile(odpath):
+        if int(getSysfsValue(device, 'sclk_od')) != 0:
             if not writeToSysfs(odpath, '0'):
                 printLog(device, 'Unable to reset OverDrive')
                 continue
-        if not setPerfLevel(device, 'auto'):
-            printLog(device, 'Unable to reset GPU and Memory clocks')
-            continue
-        printLog(device, 'Successfully reset GPU and Memory clocks')
+        printLog(device, 'OverDrive set to 0')
+
+
+def resetClocks(deviceList):
+    """ Reset clocks to default
+
+    Reset sclk and mclk to default values by setting performance level to auto, as well
+    as setting OverDrive back to 0
+
+
+    Parameters:
+    deviceList -- List of devices to reset clocks (can be a single-item list)
+    """
+    for device in deviceList:
+        resetOverDrive([device])
+        setPerfLevel(device, 'auto')
+
+        od = getSysfsValue(device, 'sclk_od')
+        perf = getSysfsValue(device, 'perf')
+
+        if perf != 'auto' or od != '0':
+            printLog(device, 'Unable to reset clocks')
+        else:
+            printLog(device, 'Successfully reset clocks')
 
 
 def load(savefilepath, autoRespond):
