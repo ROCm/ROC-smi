@@ -838,8 +838,8 @@ def setFanSpeed(deviceList, fan):
             continue
         fanpath = os.path.join(hwmon, 'pwm1')
         maxfan = getSysfsValue(device, 'fanmax')
-        if fan > maxfan:
-            printLog(device, 'Unable to set fan speed to ' + fan + ' : Max Level = ' + str(maxfan))
+        if int(fan) > int(maxfan):
+            printLog(device, 'Unable to set fan speed to ' + fan + ' : Max Level = ' + maxfan)
             RETCODE = 1
             continue
         if writeToSysfs(fanpath, str(fan)):
