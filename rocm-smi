@@ -120,7 +120,7 @@ def getSysfsValue(device, key):
         fileValue = parseSysfsValue(key, fileValue)
 
     if fileValue == '':
-        printLog(device, 'Unable to get SysFS value: ', key)
+        printLog(device, 'WARNING: Empty SysFS value: ' + key)
         RETCODE = 1
 
     return fileValue
@@ -776,6 +776,10 @@ def setClocks(deviceList, clktype, clk):
     clk -- Clock frequency level to set
     """
     global RETCODE
+    if not clk:
+        print('Invalid clock frequency')
+        RETCODE = 1
+        return
     value = ''.join(map(str, clk))
     try:
         int(value)
