@@ -219,6 +219,8 @@ testGetCurrentClocks() {
             continue
         elif [[ "$line" == *"PowerPlay not enabled"* ]]; then
             continue
+        elif [[ "$line" == *"WARNING"* ]]; then
+            continue
         fi
         local rocmClock="$(extractRocmValue $line)"
         rocmClock="${rocmClock##*(}"
@@ -231,6 +233,10 @@ testGetCurrentClocks() {
             clockFile="$DRM_PREFIX/card$rocmGpu/device/pp_dpm_sclk"
         fi
         local sysClock="$(getCurrentClock freq $clockFile)"
+        if [ "$rocmClock" == "None" ]; then
+            echo "WARNING: Unable to test empty value for $clockType"
+            continue
+        fi
         if [ "$rocmClock" != "$sysClock" ]; then
             echo "FAILURE: $clockType clock frequency from $SMI_NAME $rocmClock does not match $sysClock"
             NUM_FAILURES=$(($NUM_FAILURES+1))
