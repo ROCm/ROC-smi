@@ -355,7 +355,11 @@ def getFanSpeed(device):
     device -- Device to return the current fan speed
     """
 
+    if not getSysfsValue(device, 'fan'):
+        return None
     fanLevel = int(getSysfsValue(device, 'fan'))
+    if not getSysfsValue(device, 'fanmax'):
+        return None
     fanMax = int(getSysfsValue(device, 'fanmax'))
     return round((fanLevel / fanMax) * 100, 2)
 
@@ -620,11 +624,15 @@ def showOverDrive(deviceList):
 
     print(logSpacer)
     for device in deviceList:
-        od = int(getSysfsValue(device, 'sclk_od'))
-        if od < 0:
+        sclk_od = getSysfsValue(device, 'sclk_od')
+        if not sclk_od:
             printLog(device, 'Cannot get OverDrive value: OverDrive not supported')
         else:
-            printLog(device, 'Current OverDrive value: ' + str(od) + '%')
+            od = int(sclk_od)
+            if od < 0:
+                printLog(device, 'Cannot get OverDrive value: OverDrive not supported')
+            else:
+                printLog(device, 'Current OverDrive value: ' + str(od) + '%')
     print(logSpacer)
 
 
@@ -734,7 +742,9 @@ def showAllConcise(deviceList):
         perf = getSysfsValue(device, 'perf')
 
         od = getSysfsValue(device, 'sclk_od')
-        if od == '-1':
+        if not od:
+            od = 'N/A'
+        elif od == '-1':
             od = 'N/A'
         else:
             od = od + '%'
