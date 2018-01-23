@@ -107,7 +107,7 @@ def getSysfsValue(device, key):
         filePath = os.path.join(getHwmonFromDevice(device), pathDict['filepath'])
     if pathDict['prefix'] == powerprefix:
         """ Power consumption is in debugfs and has a different path structure """
-        filePath = findFile(powerprefix, 'amdgpu_pm_info', device)
+        filePath = os.path.join(powerprefix, device[4:], 'amdgpu_pm_info')
 
     if not os.path.isfile(filePath):
         return None
@@ -289,11 +289,6 @@ def writeProfileSysfs(device, value):
     return False
 
 
-def pciNumFromDevice(device):
-    drmPath = os.path.realpath(os.path.join(drmprefix, device, 'device'))
-    return os.path.basename(drmPath)
-
-
 def writeToSysfs(fsFile, fsValue):
     """ Write to a sysfs file.
 
@@ -412,20 +407,6 @@ def getMaxLevel(device, type):
     if not levels:
         return 0
     return int(levels.splitlines()[-1][0])
-
-
-def isCorrectPowerDevice(root, device):
-    """ Return the corresponding power reading for a specified GPU device.
-
-    Parameters:
-    device -- Device to return the corresponding HW Monitor
-    """
-    pciPath = os.path.join(root, 'name')
-    if os.path.isfile(pciPath):
-        with open(pciPath, 'r') as pciFile:
-            if pciNumFromDevice(device) in pciFile.read().rstrip('\n'):
-                return True
-    return False
 
 
 def findFile(prefix, file, device):
@@ -1084,7 +1065,7 @@ if args.showallinfo:
     args.showpower = True
 
 if args.setsclk or args.setmclk or args.resetfans or args.setfan or args.setperflevel or args.load or \
-   args.resetclocks or args.setprofile or args.resetprofile or args.setoverdrive or \
+   args.resetclocks or args.setprofile or args.resetprofile or args.setoverdrive or args.showpower or \
    len(sys.argv) == 1:
        relaunchAsSudo()
 
