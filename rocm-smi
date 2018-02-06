@@ -53,6 +53,7 @@ groupAction.add_argument('-r', '--resetclocks', help='Reset sclk and mclk to def
 groupAction.add_argument('--setsclk', help='Set GPU Clock Frequency Level(s) (manual)', type=int, metavar='LEVEL', nargs='+')
 groupAction.add_argument('--setmclk', help='Set GPU Memory Clock Frequency Level(s) (manual)', type=int, metavar='LEVEL', nargs='+')
 groupAction.add_argument('--setfan', help='Set GPU Fan Speed Level', metavar='LEVEL')
+groupAction.add_argument('--resetfan', help='Reset GPU Fan Mode to auto', action='store_true')
 groupAction.add_argument('--setperflevel', help='Set PowerPlay Performance Level', metavar='LEVEL')
 groupAction.add_argument('--setoverdrive', help='Set GPU OverDrive level (manual|high)', metavar='%')
 groupAction.add_argument('--setprofile', help='Specify Compute Profile attributes (auto)', metavar='#', nargs=NUM_PROFILE_ARGS)
@@ -82,6 +83,7 @@ valuePaths = {
     'profile' : {'prefix' : drmprefix, 'filepath' : 'pp_compute_power_profile', 'needsparse' : False},
     'fan' : {'prefix' : hwmonprefix, 'filepath' : 'pwm1', 'needsparse' : False},
     'fanmax' : {'prefix' : hwmonprefix, 'filepath' : 'pwm1_max', 'needsparse' : False},
+    'fanmode' : {'prefix' : hwmonprefix, 'filepath' : 'pwm1_enable', 'needsparse' : False},
     'temp' : {'prefix' : hwmonprefix, 'filepath' : 'temp1_input', 'needsparse' : True},
     'power' : {'prefix' : powerprefix, 'filepath' : 'amdgpu_pm_info', 'needsparse' : True}
 }
@@ -346,6 +348,17 @@ def getHwmonFromDevice(device):
         if os.path.realpath(os.path.join(hwmon, 'device')) == drmdev:
             return hwmon
     return None
+
+
+def getFanMode(device):
+    """ Return the fan mode for a specified device.
+
+    Parameters:
+    device -- Device to return the current fan mode
+    """
+
+    fanMode = int(getSysfsValue(device, 'fanmode'))
+    return fanMode
 
 
 def getFanSpeed(device):
@@ -851,6 +864,41 @@ def setClockOverDrive(deviceList, clktype, value, autoRespond):
             printLog(device, 'Unable to set OverDrive to ' + value + '%')
 
 
+def setFanMode(deviceList, mode):
+    """ Set fan PWM mode for a list of devices.
+
+    Parameters:
+    deviceList -- List of devices to set the fan speed (can be a single-item list)
+    mode -- 0=none, 1=manual, 2=auto
+    """
+    global RETCODE
+    for device in deviceList:
+        if not isPowerplayEnabled(device):
+            printLog(device, 'PowerPlay not enabled - Cannot set fan mode')
+            RETCODE = 1
+            continue
+        hwmon = getHwmonFromDevice(device)
+        if not hwmon:
+            printLog(device, 'No corresponding HW Monitor found')
+            RETCODE = 1
+            continue
+        fanpath = os.path.join(hwmon, 'pwm1_enable')
+        if mode == 0:
+            modestr = 'none'
+        elif mode == 1:
+            modestr = 'manual'
+        elif mode == 2:
+            modestr = 'auto'
+        else:
+            printLog(device, 'Unable to set fan mode to \'' + modestr + '\' (' + str(mode) + '): invalid value')
+            RETCODE = 1
+            continue
+        if writeToSysfs(fanpath, str(mode)):
+            printLog(device, 'Successfully set fan mode to Level ' + str(mode) + ' ('+ modestr + ')')
+        else:
+            printLog(device, 'Unable to set fan mode to Level ' + str(mode) + ' ('+ modestr + ')')
+
+
 def setFanSpeed(deviceList, fan):
     """ Set fan speed for a list of devices.
 
@@ -859,6 +907,7 @@ def setFanSpeed(deviceList, fan):
     level -- Fan speed level to set (0-255)
     """
     global RETCODE
+    setFanMode(deviceList, 1)
     for device in deviceList:
         if not isPowerplayEnabled(device):
             printLog(device, 'PowerPlay not enabled - Cannot set fan speed')
@@ -1046,7 +1095,7 @@ if args.showallinfo:
     args.showprofile = True
     args.showpower = True
 
-if args.setsclk or args.setmclk or args.setfan or args.setperflevel or args.load or \
+if args.setsclk or args.setmclk or args.setfan or args.resetfan or args.setperflevel or args.load or \
    args.resetclocks or args.setprofile or args.resetprofile or args.setoverdrive or \
    len(sys.argv) == 1:
        relaunchAsSudo()
@@ -1088,6 +1137,8 @@ if args.setmclk:
     setClocks(deviceList, 'mem', args.setmclk)
 if args.setfan:
     setFanSpeed(deviceList, args.setfan)
+if args.resetfan:
+    setFanMode(deviceList, 2)
 if args.setperflevel:
     setPerformanceLevel(deviceList, args.setperflevel)
 if args.setoverdrive:
