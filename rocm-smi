@@ -83,6 +83,7 @@ valuePaths = {
     'profile' : {'prefix' : drmprefix, 'filepath' : 'pp_compute_power_profile', 'needsparse' : False},
     'fan' : {'prefix' : hwmonprefix, 'filepath' : 'pwm1', 'needsparse' : False},
     'fanmax' : {'prefix' : hwmonprefix, 'filepath' : 'pwm1_max', 'needsparse' : False},
+    'fanmode' : {'prefix' : hwmonprefix, 'filepath' : 'pwm1_enable', 'needsparse' : False},
     'temp' : {'prefix' : hwmonprefix, 'filepath' : 'temp1_input', 'needsparse' : True},
     'power' : {'prefix' : powerprefix, 'filepath' : 'amdgpu_pm_info', 'needsparse' : True}
 }
@@ -883,6 +884,7 @@ def setFanSpeed(deviceList, fan):
             RETCODE = 1
             continue
         fanpath = os.path.join(hwmon, 'pwm1')
+        modepath = os.path.join(hwmon, 'pwm1_enable')
         maxfan = getSysfsValue(device, 'fanmax')
         if not maxfan:
             printLog(device, 'Cannot get max fan speed')
@@ -892,6 +894,12 @@ def setFanSpeed(deviceList, fan):
             printLog(device, 'Unable to set fan speed to ' + fan + ' : Max Level = ' + maxfan)
             RETCODE = 1
             continue
+        if getSysfsValue(device, 'fanmode') != '1':
+            if writeToSysfs(modepath, '1'):
+                printLog(device, 'Successfully set fan control to \'manual\'')
+            else:
+                printLog(device, 'Unable to set fan control to \'manual\'')
+                continue
         if writeToSysfs(fanpath, str(fan)):
             printLog(device, 'Successfully set fan speed to Level ' + str(fan))
         else:
