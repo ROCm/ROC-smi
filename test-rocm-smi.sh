@@ -449,6 +449,39 @@ testSetFan() {
     return 0
 }
 
+# Test that resetting the fan control to auto through the SMI changes the current
+# fan control mode of all devices.
+#  param smiPath        Path to the SMI
+testResetFans() {
+    local smiPath="$1"; shift;
+    local smiCmd="--resetfans"
+    echo -e "\nTesting $smiPath $smiCmd..."
+    IFS=$'\n'
+
+    # should reset fan control mode of all GPUs to auto (2)
+    local mode="$($smiPath $smiCmd)"
+    # Get a list of current GPU clock frequencies. Since some GPUs can report but not
+    # modify the fan speed, use ones that we can control.
+    local clocks="$($smiPath -g)"
+    for line in $clocks; do
+        if [ "$(checkLogLine $line)" != "true" ]; then
+            continue
+        elif [[ "$line" == *"PowerPlay not enabled"* ]]; then
+            continue
+        fi
+        local rocmGpu="$(getGpuFromRocm $line)"
+        local hwmon="$(getHwmonFromDevice $rocmGpu)"
+
+        local actualSysMode="$(cat $HWMON_PREFIX/$hwmon/pwm1_enable)" # Fan control mode
+        if [ "$actualSysMode" != "2" ]; then
+            echo "FAILURE: Could not set fan controls to auto (2), $hwmon still at $actualSysMode"
+            NUM_FAILURES=$(($NUM_FAILURES+1))
+        fi
+    done
+    echo -e "Test complete: $smiPath $smiCmd\n"
+    return 0
+}
+
 # Test that the setting the Performance Level through the SMI changes the current
 # Performance Level of the corresponding device(s)
 #  param smiPath        Path to the SMI
@@ -887,6 +920,8 @@ runTestSuite() {
                 testSetClock "mem" "$smiPath" ;;
             --setfan)
                 testSetFan "$smiPath" ;;
+            --resetfans)
+                testResetFans "$smiPath" ;;
             --setperflevel)
                 testSetPerf "$smiPath" ;;
             --setoverdrive)
@@ -908,6 +943,7 @@ runTestSuite() {
                 testGetSupportedClocks "$smiPath" ;
                 testGetGpuOverDrive "$smiPath" ;
                 testSetFan "$smiPath" ;
+                testResetFans "$smiPath" ;
                 testSetClock "gpu" "$smiPath" ;
                 testSetClock "mem" "$smiPath" ;
                 testReset "$smiPath" ;

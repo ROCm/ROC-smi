@@ -23,9 +23,10 @@ For convenience purposes, following is a quick excerpt:
 ```shell
 
 usage: rocm-smi [-h] [-d DEVICE] [-i] [-t] [-c] [-g] [-f] [-p] [-P] [-o] [-l] [-s] [-a] [-r]
-                [--setsclk LEVEL [LEVEL ...]] [--setmclk LEVEL [LEVEL ...]] [--setfan LEVEL]
+                [--setsclk LEVEL [LEVEL ...]] [--setmclk LEVEL [LEVEL ...]] [--resetfans] [--setfan LEVEL]
                 [--setperflevel LEVEL] [--setoverdrive %] [--setprofile # # # # #] [--resetprofile]
                 [--load FILE | --save FILE] [--autorespond RESPONSE]
+
 
 AMD ROCm System Management Interface
 
@@ -52,6 +53,7 @@ optional arguments:
   --setsclk LEVEL [LEVEL ...] Set GPU Clock Frequency Level Mask (manual)
   --setmclk LEVEL [LEVEL ...] Set GPU Memory Clock Frequency Mask (manual)
   --setfan LEVEL              Set GPU Fan Speed Level
+  --resetfans                 Reset GPU fans to automatic control
   --setperflevel LEVEL        Set PowerPlay Performance Level
   --setoverdrive %            Set GPU OverDrive level (manual|high)
   --setprofile # # # # #      Specify Compute Profile attributes (auto)
