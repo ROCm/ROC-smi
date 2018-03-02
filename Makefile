@@ -23,7 +23,8 @@ deb: package-common
 	@mkdir -p $(PACKAGE_DIR)/DEBIAN
 	@mkdir -p $(SMI_LOCATION)
 	@sed 's/^Version: MODULE_VERSION/Version: $(MODULE_VERSION)/' $(DEBIAN_DIR)/control > $(PACKAGE_DIR)/DEBIAN/control
-	@cp $(SMI_ROOT)/rocm-smi $(SMI_LOCATION)
+	@cp $(SMI_ROOT)/rocm_smi.py $(SMI_LOCATION)
+	@ln -srf $(SMI_LOCATION)/rocm_smi.py $(SMI_LOCATION)/rocm-smi
 	@fakeroot dpkg-deb --build $(PACKAGE_DIR) \
 		$(BUILDDIR)/rocm-smi-$(MODULE_VERSION)-Linux.deb
 	@rm -rf $(PACKAGE_DIR)
