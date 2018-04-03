@@ -43,7 +43,7 @@ optional arguments:
   -g, --showgpuclocks         Show current GPU clock frequencies
   -f, --showfan               Show current fan speed
   -p, --showperflevel         Show current PowerPlay Performance Level
-  -P, --showpower             Show current power consumption
+  -P, --showpower             Show current Graphics ASIC power consumption
   -o, --showoverdrive         Show current OverDrive level
   -l, --showprofile           Show Compute Profile attributes
   -s, --showclkfrq            Show supported GPU and Memory Clock
