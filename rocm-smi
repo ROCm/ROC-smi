@@ -119,7 +119,7 @@ def getSysfsValue(device, key):
         fileValue = parseSysfsValue(key, fileValue)
 
     if fileValue == '':
-        printLog(device, 'Unable to get SysFS value: ', key)
+        printLog(device, 'Unable to get SysFS value: ' + key)
         RETCODE = 1
 
     return fileValue
