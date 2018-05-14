@@ -40,6 +40,7 @@ valuePaths = {
     'vbios' : {'prefix' : drmprefix, 'filepath' : 'vbios_version', 'needsparse' : False},
     'perf' : {'prefix' : drmprefix, 'filepath' : 'power_dpm_force_performance_level', 'needsparse' : False},
     'sclk_od' : {'prefix' : drmprefix, 'filepath' : 'pp_sclk_od', 'needsparse' : False},
+    'mclk_od' : {'prefix' : drmprefix, 'filepath' : 'pp_mclk_od', 'needsparse' : False},
     'sclk' : {'prefix' : drmprefix, 'filepath' : 'pp_dpm_sclk', 'needsparse' : False},
     'mclk' : {'prefix' : drmprefix, 'filepath' : 'pp_dpm_mclk', 'needsparse' : False},
     'profile' : {'prefix' : drmprefix, 'filepath' : 'pp_compute_power_profile', 'needsparse' : False},
@@ -560,20 +561,26 @@ def showPerformanceLevel(deviceList):
     print(logSpacer)
 
 
-def showOverDrive(deviceList):
+def showOverDrive(deviceList, type):
     """ Display current OverDrive level for a list of devices.
 
     Parameters:
     deviceList -- List of devices to display current OverDrive values (can be a single-item list)
+    type -- Which OverDrive to display (gpu|mem)
     """
 
     print(logSpacer)
     for device in deviceList:
-        od = getSysfsValue(device, 'sclk_od')
+        if type == 'gpu':
+            od = getSysfsValue(device, 'sclk_od')
+            odStr = 'GPU'
+        elif type == 'mem':
+            od = getSysfsValue(device, 'mclk_od')
+            odStr = 'GPU Memory'
         if not od or int(od) < 0:
-            printLog(device, 'Cannot get OverDrive value: OverDrive not supported')
+            printLog(device, 'Cannot get ' + odStr + ' OverDrive value: OverDrive not supported')
         else:
-            printLog(device, 'Current OverDrive value: ' + str(od) + '%')
+            printLog(device, 'Current ' + odStr + ' OverDrive value: ' + str(od) + '%')
     print(logSpacer)
 
 
@@ -654,7 +661,7 @@ def showAllConcise(deviceList):
     deviceList -- List of all devices
     """
     print(logSpacer)
-    print(' GPU  Temp    AvgPwr   SCLK     MCLK     Fan      Perf    SCLK OD')
+    print(' GPU  Temp    AvgPwr   SCLK     MCLK     Fan      Perf    SCLK OD    MCLK OD')
     for device in deviceList:
 
         temp = getSysfsValue(device, 'temp')
@@ -687,14 +694,20 @@ def showAllConcise(deviceList):
         if not perf:
             perf = 'N/A'
 
-        od = getSysfsValue(device, 'sclk_od')
-        if not od or od == '-1':
-            od = 'N/A'
+        sclk_od = getSysfsValue(device, 'sclk_od')
+        if not sclk_od or sclk_od == '-1':
+            sclk_od = 'N/A'
         else:
-            od = od + '%'
+            sclk_od = sclk_od + '%'
 
-        print("  %-4s%-8s%-9s%-9s%-9s%-9s%-10s%-9s" % (device[4:], temp,
-            power, sclk, mclk, fan, perf, od))
+        mclk_od = getSysfsValue(device, 'mclk_od')
+        if not mclk_od or mclk_od == '-1':
+            mclk_od = 'N/A'
+        else:
+            mclk_od = mclk_od + '%'
+
+        print("  %-4s%-8s%-9s%-9s%-9s%-9s%-10s%-11s%-9s" % (device[4:], temp,
+            power, sclk, mclk, fan, perf, sclk_od, mclk_od))
     print(logSpacer)
 
 
@@ -768,7 +781,7 @@ def setClockOverDrive(deviceList, clktype, value, autoRespond):
 
     Parameters:
     deviceList -- List of devices to set to OverDrive
-    type -- Clock type to set to OverDrive (currently only GPU supported)
+    type -- Clock type to set to OverDrive (currently only GPU and GPU Memory supported)
     value -- Percentage amount to set for OverDrive (0-20)
     autoRespond -- Response to automatically provide for all prompts
     """
@@ -788,6 +801,10 @@ def setClockOverDrive(deviceList, clktype, value, autoRespond):
         devpath = os.path.join(drmprefix, device, 'device')
         if clktype == 'gpu':
             odPath = os.path.join(devpath, 'pp_sclk_od')
+            odStr = 'GPU'
+        if clktype == 'mem':
+            odPath = os.path.join(devpath, 'pp_mclk_od')
+            odStr = 'GPU Memory'
         else:
             printLog(device, 'Unsupported clock type ' + clktype + ' - Cannot set OverDrive')
             RETCODE = 1
@@ -803,8 +820,8 @@ def setClockOverDrive(deviceList, clktype, value, autoRespond):
             value = '20'
 
         if (writeToSysfs(odPath, value)):
-            printLog(device, 'Successfully set OverDrive to ' + value + '%')
-            setClocks([device], clktype, [getMaxLevel(device, 'gpu')])
+            printLog(device, 'Successfully set ' + odStr + ' OverDrive to ' + value + '%')
+            setClocks([device], clktype, [getMaxLevel(device, clktype)])
         else:
             printLog(device, 'Unable to set OverDrive to ' + value + '%')
 
@@ -976,6 +993,7 @@ def load(savefilepath, autoRespond):
                 break
             setFanSpeed([device], values['fan'])
             setClockOverDrive([device], 'gpu', values['overdrivegpu'], autoRespond)
+            setClockOverDrive([device], 'mem', values['overdrivegpumem'], autoRespond)
             setClocks([device], 'gpu', values['gpu'])
             setClocks([device], 'mem', values['mem'])
             setProfile([device], values['profile'].split())
@@ -999,6 +1017,7 @@ def save(deviceList, savefilepath):
     memClocks = {}
     fanSpeeds = {}
     overDriveGpu = {}
+    overDriveGpuMem = {}
     profiles = {}
     jsonData = {}
 
@@ -1014,8 +1033,9 @@ def save(deviceList, savefilepath):
         memClocks[device] = getCurrentClock(device, 'mem', 'level')
         fanSpeeds[device] = getSysfsValue(device, 'fan')
         overDriveGpu[device] = getSysfsValue(device, 'sclk_od')
+        overDriveGpuMem[device] = getSysfsValue(device, 'mclk_od')
         profiles[device] = getSysfsValue(device, 'profile')
-        jsonData[device] = {'vJson': JSON_VERSION, 'gpu': gpuClocks[device], 'mem': memClocks[device], 'fan': fanSpeeds[device], 'overdrivegpu': overDriveGpu[device], 'profile': profiles[device], 'perflevel': perfLevels[device]}
+        jsonData[device] = {'vJson': JSON_VERSION, 'gpu': gpuClocks[device], 'mem': memClocks[device], 'fan': fanSpeeds[device], 'overdrivegpu': overDriveGpu[device], 'overdrivegpumem': overDriveGpuMem[device], 'profile': profiles[device], 'perflevel': perfLevels[device]}
         printLog(device, 'Current settings successfully saved to ' + savefilepath)
     with open(savefilepath, 'w') as savefile:
         json.dump(jsonData, savefile, ensure_ascii=True)
@@ -1040,19 +1060,21 @@ if __name__ == '__main__':
     groupDisplay.add_argument('-f', '--showfan', help='Show current fan speed', action='store_true')
     groupDisplay.add_argument('-p', '--showperflevel', help='Show current PowerPlay Performance Level', action='store_true')
     groupDisplay.add_argument('-P', '--showpower', help='Show current power consumption', action='store_true')
-    groupDisplay.add_argument('-o', '--showoverdrive', help='Show current OverDrive level', action='store_true')
+    groupDisplay.add_argument('-o', '--showoverdrive', help='Show current GPU Clock OverDrive level', action='store_true')
+    groupDisplay.add_argument('-m', '--showmemoverdrive', help='Show current GPU Memory Clock OverDrive level', action='store_true')
     groupDisplay.add_argument('-l', '--showprofile', help='Show Compute Profile attributes', action='store_true')
     groupDisplay.add_argument('-s', '--showclkfrq', help='Show supported GPU and Memory Clock', action='store_true')
     groupDisplay.add_argument('-a' ,'--showallinfo', help='Show Temperature, Fan and Clock values', action='store_true')
 
-    groupAction.add_argument('-r', '--resetclocks', help='Reset sclk and mclk to default (auto)', action='store_true')
-    groupAction.add_argument('--setsclk', help='Set GPU Clock Frequency Level(s) (manual)', type=int, metavar='LEVEL', nargs='+')
-    groupAction.add_argument('--setmclk', help='Set GPU Memory Clock Frequency Level(s) (manual)', type=int, metavar='LEVEL', nargs='+')
+    groupAction.add_argument('-r', '--resetclocks', help='Reset sclk and mclk to default', action='store_true')
+    groupAction.add_argument('--setsclk', help='Set GPU Clock Frequency Level(s) (requires manual Perf level)', type=int, metavar='LEVEL', nargs='+')
+    groupAction.add_argument('--setmclk', help='Set GPU Memory Clock Frequency Level(s) (requires manual Perf level)', type=int, metavar='LEVEL', nargs='+')
     groupAction.add_argument('--resetfans', help='Reset fans to automatic (driver) control', action='store_true')
     groupAction.add_argument('--setfan', help='Set GPU Fan Speed (Level or %%)', metavar='LEVEL')
     groupAction.add_argument('--setperflevel', help='Set PowerPlay Performance Level', metavar='LEVEL')
-    groupAction.add_argument('--setoverdrive', help='Set GPU OverDrive level (manual|high)', metavar='%')
-    groupAction.add_argument('--setprofile', help='Specify Compute Profile attributes (auto)', metavar='#', nargs=NUM_PROFILE_ARGS)
+    groupAction.add_argument('--setoverdrive', help='Set GPU OverDrive level (requires manual|high Perf level)', metavar='%')
+    groupAction.add_argument('--setmemoverdrive', help='Set GPU Memory Overclock OverDrive level (requires manual|high Perf level)', metavar='%')
+    groupAction.add_argument('--setprofile', help='Specify Compute Profile attributes (requires auto Perf level)', metavar='#', nargs=NUM_PROFILE_ARGS)
     groupAction.add_argument('--resetprofile', help='Reset Compute Profile to default values', action='store_true')
 
     groupFile.add_argument('--load', help='Load Clock, Fan, Performance and Profile settings from FILE', metavar='FILE')
@@ -1115,7 +1137,9 @@ if __name__ == '__main__':
     if args.showperflevel:
         showPerformanceLevel(deviceList)
     if args.showoverdrive:
-        showOverDrive(deviceList)
+        showOverDrive(deviceList, 'gpu')
+    if args.showmemoverdrive:
+        showOverDrive(deviceList, 'mem')
     if args.showprofile:
         showProfile(deviceList)
     if args.showpower:
@@ -1134,6 +1158,8 @@ if __name__ == '__main__':
         setPerformanceLevel(deviceList, args.setperflevel)
     if args.setoverdrive:
         setClockOverDrive(deviceList, 'gpu', args.setoverdrive, args.autorespond)
+    if args.setmemoverdrive:
+        setClockOverDrive(deviceList, 'mem', args.setmemoverdrive, args.autorespond)
     if args.setprofile:
         setProfile(deviceList, args.setprofile)
     if args.resetprofile:
