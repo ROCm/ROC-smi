@@ -850,6 +850,13 @@ def setFanSpeed(deviceList, fan):
             printLog(device, 'Cannot get max fan speed')
             RETCODE = 1
             continue
+        if fan.endswith('%'):
+            fanpct = int(fan[:-1])
+            if fanpct > 100:
+                printLog(device, 'Invalid fan value ' + fan)
+                RETCODE = 1
+                continue
+            fan = str(int(fanpct * maxfan / 100))
         if int(fan) > int(maxfan):
             printLog(device, 'Unable to set fan speed to ' + fan + ' : Max Level = ' + maxfan)
             RETCODE = 1
@@ -1037,7 +1044,7 @@ if __name__ == '__main__':
     groupAction.add_argument('--setsclk', help='Set GPU Clock Frequency Level(s) (manual)', type=int, metavar='LEVEL', nargs='+')
     groupAction.add_argument('--setmclk', help='Set GPU Memory Clock Frequency Level(s) (manual)', type=int, metavar='LEVEL', nargs='+')
     groupAction.add_argument('--resetfans', help='Reset fans to automatic (driver) control', action='store_true')
-    groupAction.add_argument('--setfan', help='Set GPU Fan Speed Level', metavar='LEVEL')
+    groupAction.add_argument('--setfan', help='Set GPU Fan Speed (Level or %)', metavar='LEVEL')
     groupAction.add_argument('--setperflevel', help='Set PowerPlay Performance Level', metavar='LEVEL')
     groupAction.add_argument('--setoverdrive', help='Set GPU OverDrive level (manual|high)', metavar='%')
     groupAction.add_argument('--setprofile', help='Specify Compute Profile attributes (auto)', metavar='#', nargs=NUM_PROFILE_ARGS)

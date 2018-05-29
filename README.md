@@ -52,7 +52,7 @@ optional arguments:
   -r, --resetclocks           Reset clocks to default (auto)
   --setsclk LEVEL [LEVEL ...] Set GPU Clock Frequency Level Mask (manual)
   --setmclk LEVEL [LEVEL ...] Set GPU Memory Clock Frequency Mask (manual)
-  --setfan LEVEL              Set GPU Fan Speed Level
+  --setfan LEVEL              Set GPU Fan Speed (Level or %)
   --resetfans                 Reset GPU fans to automatic control
   --setperflevel LEVEL        Set PowerPlay Performance Level
   --setoverdrive %            Set GPU OverDrive level (manual|high)
@@ -80,7 +80,10 @@ optional arguments:
         applied when the Performance level is set to auto
 
 --setfan LEVEL:
-    This sets the fan speed to a value ranging from 0 to 255 (not from 0-100%).
+    This sets the fan speed to a value ranging from 0 to maxlevel, or from 0%-100%
+
+    If the level ends with a %, the fan speed is calculated as pct*maxlevel/100
+        (maxlevel is usually 255, but is determined by the ASIC)
 
     NOTE: While the hardware is usually capable of overriding this value when required, it is
           recommended to not set the fan level lower than the default value for extended periods
