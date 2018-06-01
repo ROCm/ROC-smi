@@ -588,6 +588,9 @@ def showProfile(deviceList):
             printLog(device, 'PowerPlay not enabled - Compute Power Profile not supported')
             continue
         profile = getSysfsValue(device, 'profile')
+        if not profile:
+            printLog(device, 'Unable to get Compute Power Profile.')
+            continue
         vals = profile.split()
         if len(vals) == NUM_PROFILE_ARGS:
             printLog(device, 'Minimum SCLK: ' + vals[0] + 'MHz')
@@ -1044,7 +1047,7 @@ if __name__ == '__main__':
     groupAction.add_argument('--setsclk', help='Set GPU Clock Frequency Level(s) (manual)', type=int, metavar='LEVEL', nargs='+')
     groupAction.add_argument('--setmclk', help='Set GPU Memory Clock Frequency Level(s) (manual)', type=int, metavar='LEVEL', nargs='+')
     groupAction.add_argument('--resetfans', help='Reset fans to automatic (driver) control', action='store_true')
-    groupAction.add_argument('--setfan', help='Set GPU Fan Speed (Level or %)', metavar='LEVEL')
+    groupAction.add_argument('--setfan', help='Set GPU Fan Speed (Level or %%)', metavar='LEVEL')
     groupAction.add_argument('--setperflevel', help='Set PowerPlay Performance Level', metavar='LEVEL')
     groupAction.add_argument('--setoverdrive', help='Set GPU OverDrive level (manual|high)', metavar='%')
     groupAction.add_argument('--setprofile', help='Specify Compute Profile attributes (auto)', metavar='#', nargs=NUM_PROFILE_ARGS)
