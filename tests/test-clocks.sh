@@ -1,0 +1,198 @@
+#!/bin/bash
+
+# Test that the current clock frequency reported by the SMI matches the current clock
+# frequency speed of the corresponding device(s)
+#  param smiPath        Path to the SMI
+testGetCurrentClocks() {
+    local smiPath="$1"; shift;
+    local smiCmd="-c"
+    local clockType="GPU"
+    echo -e "\nTesting $smiPath $smiCmd..."
+    clocks="$($smiPath $smiCmd)"
+    IFS=$'\n'
+    for line in $clocks; do
+        if [ "$(checkLogLine $line)" != "true" ]; then
+            continue
+        elif [[ "$line" == *"PowerPlay not enabled"* ]]; then
+            continue
+        elif [[ "$line" == *"WARNING"* ]]; then
+            continue
+        fi
+        local rocmClock="$(extractRocmValue $line)"
+        rocmClock="${rocmClock##*(}"
+        rocmClock="${rocmClock:0:-1}"
+        local rocmGpu="$(getGpuFromRocm $line)"
+        if [[ "$line" == *"GPU Memory"* ]]; then
+            clockFile="$DRM_PREFIX/card$rocmGpu/device/pp_dpm_mclk"
+            clockType="GPU Memory"
+        else
+            clockFile="$DRM_PREFIX/card$rocmGpu/device/pp_dpm_sclk"
+        fi
+        local sysClock="$(getCurrentClock freq $clockFile)"
+        if [ "$rocmClock" == "None" ]; then
+            echo "WARNING: Unable to test empty value for $clockType"
+            continue
+        fi
+        if [ "$rocmClock" != "$sysClock" ]; then
+            echo "FAILURE: $clockType clock frequency from $SMI_NAME $rocmClock does not match $sysClock"
+            NUM_FAILURES=$(($NUM_FAILURES+1))
+        fi
+    done
+    echo -e "Test complete: $smiPath $smiCmd\n"
+    return 0
+}
+
+# Test that the supported clocks reported by the SMI match the supported clocks of the
+# corresponding device(s)
+# Specifically, check that every entry in the SMI output matches an entry in the
+# supported clock list, and that the number of supported clocks are equal.
+#  param smiPath        Path to the SMI
+testGetSupportedClocks() {
+    local smiPath="$1"; shift;
+    local smiCmd="-s"
+
+    echo -e "\nTesting $smiPath $smiCmd..."
+    devices="$(ls /sys/class/drm/card*/device/pp_dpm_sclk)"
+    numDevices="$(echo $devices | wc -w)"
+    for device in $devices; do
+        local clockType="gpu"
+        local numGpuMatches=0
+        local numMemMatches=0
+        local deviceNum="${devices##*/card}"
+        deviceNum="${deviceNum%%/device*}"
+        local gpuClockFile="$DRM_PREFIX/card$deviceNum/device/pp_dpm_sclk"
+        local memClockFile="$DRM_PREFIX/card$deviceNum/device/pp_dpm_mclk"
+        local clocks="$($smiPath $smiCmd -d $deviceNum)"
+        IFS=$'\n'
+        for rocmLine in $clocks; do
+            if [ "$(checkLogLine $rocmLine)" != "true" ]; then
+                continue
+            fi
+            if [[ "$rocmLine" == *"Supported GPU Memory clock"* ]]; then
+                clockType="mem"
+                continue
+            fi
+            if [[ ! "$rocmLine" == *"Mhz"* ]]; then # Ignore invalid lines
+                continue
+            fi
+            rocmClock="$(extractRocmValue $rocmLine)"
+            local rocmGpu="$(getGpuFromRocm $rocmLine)"
+            local clockFile="$gpuClockFile"
+            if [ "$clockType" == "mem" ]; then
+                clockFile="$memClockFile"
+            fi
+            local sysClocks="$(cat $clockFile)"
+
+            for clockLine in $sysClocks; do
+                if [[ "$clockLine" == *"$rocmClock"* ]]; then
+                    if [ "$clockType" == "gpu" ]; then
+                        numGpuMatches=$((numGpuMatches+1))
+                        break
+                    else
+                        numMemMatches=$((numMemMatches+1))
+                        break
+                    fi
+                    break
+                fi
+            done
+        done
+        if [ "$numGpuMatches" != "$(getNumLevels $gpuClockFile)" ]; then
+            echo "FAILURE: Supported GPU clock frequencies from $SMI_NAME do not match sysfs values"
+            NUM_FAILURES=$(($NUM_FAILURES+1))
+        fi
+        if [ "$numMemMatches" != "$(getNumLevels $memClockFile)" ]; then
+            echo "FAILURE: Supported GPU Memory clock frequencies from $SMI_NAME do not match sysfs values"
+            NUM_FAILURES=$(($NUM_FAILURES+1))
+        fi
+    done
+    echo -e "Test complete: $smiPath $smiCmd\n"
+    return 0
+}
+
+# Test that the setting the GPU and GPU Memory clock frequencies through the SMI changes
+# the clock frequencies of the corresponding device(s)
+#  param smiPath        Path to the SMI
+testSetClock() {
+    local clock="$1"; shift;
+    local smiPath="$1"; shift;
+    local smiCmd="--setsclk"
+    local clockType="GPU"
+    if [ "$clock" == "mem" ]; then
+        local smiCmd="--setmclk"
+    fi
+    echo -e "\nTesting $smiPath $smiCmd..."
+    IFS=$'\n'
+    local clocks="$($smiPath -c)" # Get the SMI clock output
+    for rocmLine in $clocks; do
+        if [ "$(checkLogLine $rocmLine)" != "true" ]; then
+            continue
+        elif [[ "$rocmLine" == *"PowerPlay not enabled"* ]]; then
+            continue
+        fi
+
+        local rocmGpu="$(getGpuFromRocm $rocmLine)"
+        if [[ "$rocmLine" == *"GPU Memory"* ]]; then
+            if [ "$clock" == "gpu" ]; then # If we are testing sclk, skip the mclk lines
+                continue
+            fi
+            clockFile="$DRM_PREFIX/card$rocmGpu/device/pp_dpm_mclk"
+            clockType="GPU Memory"
+        else
+            if [ "$clock" == "mem" ]; then # If we are testing mclk, skip the sclk lines
+                continue
+            fi
+            clockFile="$DRM_PREFIX/card$rocmGpu/device/pp_dpm_sclk"
+        fi
+
+        local oldClockLevel="$(getCurrentClock freq $clockFile)"
+        local newClockLevel="0"
+        if [ "$oldClockLevel" == "0" ]; then
+            if [ "$(getNumLevels $clockFile)" -gt "1" ]; then
+                newClockLevel=1
+            fi
+        fi
+        set="$($smiPath $smiCmd $newClockLevel)"
+        local newSysClocks="$(cat $clockFile)"
+        currClockLevel="$(getCurrentClock freq $clockFile)"
+        if [ "$currClockLevel" == "$newClockLevel" ]; then
+            echo "FAILURE: Could not set $clockType level to $newClockLevel"
+            NUM_FAILURES=$(($NUM_FAILURES+1))
+        fi
+    done
+    echo -e "Test complete: $smiPath $smiCmd\n"
+    return 0
+}
+
+# Test that the resetting the GPU and GPU Memory clock frequencies through the SMI
+# resets the clock frequencies of the corresponding device(s)
+#  param smiPath        Path to the SMI
+testReset() {
+    local smiPath="$1"; shift;
+    local smiCmd="-r"
+    echo -e "\nTesting $smiPath $smiCmd..."
+    IFS=$'\n'
+    local perfs="$($smiPath -p)" # Get a list of current Performance Levels
+    for line in $perfs; do
+        if [ "$(checkLogLine $line)" != "true" ]; then
+            continue
+        elif [[ "$line" == *"PowerPlay not enabled"* ]]; then
+            continue
+        fi
+        local rocmGpu="$(getGpuFromRocm $line)"
+        local hwmon="$(getHwmonFromDevice $rocmGpu)"
+        local levelPath="$DRM_PREFIX/card$rocmGpu/device/power_dpm_force_performance_level"
+
+        local currPerfLevel="$(cat $levelPath)" # Performance level
+        if [ "$currPerfLevel" == "auto" ]; then
+            echoSysFs "manual" "$levelPath"
+        fi
+        reset="$($smiPath $smiCmd)"
+        local newPerfLevel=$(cat "$levelPath") # Performance level
+        if [ "$newPerfLevel" != "auto" ]; then
+            echo "FAILURE: Could not reset clocks"
+            NUM_FAILURES=$(($NUM_FAILURES+1))
+        fi
+    done
+    echo -e "Test complete: $smiPath $smiCmd\n"
+    return 0
+}
