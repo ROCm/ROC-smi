@@ -45,7 +45,8 @@ testGetTemp() {
         local rocmGpu="$(getGpuFromRocm $line)"
         local hwmon="$(getHwmonFromDevice $rocmGpu)"
 
-        local rocmTemp="${rocmTemp%%.*}" # Truncate the value, as bash rounds to the nearest int
+        rocmTemp="${rocmTemp%'c'}"
+        rocmTemp="${rocmTemp%%.*}" # Truncate the value, as bash rounds to the nearest int
         local sysTemp="$(cat $HWMON_PREFIX/$hwmon/temp1_input)" # Temp in millidegrees
         if [ "$sysTemp" != "" ]; then
             sysTemp=$(($sysTemp/1000)) # Convert to degrees
