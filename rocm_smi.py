@@ -12,6 +12,8 @@ from subprocess import check_output
 import glob
 import time
 import collections
+if hasattr(__builtins__, 'raw_input'):
+    input = raw_input
 
 # Version of the JSON output used to save clocks
 JSON_VERSION = 1
