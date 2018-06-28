@@ -34,6 +34,12 @@ testSetGpuOverDrive() {
     local smiPath="$1"; shift;
     local smiCmd="--setoverdrive"
     echo -e "\nTesting $smiPath $smiCmd..."
+
+    if isApu; then
+        echo -e "Cannot test $smiCmd on an APU. Skipping test."
+        return
+    fi
+
     IFS=$'\n'
     local clocks=$($smiPath "-g") # Get a list of current GPU clock frequencies
     for line in $clocks; do

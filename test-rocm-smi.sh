@@ -44,6 +44,14 @@ printUsage() {
     return 0
 }
 
+# Check if the device is an APU. If so, there are certain SMI features that cannot
+# be used, e.g. Fan Control (since the fan is technically the CPU fan)
+isApu() {
+    local simdcnt=$(awk '/simd_count/ {print $2}' /sys/class/kfd/kfd/topology/nodes/0/properties)
+    # Evaluate if the count is >0. Using $? as the caller will give us the return status
+    [ "$simdcnt" -gt "0" ]
+}
+
 # Get the corresponding HW Monitor for the specified GPU device $device
 #  param device     Card number to obtain the corresponding HW Monitor
 getHwmonFromDevice() {

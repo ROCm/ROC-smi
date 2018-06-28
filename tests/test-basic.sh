@@ -104,8 +104,10 @@ testSave() {
         local sysProfile="$(cat $DRM_PREFIX/card$device/device/pp_compute_power_profile)"
         local sysPerf="$(cat $DRM_PREFIX/card$device/device/power_dpm_force_performance_level)"
         if [ "$fan" != "$sysFan" ]; then
-            echo "FAILURE: Saved fan $fan does not match current fan setting $sysFan"
-            NUM_FAILURES=$(($NUM_FAILURES+1))
+            if ! isApu; then
+                echo "FAILURE: Saved fan $fan does not match current fan setting $sysFan"
+                NUM_FAILURES=$(($NUM_FAILURES+1))
+            fi
         elif [ "$gpu" != "${sysGpu:0:1}" ]; then
             echo "FAILURE: Saved GPU frequency $gpu does not match current GPU clock ${sysGpu:0:1}"
             NUM_FAILURES=$(($NUM_FAILURES+1))
@@ -113,7 +115,7 @@ testSave() {
             echo "FAILURE: Saved GPU Memory frequency $mem does not match current GPU Memory clock ${sysMem:0:1}"
             NUM_FAILURES=$(($NUM_FAILURES+1))
         elif [ "$od" != "$sysOd" ]; then
-            echo "FAILURE: Saved OverDrive $od does not match current fan setting $sysOd"
+            echo "FAILURE: Saved OverDrive $od does not match current OverDrive setting $sysOd"
             NUM_FAILURES=$(($NUM_FAILURES+1))
         elif [ "$profile" != "$sysProfile" ]; then
             echo "FAILURE: Saved Profile $profile does not match current fan setting $sysProfile"

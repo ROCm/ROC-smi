@@ -45,6 +45,12 @@ testSetFan() {
     local smiPath="$1"; shift;
     local smiCmd="--setfan"
     echo -e "\nTesting $smiPath $smiCmd..."
+
+    if isApu; then
+        echo -e "Cannot test $smiCmd on an APU. Skipping test."
+        return
+    fi
+
     IFS=$'\n'
     # Get a list of current GPU clock frequencies. Since some GPUs can report but not
     # modify the fan speed, use ones that we can control.
@@ -91,8 +97,13 @@ testResetFans() {
     local smiPath="$1"; shift;
     local smiCmd="--resetfans"
     echo -e "\nTesting $smiPath $smiCmd..."
-    IFS=$'\n'
 
+    if isApu; then
+        echo -e "Cannot test $smiCmd on an APU. Skipping test"
+        return
+    fi
+
+    IFS=$'\n'
     # should reset fan control mode of all GPUs to auto (2)
     local mode="$($smiPath $smiCmd)"
     # Get a list of current GPU clock frequencies. Since some GPUs can report but not
