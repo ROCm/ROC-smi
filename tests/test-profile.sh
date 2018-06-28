@@ -18,7 +18,10 @@ testSetProfile() {
         local rocmGpu="$(getGpuFromRocm $line)"
         local hwmon="$(getHwmonFromDevice $rocmGpu)"
         local profilePath="$DRM_PREFIX/card$rocmGpu/device/pp_compute_power_profile"
-
+        if [ ! -e $profilePath ]; then
+            echo "Cannot find Power Profile sysfs file. Skipping test."
+            return
+        fi
         local currProfile="$(cat $profilePath)"
         local newProfile=(750 500 1 2 3)
         if [ "$currProfile" == "750 500 1 2 3" ]; then
@@ -67,6 +70,11 @@ testResetProfile() {
         local rocmGpu="$(getGpuFromRocm $line)"
         local hwmon="$(getHwmonFromDevice $rocmGpu)"
         local profilePath="$DRM_PREFIX/card$rocmGpu/device/pp_compute_power_profile"
+
+        if [ ! -e $profilePath ]; then
+            echo "Cannot find Power Profile sysfs file. Skipping test."
+            return
+        fi
 
         local newProfile=(750 500 1 2 3)
 
