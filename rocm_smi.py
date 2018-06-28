@@ -804,7 +804,7 @@ def setClockOverDrive(deviceList, clktype, value, autoRespond):
         if clktype == 'gpu':
             odPath = os.path.join(devpath, 'pp_sclk_od')
             odStr = 'GPU'
-        if clktype == 'mem':
+        elif clktype == 'mem':
             odPath = os.path.join(devpath, 'pp_mclk_od')
             odStr = 'GPU Memory'
         else:
