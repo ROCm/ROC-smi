@@ -430,7 +430,11 @@ def showVbiosVersion(deviceList):
     """
     print(logSpacer)
     for device in deviceList:
-        printLog(device, 'VBIOS version: ' + getSysfsValue(device, 'vbios'))
+        vbios = getSysfsValue(device, 'vbios')
+        if vbios:
+            printLog(device, 'VBIOS version: ' + vbios)
+        else:
+            printLog(device, 'Cannot get VBIOS version')
     print(logSpacer)
 
 
