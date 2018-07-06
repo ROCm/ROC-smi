@@ -22,44 +22,48 @@ For detailed and up to date usage information, we recommend consulting the help:
 For convenience purposes, following is a quick excerpt:
 ```shell
 
-usage: rocm-smi [-h] [-d DEVICE] [-i] [-t] [-c] [-g] [-f] [-p] [-P] [-o] [-l] [-s] [-a] [-r]
+usage: rocm-smi [-h] [-d DEVICE] [-i] [-v] [-hw] [-t] [-c] [-g] [-f] [-p] [-P] [-o] [-m] [-l] [-s] [-a] [-r]
                 [--setsclk LEVEL [LEVEL ...]] [--setmclk LEVEL [LEVEL ...]] [--resetfans] [--setfan LEVEL]
-                [--setperflevel LEVEL] [--setoverdrive %] [--setprofile # # # # #] [--resetprofile]
-                [--load FILE | --save FILE] [--autorespond RESPONSE]
-
+                [--setperflevel LEVEL] [--setoverdrive %] [--setmemoverdrive %] [--setprofile SETPROFILE]
+                [--resetprofile] [--load FILE | --save FILE] [--autorespond RESPONSE]
 
 AMD ROCm System Management Interface
 
 optional arguments:
-  -h, --help                  show this help message and exit
-  --load FILE                 Load Clock, Fan, Performance and Profile settings from FILE
-  --save FILE                 Save Clock, Fan, Performance and Profile settings to FILE
+  -h, --help                   show this help message and exit
+  --load FILE                  Load Clock, Fan, Performance and Profile settings from FILE
+  --save FILE                  Save Clock, Fan, Performance and Profile settings to FILE
 
-  -d DEVICE, --device DEVICE  Execute command on specified device
+  -d DEVICE, --device DEVICE   Execute command on specified device
 
-  -i, --showid                Show GPU ID
-  -t, --showtemp              Show current temperature
-  -c, --showclocks            Show current clock frequencies
-  -g, --showgpuclocks         Show current GPU clock frequencies
-  -f, --showfan               Show current fan speed
-  -p, --showperflevel         Show current PowerPlay Performance Level
-  -P, --showpower             Show current Graphics ASIC power consumption
-  -o, --showoverdrive         Show current OverDrive level
-  -l, --showprofile           Show Compute Profile attributes
-  -s, --showclkfrq            Show supported GPU and Memory Clock
-  -a, --showallinfo           Show all SMI-supported values values
+  -i, --showid                 Show GPU ID
+  -v, --showvbios              Show VBIOS version
+  -hw, --showhw                Show Hardware details
+  -t, --showtemp               Show current temperature
+  -c, --showclocks             Show current clock frequencies
+  -g, --showgpuclocks          Show current GPU clock frequencies
+  -f, --showfan                Show current fan speed
+  -p, --showperflevel          Show current PowerPlay Performance Level
+  -P, --showpower              Show current power consumption
+  -o, --showoverdrive          Show current GPU Clock OverDrive level
+  -m, --showmemoverdrive       Show current GPU Memory Clock OverDrive level
+  -l, --showprofile            Show Compute Profile attributes
+  -s, --showclkfrq             Show supported GPU and Memory Clock
+  -a, --showallinfo            Show Temperature, Fan and Clock values
 
-  -r, --resetclocks           Reset clocks to default (auto)
-  --setsclk LEVEL [LEVEL ...] Set GPU Clock Frequency Level Mask (manual)
-  --setmclk LEVEL [LEVEL ...] Set GPU Memory Clock Frequency Mask (manual)
-  --setfan LEVEL              Set GPU Fan Speed (Level or %)
-  --resetfans                 Reset GPU fans to automatic control
-  --setperflevel LEVEL        Set PowerPlay Performance Level
-  --setoverdrive %            Set GPU OverDrive level (manual|high)
-  --setprofile # # # # #      Specify Compute Profile attributes (auto)
-  --resetprofile              Reset Compute Profile
+  -r, --resetclocks            Reset sclk and mclk to default
+  --setsclk LEVEL [LEVEL ...]  Set GPU Clock Frequency Level(s) (requires manual Perf level)
+  --setmclk LEVEL [LEVEL ...]  Set GPU Memory Clock Frequency Level(s) (requires manual Perf level)
+  --resetfans                  Reset fans to automatic (driver) control
+  --setfan LEVEL               Set GPU Fan Speed (Level or %)
+  --setperflevel LEVEL         Set PowerPlay Performance Level
+  --setoverdrive %             Set GPU OverDrive level (requires manual|high Perf level)
+  --setmemoverdrive %          Set GPU Memory Overclock OverDrive level (requires manual|high Perf level)
+  --setprofile SETPROFILE      Specify Power Profile level (#) or a quoted string of CUSTOM profile attributes
+                               "# # # #..." (requires manual Perf level)
+  --resetprofile               Reset Power Profile back to default
 
-  --autorespond RESPONSE      Response to automatically provide for all prompts (NOT RECOMMENDED)
+  --autorespond RESPONSE       Response to automatically provide for all prompts (NOT RECOMMENDED)
 ```
 
 
@@ -96,34 +100,49 @@ optional arguments:
         high (Keep PowerPlay values high, regardless of workload)
         manual (Only use values defined by --setsclk and --setmclk)
 
---setoverdrive #:
+--setoverdrive/--setmemoverdrive #:
     This sets the percentage above maximum for the max Performance Level.
-    For example, --setoverdrive 20 will increase the top sclk level by 20%. If the maximum
-    sclk level is 1000MHz, then --setoverdrive 20 will increase the maximum sclk to 1200MHz
+    For example, --setoverdrive 20 will increase the top sclk level by 20%, similarly
+    --setmemoverdrive 20 will increase the top mclk level by 20%. Thus if the maximum
+    clock level is 1000MHz, then --setoverdrive 20 will increase the maximum clock to 1200MHz
 
     NOTES:
-        This option can be used in conjunction with the --setsclk mask
+        This option can be used in conjunction with the --setsclk/--setmclk mask
 
         Operating the GPU outside of specifications can cause irreparable damage to your hardware
         Please observe the warning displayed when using this option
 
-        This flag automatically sets the sclk to the highest level, as only the highest level is
+        This flag automatically sets the clock to the highest level, as only the highest level is
         increased by the OverDrive value
 
---setprofile # # # # #:
-    The Compute Profile accepts 5 parameters, which are (in order):
-        Minimum SCLK       - Minimum GPU clock speed in MHz
-        Minimum MCLK       - Minimum GPU Memory clock speed in MHz
-        Activity threshold - Workload required before clock levels change (%)
-        Hysteresis Up      - Delay before clock level is increased in milliseconds
-        Hysteresis Down    - Delay before clock level is decresed in milliseconds
+--setprofile SETPROFILE:
+    The Compute Profile accepts 1 or n parameters, either the Profile to select (see --showprofile for a list
+    of preset Power Profiles) or a quoted string of values for the CUSTOM profile.
+    NOTE: These values can vary based on the ASIC, and may include:
+        SCLK_PROFILE_ENABLE  - Whether or not to apply the 3 following SCLK settings (0=disable,1=enable)
+            NOTE: This is a hidden field. If set to 0, the following 3 values are displayed as '-'
+        SCLK_UP_HYST         - Delay before sclk is increased (in milliseconds)
+        SCLK_DOWN_HYST       - Delay before sclk is decresed (in milliseconds)
+        SCLK_ACTIVE_LEVEL    - Workload required before sclk levels change (in %)
+        MCLK_PROFILE_ENABLE  - Whether or not to apply the 3 following MCLK settings (0=disable,1=enable)
+            NOTE: This is a hidden field. If set to 0, the following 3 values are displayed as '-'
+        MCLK_UP_HYST         - Delay before mclk is increased (in milliseconds)
+        MCLK_DOWN_HYST       - Delay before mclk is decresed (in milliseconds)
+        MCLK_ACTIVE_LEVEL    - Workload required before mclk levels change (in %)
+
+        BUSY_SET_POINT       - Threshold for raw activity level before levels change
+        FPS                  - Frames Per Second
+        USE_RLC_BUSY         - When set to 1, DPM is switched up as long as RLC busy message is received
+        MIN_ACTIVE_LEVEL     - Workload required before levels change (in %)
 
     NOTES:
-        When a compute queue is detected, these values will be automatically applied to the system
+        When a compute queue is detected, the COMPUTE Power Profile values will be automatically
+        applied to the system, provided that the Perf Level is set to "auto"
 
-        Compute Power Profiles are only applied when the Performance Level is set to "auto"
-        so using this flag will automatically set the performance level to "auto"
+        The CUSTOM Power Profile is only applied when the Performance Level is set to "manual"
+        so using this flag will automatically set the performance level to "manual"
 
+        It is not possible to modify the non-CUSTOM Profiles. These are hard-coded by the kernel
 
 #### Testing changes
 
@@ -143,4 +162,4 @@ The information contained herein is for informational purposes only, and is subj
 
 AMD, the AMD Arrow logo, and combinations thereof are trademarks of Advanced Micro Devices, Inc. Other product names used in this publication are for identification purposes only and may be trademarks of their respective companies.
 
-Copyright (c) 2014-2017 Advanced Micro Devices, Inc. All rights reserved.
+Copyright (c) 2014-2018 Advanced Micro Devices, Inc. All rights reserved.
