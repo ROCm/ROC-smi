@@ -64,12 +64,12 @@ def getSysfsValue(device, key):
     filePath = os.path.join(pathDict['prefix'], device, 'device', pathDict['filepath'])
 
     if pathDict['prefix'] == hwmonprefix:
-        """ HW Monitor values have a different path structure """
+        # HW Monitor values have a different path structure
         if not getHwmonFromDevice(device):
             return None
         filePath = os.path.join(getHwmonFromDevice(device), pathDict['filepath'])
     if pathDict['prefix'] == powerprefix:
-        """ Power consumption is in debugfs and has a different path structure """
+        # Power consumption is in debugfs and has a different path structure
         filePath = os.path.join(powerprefix, device[4:], 'amdgpu_pm_info')
 
     if not os.path.isfile(filePath):
@@ -78,7 +78,7 @@ def getSysfsValue(device, key):
     with open(filePath, 'r') as fileContents:
         fileValue = fileContents.read().rstrip('\n')
 
-    """ Some sysfs files aren't a single line of text """
+    # Some sysfs files aren't a single line of text
     if pathDict['needsparse']:
         fileValue = parseSysfsValue(key, fileValue)
 
@@ -99,16 +99,17 @@ def parseSysfsValue(key, value):
     to get the desired value
     """
     if key == 'id':
-        """ Strip the 0x prefix """
+        # Strip the 0x prefix
         return value[2:]
     if key == 'temp':
-        """ Convert from millidegrees """
+        # Convert from millidegrees
         return int(value) / 1000
     if key == 'power':
-        """ amdgpu_pm_info has a bunch of info, we only want GPU power usage """
+        # amdgpu_pm_info has a bunch of info, we only want GPU power usage
         for line in value.splitlines():
             if 'average GPU' in line:
                 return str.lstrip(line.replace(' (average GPU)', ''))
+
     return ''
 
 
@@ -681,7 +682,7 @@ def showAllConciseHw(deviceList):
     for device in deviceList:
         gpuid = getSysfsValue(device, 'id')
 
-        """ To support later """
+        # To support later
         ecc = 'N/A'
 
         vbios = getSysfsValue(device, 'vbios')
