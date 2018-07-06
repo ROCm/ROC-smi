@@ -21,9 +21,6 @@ JSON_VERSION = 1
 # Set to 1 if an error occurs
 RETCODE = 0
 
-# Currently we have 5 values for PowerPlay Profiles
-NUM_PROFILE_ARGS = 5
-
 # To write to sysfs, we need to run this script as root. If the script is not run as
 # root, re-launch it via execvp to give the script sudo privileges.
 def relaunchAsSudo():
@@ -45,7 +42,7 @@ valuePaths = {
     'mclk_od' : {'prefix' : drmprefix, 'filepath' : 'pp_mclk_od', 'needsparse' : False},
     'sclk' : {'prefix' : drmprefix, 'filepath' : 'pp_dpm_sclk', 'needsparse' : False},
     'mclk' : {'prefix' : drmprefix, 'filepath' : 'pp_dpm_mclk', 'needsparse' : False},
-    'profile' : {'prefix' : drmprefix, 'filepath' : 'pp_compute_power_profile', 'needsparse' : False},
+    'profile' : {'prefix' : drmprefix, 'filepath' : 'pp_power_profile_mode', 'needsparse' : False},
     'fan' : {'prefix' : hwmonprefix, 'filepath' : 'pwm1', 'needsparse' : False},
     'fanmax' : {'prefix' : hwmonprefix, 'filepath' : 'pwm1_max', 'needsparse' : False},
     'fanmode' : {'prefix' : hwmonprefix, 'filepath' : 'pwm1_enable', 'needsparse' : False},
@@ -198,6 +195,28 @@ def isPowerplayEnabled(device):
     return True
 
 
+def getNumProfileArgs(device):
+    """ Get the number of Power Profile fields for a specific device
+
+    This varies per ASIC, so ensure that we get the right number of arguments
+
+    Parameters:
+    device -- Device to get the number of Power Profile fields
+    """
+
+    profile = getSysfsValue(device, 'profile')
+    numHiddenFields = 0
+    if not profile:
+        return 0
+    # Get the 1st line (column names)
+    fields = profile.splitlines()[0]
+    # SMU7 has 2 hidden fields for SclkProfileEnable and MclkProfileEnable
+    if 'SCLK_UP_HYST' in fields:
+        numHiddenFields = 2
+    # Subtract 2 to remove NUM and MODE NAME, since they're not valid Profile fields
+    return len(fields.split()) - 2 + numHiddenFields
+
+
 def verifySetProfile(device, profile):
     """ Verify data from user to set as Power Profile.
 
@@ -213,22 +232,31 @@ def verifySetProfile(device, profile):
         RETCODE = 1
         return False
 
-    # This is the only string that can be passed in that isn't a set of 5 numbers
-    if profile == 'reset':
+    # If it's 1 number, we're setting the level, not the Custom Profile
+    if profile.isdigit():
+        maxProfileLevel = getMaxLevel(device, 'profile')
+        if int(profile) > maxProfileLevel:
+            printLog(device, 'Cannot set profile to level ' + str(profile) + ', max level is ' + str(maxProfileLevel))
+            return False
         return True
-
     # If we get a string, split it into elements to make it a list
-    if isinstance(profile, str):
-        profileList = profile.strip().split(' ')
+    elif isinstance(profile, str):
+        if profile == 'reset':
+            printLog(device, 'Reset no longer accepted as a Power Profile')
+            return False
+        else:
+            profileList = profile.strip().split(' ')
     elif isinstance(profile, collections.Iterable):
         profileList = profile
     else:
         printLog(device, 'Unsupported profile argument : ' + str(profile))
         return False
-
-    # If we can iterate over it, it's a list. Check that it has the right number of args
-    if len(profile) != NUM_PROFILE_ARGS:
-        printLog(device, 'Cannot set profile, must be' + NUM_PROFILE_ARGS + 'values')
+    numProfileArgs = getNumProfileArgs(device)
+    if numProfileArgs == 0:
+        printLog(device, 'Power Profiles not supported')
+        return False
+    if len(profileList) != numProfileArgs:
+        printLog(device, 'Cannot set profile, must be 1 or ' + str(numProfileArgs) + ' values')
         RETCODE = 1
         return False
 
@@ -239,19 +267,23 @@ def writeProfileSysfs(device, value):
     if not verifySetProfile(device, value):
         return
 
-    profilePath = os.path.join(drmprefix, device, 'device', 'pp_compute_power_profile')
-    # If we can iterate it, it's a list, so turn it into a string
-    if isinstance(value, str):
+    # Perf Level must be set to manual for a Power Profile to be specified
+    # This is new compared to previous versions of the Power Profile
+    setPerfLevel(device, 'manual')
+    profilePath = os.path.join(drmprefix, device, 'device', 'pp_power_profile_mode')
+    maxLevel = getMaxLevel(device, 'profile')
+    # If it's a single number, then we're choosing the Power Profile, not setting CUSTOM
+    if isinstance(value, str) and len(value) == 1:
         profileString = value
-    elif isinstance(value, collections.Iterable):
-        profileString = ' '.join(value)
+    # Otherwise, we're setting the CUSTOM profile
+    elif isinstance(value, str) and len(value) > 1:
+        # Prepend the Max Level of Profiles since that will always be the CUSTOM profile
+        profileString = str(maxLevel) + value
     else:
         printLog(device, 'Invalid input argument' + value)
         return False
-
     if (writeToSysfs(profilePath, profileString)):
         return True
-
     return False
 
 
@@ -357,21 +389,26 @@ def getMaxLevel(device, type):
 
     Parameters:
     device -- Device to return the maximum level
-    type -- [gpu|mem] Return either the maximum GPU (gpu) or GPU Memory (mem) level
+    type -- [gpu|mem|profile] Return either the maximum GPU (gpu) or GPU Memory (mem) level, or the highest numbered Power Profiles
     """
     global RETCODE
-    if type not in ['gpu', 'mem']:
-        printLog(device, 'Invalid level type' + type)
+    if type not in ['gpu', 'mem', 'profile']:
+        printLog(device, 'Invalid level type ' + type)
         RETCODE = 1
         return ''
 
     key = 'sclk'
     if type == 'mem':
         key = 'mclk'
+    elif type == 'profile':
+        key = 'profile'
 
     levels = getSysfsValue(device, key)
     if not levels:
         return 0
+    # lstrip since there are leading spaces for this sysfs file, but no others
+    if type == 'profile':
+        levels = levels.splitlines()[-1].lstrip(' ')
     return int(levels.splitlines()[-1][0])
 
 
@@ -591,33 +628,25 @@ def showOverDrive(deviceList, type):
 
 
 def showProfile(deviceList):
-    """ Display current Compute Power Profile for a list of devices.
+    """ Display available Power Profiles for a list of devices.
 
     Parameters:
-    deviceList -- List of devices to display current Compute Power Profile attributes (can be a single-item list)
+    deviceList -- List of devices to display available Power Profile attributes (can be a single-item list)
     """
     global RETCODE
     print(logSpacer)
     for device in deviceList:
         if not isPowerplayEnabled(device):
-            printLog(device, 'PowerPlay not enabled - Compute Power Profile not supported')
+            printLog(device, 'PowerPlay not enabled - Power Profiles not supported')
             continue
         profile = getSysfsValue(device, 'profile')
         if not profile:
-            printLog(device, 'Unable to get Compute Power Profile.')
+            printLog(device, 'Unable to get Power Profiles')
             continue
-        vals = profile.split()
-        if len(vals) == NUM_PROFILE_ARGS:
-            printLog(device, 'Minimum SCLK: ' + vals[0] + 'MHz')
-            printLog(device, 'Minimum MCLK: ' + vals[1] + 'MHz')
-            printLog(device, 'Activity threshold: ' + vals[2] + '%')
-            printLog(device, 'Hysteresis Up: ' + vals[3] + 'ms')
-            printLog(device, 'Hysteresis Down: ' + vals[4] + 'ms')
-        elif not profile:
-            printLog(device, 'Compute Power Profile not supported')
-            RETCODE = 1
+        if len(profile) > 1:
+            printLog(device, '\n' + profile)
         else:
-            printLog(device, 'Invalid return value from pp_compute_power_profile')
+            printLog(device, 'Invalid return value from Power Profile SysFS file')
     print(logSpacer)
 
 
@@ -902,34 +931,35 @@ def setFanSpeed(deviceList, fan):
 
 
 def setProfile(deviceList, profile):
-    """ Set Compute Power Profile values for a list of devices.
+    """ Set CUSTOM Power Profile values for a list of devices.
 
     Parameters:
-    deviceList -- List of devices to specify the Compute Power Profile for (can be a single-item list)
+    deviceList -- List of devices to specify the CUSTOM Power Profile for (can be a single-item list)
     profile -- The profile to set
     """
     for device in deviceList:
-        # Performance level must be set to auto to set Power Profiles
-        setPerfLevel(device, 'auto')
         if writeProfileSysfs(device, profile):
-            printLog(device, 'Successfully set Compute Power Profile values')
+            printLog(device, 'Successfully set CUSTOM Power Profile values')
         else:
-            printLog(device, 'Unable to set Compute Power Profile values')
+            printLog(device, 'Unable to set CUSTOM Power Profile values')
 
 
 def resetProfile(deviceList):
     """ Reset profile for a list of a devices.
 
     Parameters:
-    deviceList -- List of devices to reset the Compute Power Profile for (can be a single-item list)
+    deviceList -- List of devices to reset the CUSTOM Power Profile for (can be a single-item list)
     """
     for device in deviceList:
-        # Performance level must be set to auto for a reset of the profile to work
-        setPerfLevel(device, 'auto')
-        if writeProfileSysfs(device, 'reset'):
-            printLog(device, 'Successfully reset Compute Power Profile values')
+        # Performance level must be set to manual for a reset of the profile to work
+        setPerfLevel(device, 'manual')
+        if not writeProfileSysfs(device, '0 ' * getNumProfileArgs(device)):
+            printLog(device, 'Unable to reset CUSTOM Power Profile values')
+        if writeProfileSysfs(device, '0'):
+            printLog(device, 'Successfully reset Power Profile')
         else:
-            printLog(device, 'Unable to reset Compute Power Profile values')
+            printLog(device, 'Unable to reset Power Profile')
+        setPerfLevel(device, 'auto')
 
 
 def resetOverDrive(deviceList):
@@ -1002,7 +1032,8 @@ def load(savefilepath, autoRespond):
             setClockOverDrive([device], 'mem', values['overdrivegpumem'], autoRespond)
             setClocks([device], 'gpu', values['gpu'])
             setClocks([device], 'mem', values['mem'])
-            setProfile([device], values['profile'].split())
+            #TODO: Get this working with the new Power Profile
+            #setProfile([device], values['profile'].split())
 
             # Set Perf level last, since setting OverDrive sets the Performance level
             # it to manual, and Profiles only work when the Performance level is auto
@@ -1040,7 +1071,8 @@ def save(deviceList, savefilepath):
         fanSpeeds[device] = getSysfsValue(device, 'fan')
         overDriveGpu[device] = getSysfsValue(device, 'sclk_od')
         overDriveGpuMem[device] = getSysfsValue(device, 'mclk_od')
-        profiles[device] = getSysfsValue(device, 'profile')
+        #TODO: Get this working with the new Power Profile stuff
+        #profiles[device] = getSysfsValue(device, 'profile')
         jsonData[device] = {'vJson': JSON_VERSION, 'gpu': gpuClocks[device], 'mem': memClocks[device], 'fan': fanSpeeds[device], 'overdrivegpu': overDriveGpu[device], 'overdrivegpumem': overDriveGpuMem[device], 'profile': profiles[device], 'perflevel': perfLevels[device]}
         printLog(device, 'Current settings successfully saved to ' + savefilepath)
     with open(savefilepath, 'w') as savefile:
@@ -1080,8 +1112,8 @@ if __name__ == '__main__':
     groupAction.add_argument('--setperflevel', help='Set PowerPlay Performance Level', metavar='LEVEL')
     groupAction.add_argument('--setoverdrive', help='Set GPU OverDrive level (requires manual|high Perf level)', metavar='%')
     groupAction.add_argument('--setmemoverdrive', help='Set GPU Memory Overclock OverDrive level (requires manual|high Perf level)', metavar='%')
-    groupAction.add_argument('--setprofile', help='Specify Compute Profile attributes (requires auto Perf level)', metavar='#', nargs=NUM_PROFILE_ARGS)
-    groupAction.add_argument('--resetprofile', help='Reset Compute Profile to default values', action='store_true')
+    groupAction.add_argument('--setprofile', help='Specify Power Profile level (#) or a quoted string of CUSTOM Profile attributes "# # # #..." (requires manual Perf level)')
+    groupAction.add_argument('--resetprofile', help='Reset Power Profile back to default', action='store_true')
 
     groupFile.add_argument('--load', help='Load Clock, Fan, Performance and Profile settings from FILE', metavar='FILE')
     groupFile.add_argument('--save', help='Save Clock, Fan, Performance and Profile settings to FILE', metavar='FILE')
