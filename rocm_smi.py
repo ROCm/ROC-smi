@@ -84,7 +84,6 @@ def getSysfsValue(device, key):
 
     if fileValue == '':
         printLog(device, 'WARNING: Empty SysFS value: ' + key)
-        RETCODE = 1
 
     return fileValue
 
