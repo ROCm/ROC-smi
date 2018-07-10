@@ -6,10 +6,10 @@
 # return 0 if $NUM_FAILURES = 0, or 1 otherwise. This test must be run before
 # submitting any modifications to the SMI to ensure that all SMI functionality works.
 
-# test-basic.sh for testing getId, getTemp, save, load, getVbios reset, 
+# test-basic.sh for testing basic SMI functionality
 # test-fans.sh for testing get/set/reset fans
 # test-perf.sh for testing get/set/reset perfLevel
-# test-profile.sh for testing set/reset Profile
+# test-profile.sh for testing set/reset Power Profile
 # test-clocks.sh for testing getCurrent/getSupported/setClock/reset GPU and Mem clocks
 # test-overdrive.sh for testing get/set OverDrive for GPU and Mem
 
