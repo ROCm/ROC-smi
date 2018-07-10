@@ -1092,7 +1092,7 @@ if __name__ == '__main__':
     groupDev.add_argument('-d', '--device', help='Execute command on specified device', type=int)
     groupDisplay.add_argument('-i', '--showid', help='Show GPU ID', action='store_true')
     groupDisplay.add_argument('-v', '--showvbios', help='Show VBIOS version', action='store_true')
-    groupDisplay.add_argument('-hw', '--showhw', help='Show Hardware details', action='store_true')
+    groupDisplay.add_argument('--showhw', help='Show Hardware details', action='store_true')
     groupDisplay.add_argument('-t', '--showtemp', help='Show current temperature', action='store_true')
     groupDisplay.add_argument('-c', '--showclocks', help='Show current clock frequencies', action='store_true')
     groupDisplay.add_argument('-g', '--showgpuclocks', help='Show current GPU clock frequencies', action='store_true')

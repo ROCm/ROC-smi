@@ -22,7 +22,7 @@ For detailed and up to date usage information, we recommend consulting the help:
 For convenience purposes, following is a quick excerpt:
 ```shell
 
-usage: rocm-smi [-h] [-d DEVICE] [-i] [-v] [-hw] [-t] [-c] [-g] [-f] [-p] [-P] [-o] [-m] [-l] [-s] [-a] [-r]
+usage: rocm-smi [-h] [-d DEVICE] [-i] [-v] [-t] [-c] [-g] [-f] [-p] [-P] [-o] [-m] [-l] [-s] [-a] [-r]
                 [--setsclk LEVEL [LEVEL ...]] [--setmclk LEVEL [LEVEL ...]] [--resetfans] [--setfan LEVEL]
                 [--setperflevel LEVEL] [--setoverdrive %] [--setmemoverdrive %] [--setprofile SETPROFILE]
                 [--resetprofile] [--load FILE | --save FILE] [--autorespond RESPONSE]
@@ -38,7 +38,7 @@ optional arguments:
 
   -i, --showid                 Show GPU ID
   -v, --showvbios              Show VBIOS version
-  -hw, --showhw                Show Hardware details
+  --showhw                     Show Hardware details
   -t, --showtemp               Show current temperature
   -c, --showclocks             Show current clock frequencies
   -g, --showgpuclocks          Show current GPU clock frequencies
