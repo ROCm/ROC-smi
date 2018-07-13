@@ -913,7 +913,7 @@ def setFanSpeed(deviceList, fan):
                 printLog(device, 'Invalid fan value ' + fan)
                 RETCODE = 1
                 continue
-            fan = str(int(fanpct * maxfan / 100))
+            fan = str(int((fanpct * int(maxfan)) / 100))
         if int(fan) > int(maxfan):
             printLog(device, 'Unable to set fan speed to ' + fan + ' : Max Level = ' + maxfan)
             RETCODE = 1
