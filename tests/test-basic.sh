@@ -72,6 +72,8 @@ testSave() {
 
     local tempSaveDir="$(mktemp -d)"
     local tempSaveFile="$tempSaveDir/clocks.tmp"
+    # Set the fan to something high to ensure that it doesn't end up ramping it up automatically
+    local setFanHigh=$($smiPath --setfan 90%)
 
     save="$($smiPath $smiCmd $tempSaveFile)"
     if [ ! -f $tempSaveFile ]; then

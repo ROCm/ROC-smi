@@ -69,6 +69,14 @@ testSetFan() {
         local sysFanMax="$(cat $HWMON_PREFIX/$hwmon/pwm1_max)" # Maximum fan speed
         local newFanValue="$sysFanMax"
 
+        # On server cards, there are no controllable fans. If the fan is set to auto and 0, then
+        # it's safe to assume that there is no controllable fan for it
+        local resetFan=$($smiPath --resetfans)
+        if [ "$(cat $HWMON_PREFIX/$hwmon/pwm1)" == "0" ]; then
+            echo -e "Cannot control fan, skipping test."
+            return
+        fi
+
         local fan="$($smiPath $smiCmd $sysFanMin)"
         local newSysFan="$(cat $HWMON_PREFIX/$hwmon/pwm1)" # Fan speed level
         if [ "$newSysFan" != "$sysFanMin" ]; then
