@@ -353,7 +353,7 @@ def getFanSpeed(device):
     fanMax = getSysfsValue(device, 'fanmax')
     if not fanLevel or not fanMax:
         return 0
-    return round((int(fanLevel) / int(fanMax)) * 100, 2)
+    return round((float(fanLevel) / float(fanMax)) * 100, 2)
 
 
 def getCurrentClock(device, clock, type):
