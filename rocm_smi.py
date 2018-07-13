@@ -951,6 +951,9 @@ def resetProfile(deviceList):
     deviceList -- List of devices to reset the CUSTOM Power Profile for (can be a single-item list)
     """
     for device in deviceList:
+        if not getSysfsValue(device, 'profile'):
+            printLog(device, 'Unable to get current Power Profile')
+            continue
         # Performance level must be set to manual for a reset of the profile to work
         setPerfLevel(device, 'manual')
         if not writeProfileSysfs(device, '0 ' * getNumProfileArgs(device)):
