@@ -52,6 +52,11 @@ testSetGpuOverDrive() {
         local hwmon="$(getHwmonFromDevice $rocmGpu)"
         local odPath="$DRM_PREFIX/card$rocmGpu/device/pp_sclk_od"
 
+        local sysOdVolt=$(cat $DRM_PREFIX/card$rocmGpu/device/pp_od_clk_voltage)
+        if [ -z "$sysOdVolt" ]; then
+            echo "OverDrive not supported. Skipping test."
+            continue
+        fi
         local currOd="$(cat $odPath)" # OverDrive level
         local newOd="3"
         if [ "$currOd" == "3" ]; then
