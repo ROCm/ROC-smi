@@ -1076,6 +1076,7 @@ def save(deviceList, savefilepath):
         overDriveGpuMem[device] = getSysfsValue(device, 'mclk_od')
         #TODO: Get this working with the new Power Profile stuff
         #profiles[device] = getSysfsValue(device, 'profile')
+        profiles[device] = "0"
         jsonData[device] = {'vJson': JSON_VERSION, 'gpu': gpuClocks[device], 'mem': memClocks[device], 'fan': fanSpeeds[device], 'overdrivegpu': overDriveGpu[device], 'overdrivegpumem': overDriveGpuMem[device], 'profile': profiles[device], 'perflevel': perfLevels[device]}
         printLog(device, 'Current settings successfully saved to ' + savefilepath)
     with open(savefilepath, 'w') as savefile:
