@@ -5,17 +5,17 @@
 #  param smiPath        Path to the SMI
 testGetId() {
     local smiPath="$1"; shift;
+    local smiDev="$1"; shift;
     local smiCmd="-i"
-    echo -e "\nTesting $smiPath $smiCmd..."
-    local ids="$($smiPath $smiCmd)"
+    echo -e "\nTesting $smiPath $smiDev $smiCmd..."
+    local ids="$($smiPath $smiDev $smiCmd)"
     IFS=$'\n'
     for line in $ids; do
         if [ "$(checkLogLine $line)" != "true" ]; then
             continue
         fi
         local rocmId="$(extractRocmValue $line)"
-        local rocmGpu="$(getGpuFromRocm $line)"
-        local hwmon="$(getHwmonFromDevice $rocmGpu)"
+        local hwmon="$(getHwmonFromDevice ${smiDev:3})"
 
         local sysId="$(cat $HWMON_PREFIX/$hwmon/device/device)"
         if [ "$rocmId" != "$sysId" ]; then
@@ -23,7 +23,7 @@ testGetId() {
             NUM_FAILURES=$(($NUM_FAILURES+1))
         fi
     done
-    echo -e "Test complete: $smiPath $smiCmd\n"
+    echo -e "Test complete: $smiPath $smiDev $smiCmd\n"
     return 0
 }
 
@@ -33,17 +33,17 @@ testGetId() {
 #  param smiPath        Path to the SMI
 testGetTemp() {
     local smiPath="$1"; shift;
+    local smiDev="$1"; shift;
     local smiCmd="-t"
-    echo -e "\nTesting $smiPath $smiCmd..."
-    local temps="$($smiPath $smiCmd)"
+    echo -e "\nTesting $smiPath $smiDev $smiCmd..."
+    local temps="$($smiPath $smiDev $smiCmd)"
     IFS=$'\n'
     for line in $temps; do
         if [ "$(checkLogLine $line)" != "true" ]; then
             continue
         fi
         local rocmTemp="$(extractRocmValue $line)"
-        local rocmGpu="$(getGpuFromRocm $line)"
-        local hwmon="$(getHwmonFromDevice $rocmGpu)"
+        local hwmon="$(getHwmonFromDevice ${smiDev:3})"
 
         rocmTemp="${rocmTemp%'c'}"
         rocmTemp="${rocmTemp%%.*}" # Truncate the value, as bash rounds to the nearest int
@@ -56,7 +56,7 @@ testGetTemp() {
             NUM_FAILURES=$(($NUM_FAILURES+1))
         fi
     done
-    echo -e "Test complete: $smiPath $smiCmd\n"
+    echo -e "Test complete: $smiPath $smiDev $smiCmd\n"
     return 0
 }
 
@@ -165,7 +165,6 @@ testLoad() {
         local reset="$($smiPath --setperflevel auto)"
         reset="$($smiPath --resetprofile)"
         local device="$(getGpuFromRocm $line)"
-        local hwmon="$(getHwmonFromDevice $device)"
         local perfPath="$DRM_PREFIX/card$device/device/power_dpm_force_performance_level"
         local gpuPath="$DRM_PREFIX/card$device/device/pp_dpm_sclk"
         local memPath="$DRM_PREFIX/card$device/device/pp_dpm_mclk"

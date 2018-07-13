@@ -23,6 +23,7 @@ source tests/test-overdrive.sh
 SMI_DIR="$(pwd)"
 SMI_SUBSET="all"
 SMI_NAME="rocm-smi" # Name of the SMI application
+SMI_DEVICE=""
 DRM_PREFIX="/sys/class/drm"
 HWMON_PREFIX="/sys/class/hwmon"
 NUM_FAILURES=0
@@ -34,6 +35,7 @@ printUsage() {
     echo 'Options:'
     echo '  -p <path>    , --path <path>         Specify folder containing SMI'
     echo '  -s "flag(s)" , --subset "flag(s)"    Specify subset of SMI flags to test (must be in quotes)'
+    echo '  -d <device>  , --device <device>     Specify the device which the test should be executed on'
     echo '  -h           , --help                Prints this help'
     echo
     echo ' Example usage for subtest:'
@@ -42,6 +44,31 @@ printUsage() {
     echo './test-rocm-smi.sh -s "-f -t -q"'
 
     return 0
+}
+
+# Check that the device is valid
+verifyDevice() {
+    local dev="${1:3}"
+    if [ ! -e "/sys/class/drm/card$dev/device/pp_dpm_sclk" ]; then
+        echo "Device card$dev not supported. Exiting."
+        exit 1
+    fi
+}
+
+# Don't run the test on an unsupported node.
+setTestDevice() {
+    cards="$(ls /sys/class/drm/ | egrep 'card[0-9]+$' | tr '\n' ' ')"
+    for card in $cards; do
+        if [ -e "/sys/class/drm/$card/device/pp_dpm_sclk" ]; then
+            local dev="${card:4}"
+            break
+        fi
+    done
+    if [ -z "$dev" ]; then
+        echo "No valid device found. Exiting."
+        exit 1
+    fi
+    SMI_DEVICE="-d $dev"
 }
 
 # Check if the device is an APU. If so, there are certain SMI features that cannot
@@ -78,13 +105,13 @@ setupTestEnv() {
     sleep 1
 }
 
-# Parse the line from the SMI output to remove the GPU prefix
+# Parse the lines from the SMI output to remove the GPU prefix and headers/footers
 # Each line is of the form "GPU[X] \t\t: $ATTRIBUTE: $VALUE", so we return $VALUE
 #  param rocmLine       Line from the SMI log to parse
 extractRocmValue() {
-    local rocmLine="$1"; shift;
-    local value="${rocmLine##*: }" # Remove the 'GPU[X] \t: [Attribute]:' prefix
-    echo "$(echo $value | sed 's/ *$//')" # Remove any trailing whitespace
+    local rocmLine="$1"
+    # Clear out the prefix and suffix to our desired value
+    echo "$(echo ${rocmLine##*: } | sed 's/ *$//')"
 }
 
 # Extract value from JSON file (modified from https://gist.github.com/cjus/1047794)
@@ -169,66 +196,67 @@ getCurrentClock() {
 
 runTestSuite() {
     local smiPath="$1"; shift;
+    local smiDev="$1"; shift;
     local subsetList="$1"; shift;
     setupTestEnv "$smiPath"
 
     for subset in $subsetList; do
         case $subset in
             -i | --id)
-                testGetId "$smiPath" ;;
+                testGetId "$smiPath" "$smiDev" ;;
             -t | --temp)
-                testGetTemp "$smiPath" ;;
+                testGetTemp "$smiPath" "$smiDev" ;;
             -c | --showclocks)
-                testGetCurrentClocks "$smiPath" ;;
+                testGetCurrentClocks "$smiPath" "$smiDev" ;;
             -f | --showfan)
-                testGetFan "$smiPath" ;;
+                testGetFan "$smiPath" "$smiDev" ;;
             -p | --showperf)
-                testGetPerf "$smiPath" ;;
+                testGetPerf "$smiPath" "$smiDev" ;;
             -o | --showoverdrive)
-                testGetGpuOverDrive "$smiPath" ;;
+                testGetGpuOverDrive "$smiPath" "$smiDev" ;;
             -s | --showclkfrq)
-                testGetSupportedClocks "$smiPath" ;;
+                testGetSupportedClocks "$smiPath" "$smiDev" ;;
             -r | --resetclocks)
-                testReset "$smiPath" ;;
+                testReset "$smiPath" "$smiDev" ;;
             --setsclk)
-                testSetClock "gpu" "$smiPath" ;;
+                testSetClock "gpu" "$smiPath" "$smiDev" ;;
             --setmclk)
-                testSetClock "mem" "$smiPath" ;;
+                testSetClock "mem" "$smiPath" "$smiDev" ;;
             --setfan)
-                testSetFan "$smiPath" ;;
+                testSetFan "$smiPath" "$smiDev" ;;
             --resetfans)
-                testResetFans "$smiPath" ;;
+                testResetFans "$smiPath" "$smiDev" ;;
             --setperflevel)
-                testSetPerf "$smiPath" ;;
+                testSetPerf "$smiPath" "$smiDev" ;;
             --setoverdrive)
-                testSetGpuOverDrive "$smiPath" ;;
+                testSetGpuOverDrive "$smiPath" "$smiDev" ;;
             --setprofile)
-                testSetProfile "$smiPath" ;;
+                testSetProfile "$smiPath" "$smiDev" ;;
             --resetprofile)
-                testResetProfile "$smiPath" ;;
+                testResetProfile "$smiPath" "$smiDev" ;;
             --save)
-                testSave "$smiPath" ;;
+                testSave "$smiPath" "$smiDev" ;;
             --load)
-                testLoad "$smiPath" ;;
+                testLoad "$smiPath" "$smiDev" ;;
             all)
-                testGetId "$smiPath" ;
-                testGetTemp "$smiPath" ;
-                testGetCurrentClocks "$smiPath" ;
-                testGetFan "$smiPath" ;
-                testGetPerf "$smiPath" ;
-                testGetSupportedClocks "$smiPath" ;
-                testGetGpuOverDrive "$smiPath" ;
-                testSetFan "$smiPath" ;
-                testResetFans "$smiPath" ;
-                testSetClock "gpu" "$smiPath" ;
-                testSetClock "mem" "$smiPath" ;
-                testReset "$smiPath" ;
-                testSetPerf "$smiPath" ;
-                testSetGpuOverDrive "$smiPath" ;
-                testSetProfile "$smiPath" ;
-                testResetProfile "$smiPath" ;
-                testSave "$smiPath" ;
-                testLoad "$smiPath" ;
+                testGetId "$smiPath" "$smiDev" ;
+                testGetTemp "$smiPath" "$smiDev" ;
+                testGetCurrentClocks "$smiPath" "$smiDev" ;
+                testGetFan "$smiPath" "$smiDev" ;
+                testGetPerf "$smiPath" "$smiDev" ;
+                testGetSupportedClocks "$smiPath" "$smiDev" ;
+                testGetGpuOverDrive "$smiPath" "$smiDev" ;
+                testSetFan "$smiPath" "$smiDev" ;
+                testResetFans "$smiPath" "$smiDev" ;
+                testSetClock "gpu" "$smiPath" "$smiDev" ;
+                testSetClock "mem" "$smiPath" "$smiDev" ;
+                testReset "$smiPath" "$smiDev" ;
+                testSetPerf "$smiPath" "$smiDev" ;
+                testSetGpuOverDrive "$smiPath" "$smiDev" ;
+                testSetProfile "$smiPath" "$smiDev" ;
+                testResetProfile "$smiPath" "$smiDev" ;
+                testSave "$smiPath" "$smiDev" ;
+                testLoad "$smiPath" "$smiDev" ;
                 break
                 ;;
             *)
@@ -243,6 +271,8 @@ while [ "$1" != "" ]; do
             SMI_DIR="$2"; shift ;;
         -s  | --subtest )
             SMI_SUBSET="$2" ; shift ;;
+        -d | --device )
+            SMI_DEVICE="-d $2" ; shift ;;
         -h  | --help )
             printUsage; exit 0 ;;
         *)
@@ -257,7 +287,12 @@ if [ ! -e "$SMI_DIR/$SMI_NAME" ]; then
 fi
 
 echo "===Start of ROCM-SMI test suite==="
-runTestSuite "$SMI_DIR/$SMI_NAME" "$SMI_SUBSET"
+if [ -z "$SMI_DEVICE" ]; then
+    setTestDevice
+else
+    verifyDevice "$SMI_DEVICE"
+fi
+runTestSuite "$SMI_DIR/$SMI_NAME" "$SMI_DEVICE" "$SMI_SUBSET"
 echo "$NUM_FAILURES failure(s) occurred"
 echo "===End of ROCM-SMI test suite==="
 
