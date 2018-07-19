@@ -53,6 +53,11 @@ testResetProfile() {
     local smiCmd="--resetprofile"
     echo -e "\nTesting $smiPath $smiDev $smiCmd..."
 
+    if [ -z "$(cat /sys/class/drm/card${smiDev:3}/device/pp_power_profile_mode)" ]; then
+        echo "Power Profile not supported. Exiting"
+        return
+    fi
+
     #TODO: Change it to the CUSTOM profile and set some values there to ensure
     # that the CUSTOM profile gets reset as well as the Profile level
     local setLevel="2"
