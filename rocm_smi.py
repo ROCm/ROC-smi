@@ -312,6 +312,7 @@ def writeToSysfs(fsFile, fsValue):
 def listDevices():
     """ Return a list of GPU devices."""
     devicelist = [device for device in os.listdir(drmprefix) if re.match(r'^card\d+$', device)]
+    devicelist.sort()
     return devicelist
 
 
