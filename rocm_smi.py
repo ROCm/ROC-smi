@@ -1,4 +1,10 @@
 #!/usr/bin/env python
+""" ROCm-SMI (System Management Interface) Tool
+
+This tool provides a user-friendly interface for manipulating
+the ROCK (Radeon Open Compute Kernel) via sysfs files.
+Please view the README.md file for more information
+"""
 
 from __future__ import print_function
 
@@ -19,9 +25,12 @@ JSON_VERSION = 1
 # Set to 1 if an error occurs
 RETCODE = 0
 
-# To write to sysfs, we need to run this script as root. If the script is not run as
-# root, re-launch it via execvp to give the script sudo privileges.
 def relaunchAsSudo():
+    """ Relaunch the SMI as sudo
+
+    To write to sysfs, the SMI requires root access. Use execvp to relaunch the
+    script with sudo privileges
+    """
     if os.geteuid() != 0:
         os.execvp('sudo', ['sudo'] + sys.argv)
 
@@ -149,6 +158,7 @@ def doesDeviceExist(device):
 
 
 def getPid(name):
+    """ Get the process id of a specific application """
     return check_output(["pidof", name])
 
 
@@ -261,6 +271,15 @@ def verifySetProfile(device, profile):
 
 
 def writeProfileSysfs(device, value):
+    """ Write to the Power Profile sysfs file
+
+    This function is different from a regular sysfs file as it could involve
+    parsing of the data first.
+
+    Parameters:
+    device -- Device to write the Power Profile info
+    value -- Value to write to the sysfs file
+    """
     if not verifySetProfile(device, value):
         return
 
