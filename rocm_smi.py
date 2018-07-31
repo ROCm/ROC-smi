@@ -7,10 +7,8 @@ import argparse
 import re
 import sys
 import subprocess
-import json
 from subprocess import check_output
-import glob
-import time
+import json
 import collections
 if hasattr(__builtins__, 'raw_input'):
     input = raw_input
@@ -58,7 +56,6 @@ def getSysfsValue(device, key):
     device -- Device to return the desired value
     value -- SysFS value to return (defined in dict above)
     """
-    global RETCODE
     pathDict = valuePaths[key]
     fileValue = ''
     filePath = os.path.join(pathDict['prefix'], device, 'device', pathDict['filepath'])
@@ -152,7 +149,7 @@ def doesDeviceExist(device):
 
 
 def getPid(name):
-    return check_output(["pidof",name])
+    return check_output(["pidof", name])
 
 
 def confirmOverDrive(autoRespond):
@@ -282,7 +279,7 @@ def writeProfileSysfs(device, value):
     else:
         printLog(device, 'Invalid input argument' + value)
         return False
-    if (writeToSysfs(profilePath, profileString)):
+    if writeToSysfs(profilePath, profileString):
         return True
     return False
 
@@ -357,13 +354,13 @@ def getFanSpeed(device):
     return round((float(fanLevel) / float(fanMax)) * 100, 2)
 
 
-def getCurrentClock(device, clock, type):
+def getCurrentClock(device, clock, clocktype):
     """ Return the current clock frequency for a specified device.
 
     Parameters:
     device -- Device to return the clock frequency
     clock -- [gpu|mem] Return either the GPU (gpu) or GPU Memory (mem) clock frequency
-    type -- [freq|level] Return either the clock frequency (freq) or clock level (level)
+    clocktype -- [freq|level] Return either the clock frequency (freq) or clock level (level)
     """
     currClk = ''
 
@@ -377,7 +374,7 @@ def getCurrentClock(device, clock, type):
     # first character for level, or the 3rd-to-2nd-last characters for speed
     for line in currClocks.splitlines():
         if re.match(r'.*\*$', line):
-            if (type == 'freq'):
+            if clocktype == 'freq':
                 currClk = line[3:-2]
             else:
                 currClk = line[0]
@@ -385,46 +382,32 @@ def getCurrentClock(device, clock, type):
     return currClk
 
 
-def getMaxLevel(device, type):
+def getMaxLevel(device, leveltype):
     """ Return the maximum level for a specified device.
 
     Parameters:
     device -- Device to return the maximum level
-    type -- [gpu|mem|profile] Return either the maximum GPU (gpu) or GPU Memory (mem) level, or the highest numbered Power Profiles
+    leveltype -- [gpu|mem|profile] Return either the maximum GPU (gpu) or GPU Memory (mem) level, or the highest numbered Power Profiles
     """
     global RETCODE
-    if type not in ['gpu', 'mem', 'profile']:
-        printLog(device, 'Invalid level type ' + type)
+    if leveltype not in ['gpu', 'mem', 'profile']:
+        printLog(device, 'Invalid level type ' + leveltype)
         RETCODE = 1
         return ''
 
     key = 'sclk'
-    if type == 'mem':
+    if leveltype == 'mem':
         key = 'mclk'
-    elif type == 'profile':
+    elif leveltype == 'profile':
         key = 'profile'
 
     levels = getSysfsValue(device, key)
     if not levels:
         return 0
     # lstrip since there are leading spaces for this sysfs file, but no others
-    if type == 'profile':
+    if leveltype == 'profile':
         levels = levels.splitlines()[-1].lstrip(' ')
     return int(levels.splitlines()[-1][0])
-
-
-def findFile(prefix, file, device):
-    """ Return the full file path given prefix
-
-    Parameters:
-    prefix -- directory that contains the file
-    file -- name of the file
-    """
-    pcPaths = glob.glob(os.path.join(prefix, '*', file))
-    for path in pcPaths:
-        if isCorrectPowerDevice(os.path.dirname(path), device):
-            return path
-    return ''
 
 
 def setPerfLevel(device, level):
@@ -533,7 +516,6 @@ def showCurrentTemps(deviceList):
     Parameters:
     deviceList -- List of devices to return the current temperature (can be a single-item list)
     """
-    tempfiles = []
 
     print(logSpacer)
     for device in deviceList:
@@ -605,20 +587,20 @@ def showPerformanceLevel(deviceList):
     print(logSpacer)
 
 
-def showOverDrive(deviceList, type):
+def showOverDrive(deviceList, odtype):
     """ Display current OverDrive level for a list of devices.
 
     Parameters:
     deviceList -- List of devices to display current OverDrive values (can be a single-item list)
-    type -- Which OverDrive to display (gpu|mem)
+    odtype -- Which OverDrive to display (gpu|mem)
     """
 
     print(logSpacer)
     for device in deviceList:
-        if type == 'gpu':
+        if odtype == 'gpu':
             od = getSysfsValue(device, 'sclk_od')
             odStr = 'GPU'
-        elif type == 'mem':
+        elif odtype == 'mem':
             od = getSysfsValue(device, 'mclk_od')
             odStr = 'GPU Memory'
         if not od or int(od) < 0:
@@ -634,7 +616,6 @@ def showProfile(deviceList):
     Parameters:
     deviceList -- List of devices to display available Power Profile attributes (can be a single-item list)
     """
-    global RETCODE
     print(logSpacer)
     for device in deviceList:
         if not isPowerplayEnabled(device):
@@ -742,8 +723,7 @@ def showAllConcise(deviceList):
         else:
             mclk_od = mclk_od + '%'
 
-        print("  %-4s%-8s%-9s%-9s%-9s%-9s%-10s%-11s%-9s" % (device[4:], temp,
-            power, sclk, mclk, fan, perf, sclk_od, mclk_od))
+        print("  %-4s%-8s%-9s%-9s%-9s%-9s%-10s%-11s%-9s" % (device[4:], temp, power, sclk, mclk, fan, perf, sclk_od, mclk_od))
     print(logSpacer)
 
 
@@ -855,7 +835,7 @@ def setClockOverDrive(deviceList, clktype, value, autoRespond):
             printLog(device, 'Unable to set OverDrive greater than 20%. Changing to 20')
             value = '20'
 
-        if (writeToSysfs(odPath, value)):
+        if writeToSysfs(odPath, value):
             printLog(device, 'Successfully set ' + odStr + ' OverDrive to ' + value + '%')
             setClocks([device], clktype, [getMaxLevel(device, clktype)])
         else:
@@ -1016,10 +996,6 @@ def load(savefilepath, autoRespond):
     savefilepath -- Path to a file with saved clock frequencies and fan speeds
     autoRespond -- Response to automatically provide for all prompts
     """
-    gpuClocks = {}
-    memClocks = {}
-    fanSpeeds = {}
-    profiles = {}
 
     if not os.path.isfile(savefilepath):
         print('No settings file found at ', savefilepath)
@@ -1085,8 +1061,7 @@ def save(deviceList, savefilepath):
 
 # Below is for when called as a script instead of when imported as a module
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='AMD ROCm System Management Interface',
-             formatter_class=lambda prog: argparse.HelpFormatter(prog, max_help_position=90, width=110))
+    parser = argparse.ArgumentParser(description='AMD ROCm System Management Interface', formatter_class=lambda prog: argparse.HelpFormatter(prog, max_help_position=90, width=110))
     groupDev = parser.add_argument_group()
     groupDisplay = parser.add_argument_group()
     groupAction = parser.add_argument_group()
@@ -1107,7 +1082,7 @@ if __name__ == '__main__':
     groupDisplay.add_argument('-m', '--showmemoverdrive', help='Show current GPU Memory Clock OverDrive level', action='store_true')
     groupDisplay.add_argument('-l', '--showprofile', help='Show Compute Profile attributes', action='store_true')
     groupDisplay.add_argument('-s', '--showclkfrq', help='Show supported GPU and Memory Clock', action='store_true')
-    groupDisplay.add_argument('-a' ,'--showallinfo', help='Show Temperature, Fan and Clock values', action='store_true')
+    groupDisplay.add_argument('-a', '--showallinfo', help='Show Temperature, Fan and Clock values', action='store_true')
 
     groupAction.add_argument('-r', '--resetclocks', help='Reset sclk and mclk to default', action='store_true')
     groupAction.add_argument('--setsclk', help='Set GPU Clock Frequency Level(s) (requires manual Perf level)', type=int, metavar='LEVEL', nargs='+')
@@ -1154,7 +1129,7 @@ if __name__ == '__main__':
     if args.setsclk or args.setmclk or args.resetfans or args.setfan or args.setperflevel or args.load or \
        args.resetclocks or args.setprofile or args.resetprofile or args.setoverdrive or args.showpower or \
        len(sys.argv) == 1:
-           relaunchAsSudo()
+        relaunchAsSudo()
 
     # Header for the SMI
     print('\n\n', headerSpacer, '    ROCm System Management Interface    ', headerSpacer, sep='')
