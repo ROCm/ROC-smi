@@ -156,13 +156,6 @@ getGpuFromRocm() {
     echo "${gpuPrefix:4}" # Strip the 'GPU[' prefix
 }
 
-# Manually echo the value to the specified sysfs file
-echoSysFs() {
-    local sysfsPath="$1"; shift;
-    local value="$1"; shift;
-    echo "$value" | sudo tee $sysfsPath > /dev/null
-}
-
 # Return the number of clock levels in a specified clock file
 #  param clockFile      Path to clock file
 getNumLevels() {

@@ -175,7 +175,7 @@ testReset() {
 
         local currPerfLevel="$(cat $levelPath)" # Performance level
         if [ "$currPerfLevel" == "auto" ]; then
-            echoSysFs "manual" "$levelPath"
+            echo "manual" | sudo tee "$levelPath" > /dev/null
         fi
         reset="$($smiPath $smiDev $smiCmd)"
         local newPerfLevel=$(cat "$levelPath") # Performance level
