@@ -270,6 +270,52 @@ def verifySetProfile(device, profile):
     return True
 
 
+def getProfile(device):
+    """ Get either the current profile level, or the custom profile
+
+    The CUSTOM profile might be set, or a specific profile level may have been selected
+    Return either a single digit for a non-CUSTOM profile, or return the CUSTOM profile
+
+    Parameters:
+    device -- Device to return the current profile
+    """
+    profiles = getSysfsValue(device, 'profile')
+    profile = ''
+    custom = ''
+    asic = ''
+    level = ''
+    numArgs = getNumProfileArgs(device)
+    for line in profiles.splitlines():
+        if re.match(r'.*SCLK_UP_HYST./*', line):
+            asic = 'SMU7'
+            continue
+        if re.match(r'.*\*.*', line):
+            level = line.split()[0]
+            if re.match(r'.*CUSTOM.*', line):
+                # Ditch the NUM and NAME, which end with a : before the profile values
+                # Then put it into single words via split
+                custom = line.split(':')[1].split()
+            break
+    if not custom:
+        return level
+    # We need some special parsing for SMU7 if it's a CUSTOM profile
+    if asic == 'SMU7' and custom:
+        sclk = custom[0:3]
+        mclk = custom[3:]
+        if sclk[0] == '-':
+            sclkStr = '0 0 0 0'
+        else:
+            sclkStr = '1 ' + ' '.join(sclk)
+        if mclk[0] == '-':
+            mclkStr = '0 0 0 0'
+        else:
+            mclkStr = '1 ' + ' '.join(mclk)
+        customStr = sclkStr + ' ' + mclkStr
+    else:
+        customStr = ' '.join(custom[-numArgs:])
+    return customStr
+
+
 def writeProfileSysfs(device, value):
     """ Write to the Power Profile sysfs file
 
@@ -292,11 +338,13 @@ def writeProfileSysfs(device, value):
     if isinstance(value, str) and len(value) == 1:
         profileString = value
     # Otherwise, we're setting the CUSTOM profile
+    elif value.isdigit():
+        profileString = str(value)
     elif isinstance(value, str) and len(value) > 1:
         # Prepend the Max Level of Profiles since that will always be the CUSTOM profile
         profileString = str(maxLevel) + value
     else:
-        printLog(device, 'Invalid input argument' + value)
+        printLog(device, 'Invalid input argument ' + value)
         return False
     if writeToSysfs(profilePath, profileString):
         return True
@@ -1031,8 +1079,7 @@ def load(savefilepath, autoRespond):
             setClockOverDrive([device], 'mem', values['overdrivegpumem'], autoRespond)
             setClocks([device], 'gpu', values['gpu'])
             setClocks([device], 'mem', values['mem'])
-            #TODO: Get this working with the new Power Profile
-            #setProfile([device], values['profile'].split())
+            setProfile([device], values['profile'])
 
             # Set Perf level last, since setting OverDrive sets the Performance level
             # it to manual, and Profiles only work when the Performance level is auto
@@ -1070,9 +1117,7 @@ def save(deviceList, savefilepath):
         fanSpeeds[device] = getSysfsValue(device, 'fan')
         overDriveGpu[device] = getSysfsValue(device, 'sclk_od')
         overDriveGpuMem[device] = getSysfsValue(device, 'mclk_od')
-        #TODO: Get this working with the new Power Profile stuff
-        #profiles[device] = getSysfsValue(device, 'profile')
-        profiles[device] = "0"
+        profiles[device] = getProfile(device)
         jsonData[device] = {'vJson': JSON_VERSION, 'gpu': gpuClocks[device], 'mem': memClocks[device], 'fan': fanSpeeds[device], 'overdrivegpu': overDriveGpu[device], 'overdrivegpumem': overDriveGpuMem[device], 'profile': profiles[device], 'perflevel': perfLevels[device]}
         printLog(device, 'Current settings successfully saved to ' + savefilepath)
     with open(savefilepath, 'w') as savefile:
