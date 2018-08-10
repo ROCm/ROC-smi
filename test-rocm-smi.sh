@@ -275,8 +275,15 @@ while [ "$1" != "" ]; do
 done
 
 if [ ! -e "$SMI_DIR/$SMI_NAME" ]; then
-    print "Unable to locate SMI at $SMI_DIR/$SMI_NAME."
-    exit 1
+    if [ -e "$SMI_DIR/../$SMI_NAME" ]; then
+        SMI_DIR="$SMI_DIR/.."
+    elif [ -e "/opt/rocm/bin/$SMI_NAME" ]; then
+        print "Unable to locate SMI at $SMI_DIR/$SMI_NAME, using /opt/rocm/bin/ instead"
+        SMI_DIR="/opt/rocm/bin"
+    else
+        print "Unable to locate SMI at $SMI_DIR/$SMI_NAME."
+        exit 1
+    fi
 fi
 
 echo "===Start of ROCM-SMI test suite==="
