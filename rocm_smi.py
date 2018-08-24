@@ -191,13 +191,13 @@ def confirmOverDrive(autoRespond):
         sys.exit('Confirmation not given. Exiting without setting OverDrive value')
 
 
-def isPowerplayEnabled(device):
-    """ Check if PowerPlay is enabled for a specified device.
+def isDPMAvailable(device):
+    """ Check if DPM is available for a specified device.
 
     Parameters:
-    device -- Device to check for PowerPlay enablement
+    device -- Device to check for DPM availability
     """
-    if not doesDeviceExist(device) or os.path.isfile(os.path.join(drmprefix, device, 'device', 'power_dpm_force_performance_level')) == 0:
+    if not doesDeviceExist(device) or os.path.isfile(os.path.join(drmprefix, device, 'device', 'power_dpm_state')) == 0:
         return False
     return True
 
@@ -231,11 +231,11 @@ def verifySetProfile(device, profile):
     the profile being passed in being valid
 
     Parameters:
-    device -- Device to check for PowerPlay enablement
+    device -- Device to verify Profile variables
     """
     global RETCODE
-    if not isPowerplayEnabled(device):
-        printLog(device, 'PowerPlay not enabled, cannot specify profile.')
+    if not isDPMAvailable(device):
+        printLog(device, 'DPM not available - cannot specify profile.')
         RETCODE = 1
         return False
 
@@ -478,11 +478,11 @@ def getMaxLevel(device, leveltype):
 
 
 def setPerfLevel(device, level):
-    """ Set the PowerPlay Performance Level for a specified device.
+    """ Set the Performance Level for a specified device.
 
     Parameters:
-    device -- Device to modify the current PowerPlay Performance Level
-    level -- PowerPlay Performance Level to set
+    device -- Device to modify the current Performance Level
+    level -- Performance Level to set
     """
     global RETCODE
     validLevels = ['auto', 'low', 'high', 'manual']
@@ -535,8 +535,8 @@ def showCurrentGpuClocks(deviceList):
     global RETCODE
     print(logSpacer)
     for device in deviceList:
-        if not isPowerplayEnabled(device):
-            printLog(device, 'PowerPlay not enabled - Cannot display GPU clocks')
+        if not isDPMAvailable(device):
+            printLog(device, 'DPM not available - Cannot display GPU clocks')
             continue
         gpuclk = getCurrentClock(device, 'gpu', 'freq')
         gpulevel = getCurrentClock(device, 'gpu', 'level')
@@ -559,8 +559,8 @@ def showCurrentClocks(deviceList):
     global RETCODE
     print(logSpacer)
     for device in deviceList:
-        if not isPowerplayEnabled(device):
-            printLog(device, 'PowerPlay not enabled - Cannot display clocks')
+        if not isDPMAvailable(device):
+            printLog(device, 'DPM not available - Cannot display clocks')
             continue
         gpuclk = getCurrentClock(device, 'gpu', 'freq')
         gpulevel = getCurrentClock(device, 'gpu', 'level')
@@ -622,8 +622,8 @@ def showClocks(deviceList):
         devpath = os.path.join(drmprefix, device, 'device')
         sclkPath = os.path.join(devpath, 'pp_dpm_sclk')
         mclkPath = os.path.join(devpath, 'pp_dpm_mclk')
-        if not isPowerplayEnabled(device):
-            printLog(device, 'PowerPlay not enabled - Cannot display clocks')
+        if not isDPMAvailable(device):
+            printLog(device, 'DPM not available - Cannot display clocks')
             continue
         if not os.path.isfile(sclkPath) or not os.path.isfile(mclkPath):
             continue
@@ -639,10 +639,10 @@ def showClocks(deviceList):
 
 
 def showPerformanceLevel(deviceList):
-    """ Display current PowerPlay Performance Level for a list of devices.
+    """ Display current Performance Level for a list of devices.
 
     Parameters:
-    deviceList -- List of devices to display current PowerPlay Performance Level (can be a single-item list)
+    deviceList -- List of devices to display current Performance Level (can be a single-item list)
     """
     print(logSpacer)
     for device in deviceList:
@@ -650,7 +650,7 @@ def showPerformanceLevel(deviceList):
         if not level:
             printLog(device, 'Cannot get Performance Level: Performance Level not supported')
         else:
-            printLog(device, 'Current PowerPlay Level: ' + level)
+            printLog(device, 'Current Performance Level: ' + level)
     print(logSpacer)
 
 
@@ -685,8 +685,8 @@ def showProfile(deviceList):
     """
     print(logSpacer)
     for device in deviceList:
-        if not isPowerplayEnabled(device):
-            printLog(device, 'PowerPlay not enabled - Power Profiles not supported')
+        if not isDPMAvailable(device):
+            printLog(device, 'DPM not available - Power Profiles not supported')
             continue
         profile = getSysfsValue(device, 'profile')
         if not profile:
@@ -795,18 +795,18 @@ def showAllConcise(deviceList):
 
 
 def setPerformanceLevel(deviceList, level):
-    """ Set the PowerPlay Performance Level for a list of devices.
+    """ Set the Performance Level for a list of devices.
 
     Parameters:
-    deviceList -- List of devices to set the current PowerPlay Performance Level (can be a single-item list)
-    level -- Specific PowerPlay Performance Level to set
+    deviceList -- List of devices to set the current Performance Level (can be a single-item list)
+    level -- Specific Performance Level to set
     """
     print(logSpacer)
     for device in deviceList:
         if setPerfLevel(device, level):
-            printLog(device, 'Successfully set current PowerPlay Level to ' + level)
+            printLog(device, 'Successfully set current Performance Level to ' + level)
         else:
-            printLog(device, 'Unable to set current PowerPlay Level to ' + level)
+            printLog(device, 'Unable to set current Performance Level to ' + level)
     print(logSpacer)
 
 
@@ -831,8 +831,8 @@ def setClocks(deviceList, clktype, clk):
         RETCODE = 1
         return
     for device in deviceList:
-        if not isPowerplayEnabled(device):
-            printLog(device, 'PowerPlay not enabled - Cannot set clocks')
+        if not isDPMAvailable(device):
+            printLog(device, 'DPM not available - Cannot set clocks')
             RETCODE = 1
             continue
         devpath = os.path.join(drmprefix, device, 'device')
@@ -878,8 +878,8 @@ def setClockOverDrive(deviceList, clktype, value, autoRespond):
     confirmOverDrive(autoRespond)
 
     for device in deviceList:
-        if not isPowerplayEnabled(device):
-            printLog(device, 'PowerPlay not enabled - Cannot set OverDrive')
+        if not isDPMAvailable(device):
+            printLog(device, 'DPM not available - Cannot set OverDrive')
             continue
         devpath = os.path.join(drmprefix, device, 'device')
         if clktype == 'gpu':
@@ -916,8 +916,8 @@ def resetFans(deviceList):
     deviceList -- List of devices to set the fan speed (can be a single-item list)
     """
     for device in deviceList:
-        if not isPowerplayEnabled(device):
-            printLog(device, 'PowerPlay not enabled - Cannot reset fan speed')
+        if not isDPMAvailable(device):
+            printLog(device, 'DPM not available - Cannot reset fan speed')
             continue
         hwmon = getHwmonFromDevice(device)
         if not hwmon:
@@ -939,8 +939,8 @@ def setFanSpeed(deviceList, fan):
     """
     global RETCODE
     for device in deviceList:
-        if not isPowerplayEnabled(device):
-            printLog(device, 'PowerPlay not enabled - Cannot set fan speed')
+        if not isDPMAvailable(device):
+            printLog(device, 'DPM not available - Cannot set fan speed')
             RETCODE = 1
             continue
         hwmon = getHwmonFromDevice(device)
@@ -1108,8 +1108,8 @@ def save(deviceList, savefilepath):
         print(savefilepath, 'already exists. Settings not saved')
         sys.exit()
     for device in deviceList:
-        if not isPowerplayEnabled(device):
-            printLog(device, 'PowerPlay not enabled - Cannot save clocks')
+        if not isDPMAvailable(device):
+            printLog(device, 'DPM not available - Cannot save clocks')
             continue
         perfLevels[device] = getSysfsValue(device, 'perf')
         gpuClocks[device] = getCurrentClock(device, 'gpu', 'level')
@@ -1140,7 +1140,7 @@ if __name__ == '__main__':
     groupDisplay.add_argument('-c', '--showclocks', help='Show current clock frequencies', action='store_true')
     groupDisplay.add_argument('-g', '--showgpuclocks', help='Show current GPU clock frequencies', action='store_true')
     groupDisplay.add_argument('-f', '--showfan', help='Show current fan speed', action='store_true')
-    groupDisplay.add_argument('-p', '--showperflevel', help='Show current PowerPlay Performance Level', action='store_true')
+    groupDisplay.add_argument('-p', '--showperflevel', help='Show current DPM Performance Level', action='store_true')
     groupDisplay.add_argument('-P', '--showpower', help='Show current power consumption', action='store_true')
     groupDisplay.add_argument('-o', '--showoverdrive', help='Show current GPU Clock OverDrive level', action='store_true')
     groupDisplay.add_argument('-m', '--showmemoverdrive', help='Show current GPU Memory Clock OverDrive level', action='store_true')
@@ -1153,7 +1153,7 @@ if __name__ == '__main__':
     groupAction.add_argument('--setmclk', help='Set GPU Memory Clock Frequency Level(s) (requires manual Perf level)', type=int, metavar='LEVEL', nargs='+')
     groupAction.add_argument('--resetfans', help='Reset fans to automatic (driver) control', action='store_true')
     groupAction.add_argument('--setfan', help='Set GPU Fan Speed (Level or %%)', metavar='LEVEL')
-    groupAction.add_argument('--setperflevel', help='Set PowerPlay Performance Level', metavar='LEVEL')
+    groupAction.add_argument('--setperflevel', help='Set Performance Level', metavar='LEVEL')
     groupAction.add_argument('--setoverdrive', help='Set GPU OverDrive level (requires manual|high Perf level)', metavar='%')
     groupAction.add_argument('--setmemoverdrive', help='Set GPU Memory Overclock OverDrive level (requires manual|high Perf level)', metavar='%')
     groupAction.add_argument('--setprofile', help='Specify Power Profile level (#) or a quoted string of CUSTOM Profile attributes "# # # #..." (requires manual Perf level)')

@@ -119,7 +119,7 @@ testSetClock() {
     for rocmLine in $clocks; do
         if [ "$(checkLogLine $rocmLine)" != "true" ]; then
             continue
-        elif [[ "$rocmLine" == *"PowerPlay not enabled"* ]]; then
+        elif [[ "$rocmLine" == *"DPM not available"* ]]; then
             continue
         fi
 
@@ -168,7 +168,7 @@ testReset() {
     for line in $perfs; do
         if [ "$(checkLogLine $line)" != "true" ]; then
             continue
-        elif [[ "$line" == *"PowerPlay not enabled"* ]]; then
+        elif [[ "$line" == *"DPM not available"* ]]; then
             continue
         fi
         local levelPath="$DRM_PREFIX/card${smiDev:3}/device/power_dpm_force_performance_level"

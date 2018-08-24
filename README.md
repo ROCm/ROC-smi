@@ -43,7 +43,7 @@ optional arguments:
   -c, --showclocks             Show current clock frequencies
   -g, --showgpuclocks          Show current GPU clock frequencies
   -f, --showfan                Show current fan speed
-  -p, --showperflevel          Show current PowerPlay Performance Level
+  -p, --showperflevel          Show current Performance Level
   -P, --showpower              Show current power consumption
   -o, --showoverdrive          Show current GPU Clock OverDrive level
   -m, --showmemoverdrive       Show current GPU Memory Clock OverDrive level
@@ -56,7 +56,7 @@ optional arguments:
   --setmclk LEVEL [LEVEL ...]  Set GPU Memory Clock Frequency Level(s) (requires manual Perf level)
   --resetfans                  Reset fans to automatic (driver) control
   --setfan LEVEL               Set GPU Fan Speed (Level or %)
-  --setperflevel LEVEL         Set PowerPlay Performance Level
+  --setperflevel LEVEL         Set Performance Level
   --setoverdrive %             Set GPU OverDrive level (requires manual|high Perf level)
   --setmemoverdrive %          Set GPU Memory Overclock OverDrive level (requires manual|high Perf level)
   --setprofile SETPROFILE      Specify Power Profile level (#) or a quoted string of CUSTOM profile attributes
@@ -94,10 +94,10 @@ optional arguments:
           of time
 
 --setperflevel LEVEL:
-    This lets you use the pre-defined Performance Level values, which can include:
-        auto (Automatically change PowerPlay values based on GPU workload)
-        low (Keep PowerPlay values low, regardless of workload)
-        high (Keep PowerPlay values high, regardless of workload)
+    This lets you use the pre-defined Performance Level values for clocks and power profile, which can include:
+        auto (Automatically change values based on GPU workload)
+        low (Keep values low, regardless of workload)
+        high (Keep values high, regardless of workload)
         manual (Only use values defined by --setsclk and --setmclk)
 
 --setoverdrive/--setmemoverdrive #:
