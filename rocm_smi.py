@@ -1198,6 +1198,20 @@ if __name__ == '__main__':
     # Header for the SMI
     print('\n\n', headerSpacer, '    ROCm System Management Interface    ', headerSpacer, sep='')
 
+    # If all fields are requested, only print it for devices with DPM support. There is no point
+    # in printing a bunch of "Feature unavailable" messages and cluttering the output
+    # unnecessarily. We do it here to get it under the SMI Header, and to not print it multiple times
+    # in case the SMI is relaunched as sudo
+    # Note that this only affects the --all tab. While it won't output the supported fields like
+    # temperature or fan speed, that would require a rework to implement. For now, devices without
+    # DPM support can get the fields from the concise output, or by specifying the flag. But the
+    # --all flag will not show any fields for a device that doesn't have DPM, even fan speed or temperature
+    if args.showallinfo:
+        for device in deviceList:
+            if not isDPMAvailable(device):
+                printLog(device, 'WARNING: DPM not available, skipping output for this device')
+                deviceList.remove(device)
+
     if len(sys.argv) == 1:
         showAllConcise(deviceList)
     if args.showhw:
