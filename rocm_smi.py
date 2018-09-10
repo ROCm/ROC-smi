@@ -700,10 +700,10 @@ def showProfile(deviceList):
 
 
 def showPower(deviceList):
-    """ Display current Power Consumption for a list of devices.
+    """ Display current Average Graphics Package Power Consumption for a list of devices.
 
     Parameters:
-    deviceList -- List of devices to display current Power Consumption (can be a single-item list)
+    deviceList -- List of devices to display current Average Graphics Package Power Consumption (can be a single-item list)
     """
     print(logSpacer)
     try:
@@ -713,9 +713,9 @@ def showPower(deviceList):
         for device in deviceList:
             power = getSysfsValue(device, 'power')
             if not power:
-                printLog(device, 'Cannot get GPU power Consumption: Average GPU Power not supported')
+                printLog(device, 'Cannot get Average Graphics Package Power Consumption: Average GPU Power not supported')
             else:
-                printLog(device, 'Average GPU Power: ' + power)
+                printLog(device, 'Average Graphics package Power: ' + power)
     print(logSpacer)
 
 
@@ -1141,7 +1141,7 @@ if __name__ == '__main__':
     groupDisplay.add_argument('-g', '--showgpuclocks', help='Show current GPU clock frequencies', action='store_true')
     groupDisplay.add_argument('-f', '--showfan', help='Show current fan speed', action='store_true')
     groupDisplay.add_argument('-p', '--showperflevel', help='Show current DPM Performance Level', action='store_true')
-    groupDisplay.add_argument('-P', '--showpower', help='Show current power consumption', action='store_true')
+    groupDisplay.add_argument('-P', '--showpower', help='Show current Average Graphics Package Power Consumption', action='store_true')
     groupDisplay.add_argument('-o', '--showoverdrive', help='Show current GPU Clock OverDrive level', action='store_true')
     groupDisplay.add_argument('-m', '--showmemoverdrive', help='Show current GPU Memory Clock OverDrive level', action='store_true')
     groupDisplay.add_argument('-l', '--showprofile', help='Show Compute Profile attributes', action='store_true')

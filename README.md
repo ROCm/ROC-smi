@@ -44,7 +44,7 @@ optional arguments:
   -g, --showgpuclocks          Show current GPU clock frequencies
   -f, --showfan                Show current fan speed
   -p, --showperflevel          Show current Performance Level
-  -P, --showpower              Show current power consumption
+  -P, --showpower              Show current Average Graphics Package Power Consumption
   -o, --showoverdrive          Show current GPU Clock OverDrive level
   -m, --showmemoverdrive       Show current GPU Memory Clock OverDrive level
   -l, --showprofile            Show Compute Profile attributes
@@ -143,6 +143,12 @@ optional arguments:
         so using this flag will automatically set the performance level to "manual"
 
         It is not possible to modify the non-CUSTOM Profiles. These are hard-coded by the kernel
+
+-P, --showpower:
+Show Average Graphics Package power consumption
+
+"Graphics Package" refers to the GPU plus any HBM (High-Bandwidth memory) modules, if present
+
 
 #### Testing changes
 
