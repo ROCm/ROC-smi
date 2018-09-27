@@ -55,7 +55,7 @@ valuePaths = {
     'fanmax' : {'prefix' : hwmonprefix, 'filepath' : 'pwm1_max', 'needsparse' : False},
     'fanmode' : {'prefix' : hwmonprefix, 'filepath' : 'pwm1_enable', 'needsparse' : False},
     'temp' : {'prefix' : hwmonprefix, 'filepath' : 'temp1_input', 'needsparse' : True},
-    'power' : {'prefix' : powerprefix, 'filepath' : 'amdgpu_pm_info', 'needsparse' : True},
+    'power' : {'prefix' : hwmonprefix, 'filepath' : 'power1_average', 'needsparse' : True},
     'power_cap' : {'prefix' : hwmonprefix, 'filepath' : 'power1_cap', 'needsparse' : False},
     'power_cap_max' : {'prefix' : hwmonprefix, 'filepath' : 'power1_cap_max', 'needsparse' : False},
     'power_cap_min' : {'prefix' : hwmonprefix, 'filepath' : 'power1_cap_min', 'needsparse' : False}
@@ -78,15 +78,18 @@ def getSysfsValue(device, key):
         if not getHwmonFromDevice(device):
             return None
         filePath = os.path.join(getHwmonFromDevice(device), pathDict['filepath'])
-    if pathDict['prefix'] == powerprefix:
-        # Power consumption is in debugfs and has a different path structure
-        filePath = os.path.join(powerprefix, device[4:], 'amdgpu_pm_info')
 
     if not os.path.isfile(filePath):
         return None
 
-    with open(filePath, 'r') as fileContents:
-        fileValue = fileContents.read().rstrip('\n')
+    # Use try since some sysfs files like power1_average will throw -EINVAL
+    # instead of giving something useful.
+    try:
+        with open(filePath, 'r') as fileContents:
+            fileValue = fileContents.read().rstrip('\n')
+    except:
+        printLog(device, 'WARNING: Unable to read ' + filePath)
+        return None
 
     # Some sysfs files aren't a single line of text
     if pathDict['needsparse']:
@@ -114,10 +117,10 @@ def parseSysfsValue(key, value):
         # Convert from millidegrees
         return int(value) / 1000
     if key == 'power':
-        # amdgpu_pm_info has a bunch of info, we only want GPU power usage
-        for line in value.splitlines():
-            if 'average GPU' in line:
-                return str.lstrip(line.replace(' (average GPU)', ''))
+        # power1_average returns the value in microwatts. However, if power is not
+        # available, it will return "Invalid Argument"
+        if value.isdigit():
+            return float(value) / 1000 / 1000
 
     return ''
 
@@ -730,7 +733,7 @@ def showPower(deviceList):
             if not power:
                 printLog(device, 'Cannot get Average Graphics Package Power Consumption: Average GPU Power not supported')
             else:
-                printLog(device, 'Average Graphics Package Power: ' + power + 'W')
+                printLog(device, 'Average Graphics Package Power: ' + str(power) + 'W')
     print(logSpacer)
 
 
@@ -795,7 +798,7 @@ def showAllConcise(deviceList):
         if not power:
             power = 'N/A'
         else:
-            power = power[:-2] + 'W'
+            power = str(power) + 'W'
 
         sclk = getCurrentClock(device, 'gpu', 'freq')
         if not sclk:
@@ -1321,7 +1324,7 @@ if __name__ == '__main__':
 
     if args.setsclk or args.setmclk or args.setpclk or args.resetfans or args.setfan or args.setperflevel or \
        args.load or args.resetclocks or args.setprofile or args.resetprofile or args.setoverdrive or \
-       args.showpower or args.setpoweroverdrive or args.resetpoweroverdrive or len(sys.argv) == 1:
+       args.setpoweroverdrive or args.resetpoweroverdrive or len(sys.argv) == 1:
         relaunchAsSudo()
 
     # Header for the SMI
