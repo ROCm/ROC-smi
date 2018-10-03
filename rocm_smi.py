@@ -863,6 +863,12 @@ def setClocks(deviceList, clktype, clk):
             RETCODE = 1
             return
 
+        # If maxLevel is empty, it means that the sysfs file is empty, so quit
+        maxLevel = getMaxLevel(device, clktype)
+        if not maxLevel:
+            printLog(device, 'Unable to set clock for type ' + clktype + ', Sysfs file is empty')
+            RETCODE = 1
+            continue
         # GPU clocks can be set to multiple levels at the same time (of the format
         # 4 5 6 for levels 4, 5 and 6). Don't compare against the max level for gpu
         # clocks in this case
