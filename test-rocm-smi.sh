@@ -173,8 +173,8 @@ getCurrentClock() {
     local clockFile="$1"; shift;
     local value=""
     clocks="$(cat $clockFile)"
-    for line in $clocks; do
-        if [ "${line: -1:1}" == "*" ]; then
+    while read -r line; do
+        if [[ "$line" =~ \*$ ]]; then
             if [ "$type" == "level" ]; then
                 value=${line%%:*}
             else
@@ -183,7 +183,7 @@ getCurrentClock() {
             fi
             break
         fi
-    done
+    done <<< "$clocks"
     echo "$value"
 }
 

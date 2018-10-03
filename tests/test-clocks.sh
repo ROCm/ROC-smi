@@ -7,32 +7,33 @@ testGetCurrentClocks() {
     local smiPath="$1"; shift;
     local smiDev="$1"; shift;
     local smiCmd="-c"
-    local clockType="GPU"
-    local rocmClock=""
     echo -e "\nTesting $smiPath $smiDev $smiCmd..."
-    clocks="$($smiPath $smiDev $smiCmd)"
-    line=$($smiPath $smiDev $smiCmd | grep -m1 '^GPU\[')
-    rocmClock="$(extractRocmValue $line)"
-    rocmClock="${rocmClock##*(}"
-    rocmClock="${rocmClock:0:-1}"
-    if [[ "$line" == *"GPU Memory"* ]]; then
-        clockFile="$DRM_PREFIX/card${smiDev:3}/device/pp_dpm_mclk"
-        clockType="GPU Memory"
-    elif [[ "$line" == *"PCIE"* ]]; then
-        clockFile="$DRM_PREFIX/card${smiDev:3}/device/pp_dpm_pcie"
-        clockType="PCIE"
-    else
-        clockFile="$DRM_PREFIX/card${smiDev:3}/device/pp_dpm_sclk"
-    fi
-    local sysClock="$(getCurrentClock freq $clockFile)"
-    if [ "$rocmClock" == "None" ]; then
-        echo "WARNING: Unable to test empty value for $clockType"
-        continue
-    fi
-    if [ "$rocmClock" != "$sysClock" ]; then
-        echo "FAILURE: $clockType clock frequency from $SMI_NAME $rocmClock does not match $sysClock"
-        NUM_FAILURES=$(($NUM_FAILURES+1))
-    fi
+    local clocks="$($smiPath $smiDev $smiCmd)"
+    local sysClock=""
+    while read -r line; do
+        if [[ "$line" == *"GPU Clock Level"* ]]; then
+            name="GPU clock"
+            sysClock="$(getCurrentClock freq $DRM_PREFIX/card${smiDev:3}/device/pp_dpm_sclk)"
+        elif [[ "$line" == *"GPU Memory"* ]]; then
+            name="GPU Memory clock"
+            sysClock="$(getCurrentClock freq $DRM_PREFIX/card${smiDev:3}/device/pp_dpm_mclk)"
+        elif [[ "$line" == *"PCIE"* ]]; then
+	    if [[ "$line" == *"None"* ]]; then
+	        continue
+	    fi
+            name="PCIE"
+            sysClock="$(getCurrentClock freq $DRM_PREFIX/card${smiDev:3}/device/pp_dpm_pcie)"
+        else
+            continue
+        fi
+        local rocmClock="$(extractRocmValue $line)"
+        rocmClock="${line##*(}"
+        rocmClock="${rocmClock:0:-1}"
+        if [ "$sysClock" != "$rocmClock" ]; then
+            echo "FAILURE: $name frequency from $SMI_NAME $rocmClock does not match $sysClock"
+            NUM_FAILURES=$(($NUM_FAILURES+1))
+        fi
+    done <<< "$clocks"
     echo -e "Test complete: $smiPath $smiDev $smiCmd\n"
     return 0
 }
@@ -77,7 +78,7 @@ testGetSupportedClocks() {
                 continue
             fi
         fi
-        rocmClock="$(extractRocmValue $rocmLine)"
+        local rocmClock="$(extractRocmValue $rocmLine)"
         local clockFile="$gpuClockFile"
         if [ "$clockType" == "mem" ]; then
             clockFile="$memClockFile"
