@@ -38,7 +38,7 @@ drmprefix = '/sys/class/drm'
 hwmonprefix = '/sys/class/hwmon'
 powerprefix = '/sys/kernel/debug/dri/'
 
-headerSpacer = '='*20
+headerSpacer = '='*24
 logSpacer = headerSpacer * 4
 
 valuePaths = {
@@ -49,6 +49,7 @@ valuePaths = {
     'mclk_od' : {'prefix' : drmprefix, 'filepath' : 'pp_mclk_od', 'needsparse' : False},
     'sclk' : {'prefix' : drmprefix, 'filepath' : 'pp_dpm_sclk', 'needsparse' : False},
     'mclk' : {'prefix' : drmprefix, 'filepath' : 'pp_dpm_mclk', 'needsparse' : False},
+    'pclk' : {'prefix' : drmprefix, 'filepath' : 'pp_dpm_pcie', 'needsparse' : False},
     'profile' : {'prefix' : drmprefix, 'filepath' : 'pp_power_profile_mode', 'needsparse' : False},
     'fan' : {'prefix' : hwmonprefix, 'filepath' : 'pwm1', 'needsparse' : False},
     'fanmax' : {'prefix' : hwmonprefix, 'filepath' : 'pwm1_max', 'needsparse' : False},
@@ -426,14 +427,19 @@ def getCurrentClock(device, clock, clocktype):
 
     Parameters:
     device -- Device to return the clock frequency
-    clock -- [gpu|mem] Return either the GPU (gpu) or GPU Memory (mem) clock frequency
+    clock -- [gpu|mem|pcie] Return the GPU (gpu), GPU Memory (mem) or PCIE (pcie) clock frequency
     clocktype -- [freq|level] Return either the clock frequency (freq) or clock level (level)
     """
     currClk = ''
 
-    currClocks = getSysfsValue(device, 'sclk')
-    if clock == 'mem':
+    if clock == 'gpu':
+        currClocks = getSysfsValue(device, 'sclk')
+    elif clock == 'mem':
         currClocks = getSysfsValue(device, 'mclk')
+    elif clock == 'pcie':
+        currClocks = getSysfsValue(device, 'pclk')
+    else:
+        currClocks = None
 
     if not currClocks:
         return None
@@ -454,19 +460,17 @@ def getMaxLevel(device, leveltype):
 
     Parameters:
     device -- Device to return the maximum level
-    leveltype -- [gpu|mem|profile] Return either the maximum GPU (gpu) or GPU Memory (mem) level, or the highest numbered Power Profiles
+    leveltype -- [gpu|mem|pcie|profile] Return the maximum GPU (gpu), GPU Memory (mem) level,
+                 PCIe level, or the highest numbered Power Profiles
     """
     global RETCODE
-    if leveltype not in ['gpu', 'mem', 'profile']:
+    levelmap = {'gpu' : 'sclk', 'mem' : 'mclk', 'pcie' : 'pclk', 'profile' : 'profile'}
+    try:
+        key = levelmap[leveltype]
+    except KeyError:
         printLog(device, 'Invalid level type ' + leveltype)
         RETCODE = 1
         return ''
-
-    key = 'sclk'
-    if leveltype == 'mem':
-        key = 'mclk'
-    elif leveltype == 'profile':
-        key = 'profile'
 
     levels = getSysfsValue(device, key)
     if not levels:
@@ -566,6 +570,8 @@ def showCurrentClocks(deviceList):
         gpulevel = getCurrentClock(device, 'gpu', 'level')
         memclk = getCurrentClock(device, 'mem', 'freq')
         memlevel = getCurrentClock(device, 'mem', 'level')
+        pcieclk = getCurrentClock(device, 'pcie', 'freq')
+        pcielevel = getCurrentClock(device, 'pcie', 'level')
 
         if gpuclk == '':
             printLog(device, 'Unable to determine current clocks. Check dmesg or GPU temperature')
@@ -574,6 +580,7 @@ def showCurrentClocks(deviceList):
 
         printLog(device, 'GPU Clock Level: ' + str(gpulevel) + ' (' + str(gpuclk) + ')')
         printLog(device, 'GPU Memory Clock Level: ' + str(memlevel) + ' (' + str(memclk) + ')')
+        printLog(device, 'PCIE Clock Level: ' + str(pcielevel) + ' (' + str(pcieclk) + ')')
     print(logSpacer)
 
 
@@ -622,6 +629,7 @@ def showClocks(deviceList):
         devpath = os.path.join(drmprefix, device, 'device')
         sclkPath = os.path.join(devpath, 'pp_dpm_sclk')
         mclkPath = os.path.join(devpath, 'pp_dpm_mclk')
+        pclkPath = os.path.join(devpath, 'pp_dpm_pcie')
         if not isDPMAvailable(device):
             printLog(device, 'DPM not available - Cannot display clocks')
             continue
@@ -631,9 +639,13 @@ def showClocks(deviceList):
             sclkLog = 'Supported GPU clock frequencies on GPU' + parseDeviceName(device) + '\n' + sclk.read()
         with open(mclkPath, 'r') as mclk:
             mclkLog = 'Supported GPU Memory clock frequencies on GPU' + parseDeviceName(device) + '\n' + mclk.read()
+        with open(pclkPath, 'r') as pclk:
+            pclkLog = 'Supported PCIE clock frequencies on GPU' + parseDeviceName(device) + '\n' + pclk.read()
         for line in sclkLog.split('\n'):
             printLog(device, line)
         for line in mclkLog.split('\n'):
+            printLog(device, line)
+        for line in pclkLog.split('\n'):
             printLog(device, line)
     print(logSpacer)
 
@@ -745,7 +757,7 @@ def showAllConcise(deviceList):
     deviceList -- List of all devices
     """
     print(logSpacer)
-    print(' GPU  Temp    AvgPwr   SCLK     MCLK     Fan      Perf    SCLK OD    MCLK OD')
+    print(' GPU  Temp    AvgPwr   SCLK     MCLK     PCLK           Fan      Perf    SCLK OD    MCLK OD')
     for device in deviceList:
 
         temp = getSysfsValue(device, 'temp')
@@ -767,6 +779,10 @@ def showAllConcise(deviceList):
         mclk = getCurrentClock(device, 'mem', 'freq')
         if not mclk:
             mclk = 'N/A'
+
+        pclk = getCurrentClock(device, 'pcie', 'freq')
+        if not pclk:
+            pclk = 'N/A'
 
         fan = str(getFanSpeed(device))
         if not fan:
@@ -790,7 +806,7 @@ def showAllConcise(deviceList):
         else:
             mclk_od = mclk_od + '%'
 
-        print("  %-4s%-8s%-9s%-9s%-9s%-9s%-10s%-11s%-9s" % (device[4:], temp, power, sclk, mclk, fan, perf, sclk_od, mclk_od))
+        print("  %-4s%-8s%-9s%-9s%-9s%-15s%-9s%-10s%-11s%-9s" % (device[4:], temp, power, sclk, mclk, pclk, fan, perf, sclk_od, mclk_od))
     print(logSpacer)
 
 
@@ -815,7 +831,7 @@ def setClocks(deviceList, clktype, clk):
 
     Parameters:
     deviceList -- List of devices to set the clock frequency (can be a single-item list)
-    clktype -- [gpu|mem] Set the GPU (gpu) or GPU Memory (mem) clock frequency level
+    clktype -- [gpu|mem|pcie] Set the GPU (gpu), GPU Memory (mem), or PCIE clock frequency level
     clk -- Clock frequency level to set
     """
     global RETCODE
@@ -838,8 +854,14 @@ def setClocks(deviceList, clktype, clk):
         devpath = os.path.join(drmprefix, device, 'device')
         if clktype == 'gpu':
             clkFile = os.path.join(devpath, 'pp_dpm_sclk')
-        else:
+        elif clktype == 'mem':
             clkFile = os.path.join(devpath, 'pp_dpm_mclk')
+        elif clktype == 'pcie':
+            clkFile = os.path.join(devpath, 'pp_dpm_pcie')
+        else:
+            printLog(device, 'Invalid clock type ' + clktype)
+            RETCODE = 1
+            return
 
         # GPU clocks can be set to multiple levels at the same time (of the format
         # 4 5 6 for levels 4, 5 and 6). Don't compare against the max level for gpu
@@ -1036,7 +1058,7 @@ def resetOverDrive(deviceList):
 def resetClocks(deviceList):
     """ Reset clocks to default
 
-    Reset sclk and mclk to default values by setting performance level to auto, as well
+    Reset sclk, mclk amd pclk to default values by setting performance level to auto, as well
     as setting OverDrive back to 0
 
 
@@ -1079,6 +1101,7 @@ def load(savefilepath, autoRespond):
             setClockOverDrive([device], 'mem', values['overdrivegpumem'], autoRespond)
             setClocks([device], 'gpu', values['gpu'])
             setClocks([device], 'mem', values['mem'])
+            setClocks([device], 'pcie', values['pcie'])
             setProfile([device], values['profile'])
 
             # Set Perf level last, since setting OverDrive sets the Performance level
@@ -1098,6 +1121,7 @@ def save(deviceList, savefilepath):
     perfLevels = {}
     gpuClocks = {}
     memClocks = {}
+    pcieClocks = {}
     fanSpeeds = {}
     overDriveGpu = {}
     overDriveGpuMem = {}
@@ -1114,11 +1138,12 @@ def save(deviceList, savefilepath):
         perfLevels[device] = getSysfsValue(device, 'perf')
         gpuClocks[device] = getCurrentClock(device, 'gpu', 'level')
         memClocks[device] = getCurrentClock(device, 'mem', 'level')
+        pcieClocks[device] = getCurrentClock(device, 'pcie', 'level')
         fanSpeeds[device] = getSysfsValue(device, 'fan')
         overDriveGpu[device] = getSysfsValue(device, 'sclk_od')
         overDriveGpuMem[device] = getSysfsValue(device, 'mclk_od')
         profiles[device] = getProfile(device)
-        jsonData[device] = {'vJson': JSON_VERSION, 'gpu': gpuClocks[device], 'mem': memClocks[device], 'fan': fanSpeeds[device], 'overdrivegpu': overDriveGpu[device], 'overdrivegpumem': overDriveGpuMem[device], 'profile': profiles[device], 'perflevel': perfLevels[device]}
+        jsonData[device] = {'vJson': JSON_VERSION, 'gpu': gpuClocks[device], 'mem': memClocks[device], 'pcie': pcieClocks[device], 'fan': fanSpeeds[device], 'overdrivegpu': overDriveGpu[device], 'overdrivegpumem': overDriveGpuMem[device], 'profile': profiles[device], 'perflevel': perfLevels[device]}
         printLog(device, 'Current settings successfully saved to ' + savefilepath)
     with open(savefilepath, 'w') as savefile:
         json.dump(jsonData, savefile, ensure_ascii=True)
@@ -1148,9 +1173,10 @@ if __name__ == '__main__':
     groupDisplay.add_argument('-s', '--showclkfrq', help='Show supported GPU and Memory Clock', action='store_true')
     groupDisplay.add_argument('-a', '--showallinfo', help='Show Temperature, Fan and Clock values', action='store_true')
 
-    groupAction.add_argument('-r', '--resetclocks', help='Reset sclk and mclk to default', action='store_true')
+    groupAction.add_argument('-r', '--resetclocks', help='Reset sclk, mclk and pclk to default', action='store_true')
     groupAction.add_argument('--setsclk', help='Set GPU Clock Frequency Level(s) (requires manual Perf level)', type=int, metavar='LEVEL', nargs='+')
     groupAction.add_argument('--setmclk', help='Set GPU Memory Clock Frequency Level(s) (requires manual Perf level)', type=int, metavar='LEVEL', nargs='+')
+    groupAction.add_argument('--setpclk', help='Set PCIE Clock Frequency Level(s) (requires manual Perf level)', type=int, metavar='LEVEL', nargs='+')
     groupAction.add_argument('--resetfans', help='Reset fans to automatic (driver) control', action='store_true')
     groupAction.add_argument('--setfan', help='Set GPU Fan Speed (Level or %%)', metavar='LEVEL')
     groupAction.add_argument('--setperflevel', help='Set Performance Level', metavar='LEVEL')
@@ -1190,13 +1216,14 @@ if __name__ == '__main__':
         args.showprofile = True
         args.showpower = True
 
-    if args.setsclk or args.setmclk or args.resetfans or args.setfan or args.setperflevel or args.load or \
-       args.resetclocks or args.setprofile or args.resetprofile or args.setoverdrive or args.showpower or \
+    if args.setsclk or args.setmclk or args.setpclk or args.resetfans or args.setfan or args.setperflevel or \
+       args.load or args.resetclocks or args.setprofile or args.resetprofile or args.setoverdrive or \
+       args.showpower or \
        len(sys.argv) == 1:
         relaunchAsSudo()
 
     # Header for the SMI
-    print('\n\n', headerSpacer, '    ROCm System Management Interface    ', headerSpacer, sep='')
+    print('\n\n', headerSpacer, '        ROCm System Management Interface        ', headerSpacer, sep='')
 
     # If all fields are requested, only print it for devices with DPM support. There is no point
     # in printing a bunch of "Feature unavailable" messages and cluttering the output
@@ -1246,6 +1273,8 @@ if __name__ == '__main__':
         setClocks(deviceList, 'gpu', args.setsclk)
     if args.setmclk:
         setClocks(deviceList, 'mem', args.setmclk)
+    if args.setpclk:
+        setClocks(deviceList, 'pcie', args.setpclk)
     if args.resetfans:
         resetFans(deviceList)
     if args.setfan:
@@ -1270,5 +1299,5 @@ if __name__ == '__main__':
         print('WARNING: One or more commands failed')
 
     # Footer for the SMI
-    print(headerSpacer, '           End of ROCm SMI Log          ', headerSpacer, '\n', sep='')
+    print(headerSpacer, '               End of ROCm SMI Log              ', headerSpacer, '\n', sep='')
     sys.exit(RETCODE)

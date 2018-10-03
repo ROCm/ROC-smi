@@ -15,6 +15,7 @@ testGetCurrentClocks() {
     rocmClock="$(extractRocmValue $line)"
     rocmClock="${rocmClock##*(}"
     rocmClock="${rocmClock:0:-1}"
+    # TODO: Add rework to allow for PCIe clocks
     if [[ "$line" == *"GPU Memory"* ]]; then
         clockFile="$DRM_PREFIX/card${smiDev:3}/device/pp_dpm_mclk"
         clockType="GPU Memory"
@@ -61,6 +62,7 @@ testGetSupportedClocks() {
             if [ "$(checkLogLine $rocmLine)" != "true" ]; then
                 continue
             fi
+            # TODO: Add rework to allow for PCIe clocks
             if [[ "$rocmLine" == *"Supported GPU Memory clock"* ]]; then
                 clockType="mem"
                 continue
@@ -88,6 +90,7 @@ testGetSupportedClocks() {
                 fi
             done
         done
+        # TODO: Add rework to allow for PCIe clocks
         if [ "$numGpuMatches" != "$(getNumLevels $gpuClockFile)" ]; then
             echo "FAILURE: Supported GPU clock frequencies from $SMI_NAME do not match sysfs values"
             NUM_FAILURES=$(($NUM_FAILURES+1))
@@ -123,6 +126,7 @@ testSetClock() {
             continue
         fi
 
+        # TODO: Add rework to allow for PCIe clocks
         if [[ "$rocmLine" == *"GPU Memory"* ]]; then
             if [ "$clock" == "gpu" ]; then # If we are testing sclk, skip the mclk lines
                 continue
