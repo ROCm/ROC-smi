@@ -15,10 +15,12 @@ testGetCurrentClocks() {
     rocmClock="$(extractRocmValue $line)"
     rocmClock="${rocmClock##*(}"
     rocmClock="${rocmClock:0:-1}"
-    # TODO: Add rework to allow for PCIe clocks
     if [[ "$line" == *"GPU Memory"* ]]; then
         clockFile="$DRM_PREFIX/card${smiDev:3}/device/pp_dpm_mclk"
         clockType="GPU Memory"
+    elif [[ "$line" == *"PCIE"* ]]; then
+        clockFile="$DRM_PREFIX/card${smiDev:3}/device/pp_dpm_pcie"
+        clockType="PCIE"
     else
         clockFile="$DRM_PREFIX/card${smiDev:3}/device/pp_dpm_sclk"
     fi
@@ -46,60 +48,72 @@ testGetSupportedClocks() {
     local smiCmd="-s"
 
     echo -e "\nTesting $smiPath $smiDev $smiCmd..."
-    devices="$(ls /sys/class/drm/card*/device/pp_dpm_sclk)"
-    numDevices="$(echo $devices | wc -w)"
-    for device in $devices; do
-        local clockType="gpu"
-        local numGpuMatches=0
-        local numMemMatches=0
-        local deviceNum="${devices##*/card}"
-        deviceNum="${deviceNum%%/device*}"
-        local gpuClockFile="$DRM_PREFIX/card${smiDev:3}/device/pp_dpm_sclk"
-        local memClockFile="$DRM_PREFIX/card${smiDev:3}/device/pp_dpm_mclk"
-        local clocks="$($smiPath $smiDev $smiCmd -d $deviceNum)"
-        IFS=$'\n'
-        for rocmLine in $clocks; do
-            if [ "$(checkLogLine $rocmLine)" != "true" ]; then
-                continue
-            fi
-            # TODO: Add rework to allow for PCIe clocks
-            if [[ "$rocmLine" == *"Supported GPU Memory clock"* ]]; then
-                clockType="mem"
-                continue
-            fi
+    local clockType="gpu"
+    local numGpuMatches=0
+    local numMemMatches=0
+    local numPciMatches=0
+    local gpuClockFile="$DRM_PREFIX/card${smiDev:3}/device/pp_dpm_sclk"
+    local memClockFile="$DRM_PREFIX/card${smiDev:3}/device/pp_dpm_mclk"
+    local pciClockFile="$DRM_PREFIX/card${smiDev:3}/device/pp_dpm_pcie"
+    local clocks="$($smiPath $smiDev $smiCmd $smiDev)"
+    IFS=$'\n'
+    for rocmLine in $clocks; do
+        if [ "$(checkLogLine $rocmLine)" != "true" ]; then
+            continue
+        fi
+        if [[ "$rocmLine" == *"Supported GPU Memory clock"* ]]; then
+            clockType="mem"
+            continue
+        elif [[ "$rocmLine" == *"PCIE"* ]]; then
+            clockType="pcie"
+            continue
+        fi
+        if [ "$clockType" == "mem" ] || [ "$clockType" == "gpu" ]; then
             if [[ ! "$rocmLine" == *"Mhz"* ]]; then # Ignore invalid lines
                 continue
             fi
-            rocmClock="$(extractRocmValue $rocmLine)"
-            local clockFile="$gpuClockFile"
-            if [ "$clockType" == "mem" ]; then
-                clockFile="$memClockFile"
+        elif [ "$clockType" == "pcie" ]; then
+            if [[ ! "$rocmLine" == *"GT"* ]]; then # Ignore invalid lines
+                continue
             fi
-            local sysClocks="$(cat $clockFile)"
+        fi
+        rocmClock="$(extractRocmValue $rocmLine)"
+        local clockFile="$gpuClockFile"
+        if [ "$clockType" == "mem" ]; then
+            clockFile="$memClockFile"
+        elif [ "$clockType" == "pcie" ]; then
+            clockFile="$pciClockFile"
+        fi
+        local sysClocks="$(cat $clockFile)"
 
-            for clockLine in $sysClocks; do
-                if [[ "$clockLine" == *"$rocmClock"* ]]; then
-                    if [ "$clockType" == "gpu" ]; then
-                        numGpuMatches=$((numGpuMatches+1))
-                        break
-                    else
-                        numMemMatches=$((numMemMatches+1))
-                        break
-                    fi
+        for clockLine in $sysClocks; do
+            if [[ "$clockLine" == *"$rocmClock"* ]]; then
+                if [ "$clockType" == "gpu" ]; then
+                    numGpuMatches=$((numGpuMatches+1))
+                    break
+                elif [ "$clockType" == "mem" ]; then
+                    numMemMatches=$((numMemMatches+1))
+                    break
+                else
+                    numPciMatches=$((numPciMatches+1))
                     break
                 fi
-            done
+                break
+            fi
         done
-        # TODO: Add rework to allow for PCIe clocks
-        if [ "$numGpuMatches" != "$(getNumLevels $gpuClockFile)" ]; then
-            echo "FAILURE: Supported GPU clock frequencies from $SMI_NAME do not match sysfs values"
-            NUM_FAILURES=$(($NUM_FAILURES+1))
-        fi
-        if [ "$numMemMatches" != "$(getNumLevels $memClockFile)" ]; then
-            echo "FAILURE: Supported GPU Memory clock frequencies from $SMI_NAME do not match sysfs values"
-            NUM_FAILURES=$(($NUM_FAILURES+1))
-        fi
     done
+    if [ "$numGpuMatches" != "$(getNumLevels $gpuClockFile)" ]; then
+        echo "FAILURE: Supported GPU clock frequencies from $SMI_NAME do not match sysfs values"
+        NUM_FAILURES=$(($NUM_FAILURES+1))
+    fi
+    if [ "$numMemMatches" != "$(getNumLevels $memClockFile)" ]; then
+        echo "FAILURE: Supported GPU Memory clock frequencies from $SMI_NAME do not match sysfs values"
+        NUM_FAILURES=$(($NUM_FAILURES+1))
+    fi
+    if [ "$numPciMatches" != "$(getNumLevels $pciClockFile)" ]; then
+        echo "FAILURE: Supported PCIE clock frequencies from $SMI_NAME do not match sysfs values"
+        NUM_FAILURES=$(($NUM_FAILURES+1))
+    fi
     echo -e "Test complete: $smiPath $smiDev $smiCmd\n"
     return 0
 }
@@ -126,15 +140,19 @@ testSetClock() {
             continue
         fi
 
-        # TODO: Add rework to allow for PCIe clocks
         if [[ "$rocmLine" == *"GPU Memory"* ]]; then
-            if [ "$clock" == "gpu" ]; then # If we are testing sclk, skip the mclk lines
+            if [ ! "$clock" == "mem" ]; then
                 continue
             fi
             clockFile="$DRM_PREFIX/card${smiDev:3}/device/pp_dpm_mclk"
             clockType="GPU Memory"
+        elif [[ "$rocmLine" == "PCIE" ]]; then
+            if [ ! "$clock" == "pcie" ]; then
+                continue
+            fi
+            clockFile="$DRM_PREFIX/card${smiDev:3}/device/pp_dpm_pcie"
         else
-            if [ "$clock" == "mem" ]; then # If we are testing mclk, skip the sclk lines
+            if [ ! "$clock" == "gpu" ]; then
                 continue
             fi
             clockFile="$DRM_PREFIX/card${smiDev:3}/device/pp_dpm_sclk"

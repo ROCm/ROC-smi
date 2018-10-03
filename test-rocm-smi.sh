@@ -215,6 +215,8 @@ runTestSuite() {
                 testSetClock "gpu" "$smiPath" "$smiDev" ;;
             --setmclk)
                 testSetClock "mem" "$smiPath" "$smiDev" ;;
+            --setpclk)
+                testSetClock "pcie" "$smiPath" "$smiDev" ;;
             --setfan)
                 testSetFan "$smiPath" "$smiDev" ;;
             --resetfans)
@@ -243,6 +245,7 @@ runTestSuite() {
                 testResetFans "$smiPath" "$smiDev" ;
                 testSetClock "gpu" "$smiPath" "$smiDev" ;
                 testSetClock "mem" "$smiPath" "$smiDev" ;
+                testSetClock "pcie" "$smiPath" "$smiDev" ;
                 testReset "$smiPath" "$smiDev" ;
                 testSetPerf "$smiPath" "$smiDev" ;
                 testSetGpuOverDrive "$smiPath" "$smiDev" ;
