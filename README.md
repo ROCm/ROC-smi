@@ -51,6 +51,7 @@ optional arguments:
   -M, --showmaxpower           Show maximum graphics package power this GPU will consume
   -l, --showprofile            Show Compute Profile attributes
   -s, --showclkfrq             Show supported GPU and Memory Clock
+  -u, --showuse                Show current GPU use
   -a, --showallinfo            Show Temperature, Fan and Clock values
 
   -r, --resetclocks            Reset sclk and mclk to default

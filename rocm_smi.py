@@ -51,6 +51,7 @@ valuePaths = {
     'mclk' : {'prefix' : drmprefix, 'filepath' : 'pp_dpm_mclk', 'needsparse' : False},
     'pclk' : {'prefix' : drmprefix, 'filepath' : 'pp_dpm_pcie', 'needsparse' : False},
     'profile' : {'prefix' : drmprefix, 'filepath' : 'pp_power_profile_mode', 'needsparse' : False},
+    'use' : {'prefix' : drmprefix, 'filepath' : 'gpu_busy_percent', 'needsparse' : False},
     'fan' : {'prefix' : hwmonprefix, 'filepath' : 'pwm1', 'needsparse' : False},
     'fanmax' : {'prefix' : hwmonprefix, 'filepath' : 'pwm1_max', 'needsparse' : False},
     'fanmode' : {'prefix' : hwmonprefix, 'filepath' : 'pwm1_enable', 'needsparse' : False},
@@ -759,6 +760,22 @@ def showMaxPower(deviceList):
     print(logSpacer)
 
 
+def showGpuUse(deviceList):
+    """ Display GPU use for a list of devices.
+
+    Parameters:
+    deviceList -- List of all devices
+    """
+    print(logSpacer)
+    for device in deviceList:
+        use = getSysfsValue(device, 'use')
+        if use == None:
+            printLog(device, 'Cannot get GPU use.')
+        else:
+            printLog(device, 'Current GPU use: ' + use + '%')
+    print(logSpacer)
+
+
 def showAllConciseHw(deviceList):
     """ Display critical Hardware info for all devices in a concise format.
 
@@ -785,7 +802,7 @@ def showAllConcise(deviceList):
     deviceList -- List of all devices
     """
     print(logSpacer)
-    print('GPU   Temp   AvgPwr   SCLK    MCLK    PCLK           Fan     Perf    PwrCap   SCLK OD   MCLK OD')
+    print('GPU   Temp   AvgPwr   SCLK    MCLK    PCLK           Fan     Perf    PwrCap   SCLK OD   MCLK OD  GPU%')
     for device in deviceList:
 
         temp = getSysfsValue(device, 'temp')
@@ -840,7 +857,13 @@ def showAllConcise(deviceList):
         else:
             mclk_od = mclk_od + '%'
 
-        print("%-6s%-7s%-9s%-8s%-8s%-15s%-8s%-8s%-9s%-10s%-9s" % (device[4:], temp, power, sclk, mclk, pclk, fan, perf, power_cap, sclk_od, mclk_od))
+        use = getSysfsValue(device, 'use')
+        if use == None:
+            use = 'N/A'
+        else:
+            use = use + '%'
+
+        print("%-6s%-7s%-9s%-8s%-8s%-15s%-8s%-8s%-9s%-10s%-9s%-9s" % (device[4:], temp, power, sclk, mclk, pclk, fan, perf, power_cap, sclk_od, mclk_od, use))
     print(logSpacer)
 
 
@@ -1273,6 +1296,7 @@ if __name__ == '__main__':
     groupDisplay.add_argument('-M', '--showmaxpower', help='Show maximum graphics package power this GPU will consume', action='store_true')
     groupDisplay.add_argument('-l', '--showprofile', help='Show Compute Profile attributes', action='store_true')
     groupDisplay.add_argument('-s', '--showclkfrq', help='Show supported GPU and Memory Clock', action='store_true')
+    groupDisplay.add_argument('-u', '--showuse', help='Show current GPU use', action='store_true')
     groupDisplay.add_argument('-a', '--showallinfo', help='Show Temperature, Fan and Clock values', action='store_true')
 
     groupAction.add_argument('-r', '--resetclocks', help='Reset sclk, mclk and pclk to default', action='store_true')
@@ -1315,6 +1339,7 @@ if __name__ == '__main__':
         args.showfan = True
         args.list = True
         args.showclkfrq = True
+        args.showuse = True
         args.showperflevel = True
         args.showoverdrive = True
         args.showmemoverdrive = True
@@ -1376,6 +1401,8 @@ if __name__ == '__main__':
         showPower(deviceList)
     if args.showclkfrq:
         showClocks(deviceList)
+    if args.showuse:
+        showGpuUse(deviceList)
     if args.setsclk:
         setClocks(deviceList, 'gpu', args.setsclk)
     if args.setmclk:
