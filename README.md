@@ -22,10 +22,11 @@ For detailed and up to date usage information, we recommend consulting the help:
 For convenience purposes, following is a quick excerpt:
 ```shell
 
-usage: rocm-smi [-h] [-d DEVICE] [-i] [-v] [-t] [-c] [-g] [-f] [-p] [-P] [-o] [-m] [-l] [-s] [-a] [-r]
-                [--setsclk LEVEL [LEVEL ...]] [--setmclk LEVEL [LEVEL ...]] [--resetfans] [--setfan LEVEL]
-                [--setperflevel LEVEL] [--setoverdrive %] [--setmemoverdrive %] [--setprofile SETPROFILE]
-                [--resetprofile] [--load FILE | --save FILE] [--autorespond RESPONSE]
+usage: rocm-smi [-h] [-d DEVICE] [-i] [-v] [--showhw] [-t] [-c] [-g] [-f] [-p] [-P] [-o] [-m] [-M] [-l] [-s]
+                [-a] [-r] [--setsclk LEVEL [LEVEL ...]] [--setmclk LEVEL [LEVEL ...]] [--resetfans]
+                [--setfan LEVEL] [--setperflevel LEVEL] [--setoverdrive %] [--setmemoverdrive %]
+                [--setpoweroverdrive WATTS] [--resetpoweroverdrive] [--setprofile SETPROFILE] [--resetprofile]
+                [--load FILE | --save FILE] [--autorespond RESPONSE]
 
 AMD ROCm System Management Interface
 
@@ -47,6 +48,7 @@ optional arguments:
   -P, --showpower              Show current Average Graphics Package Power Consumption
   -o, --showoverdrive          Show current GPU Clock OverDrive level
   -m, --showmemoverdrive       Show current GPU Memory Clock OverDrive level
+  -M, --showmaxpower           Show maximum graphics package power this GPU will consume
   -l, --showprofile            Show Compute Profile attributes
   -s, --showclkfrq             Show supported GPU and Memory Clock
   -a, --showallinfo            Show Temperature, Fan and Clock values
@@ -59,6 +61,8 @@ optional arguments:
   --setperflevel LEVEL         Set Performance Level
   --setoverdrive %             Set GPU OverDrive level (requires manual|high Perf level)
   --setmemoverdrive %          Set GPU Memory Overclock OverDrive level (requires manual|high Perf level)
+  --setpoweroverdrive WATTS    Set the maximum GPU power using Power OverDrive in Watts
+  --resetpoweroverdrive        Set the maximum GPU power back to the device deafult state
   --setprofile SETPROFILE      Specify Power Profile level (#) or a quoted string of CUSTOM profile attributes
                                "# # # #..." (requires manual Perf level)
   --resetprofile               Reset Power Profile back to default
@@ -115,6 +119,21 @@ optional arguments:
         This flag automatically sets the clock to the highest level, as only the highest level is
         increased by the OverDrive value
 
+--setpoweroverdrive/--resetpoweroverdrive #:
+    This allows users to change the maximum power available to a GPU package.
+    The input value is in Watts. This limit is enforced by the hardware, and
+    some cards allow users to set it to a higher value than the default that
+    ships with the GPU. This Power OverDrive mode allows the GPU to run at
+    higher frequencies for longer periods of time, though this may mean the
+    GPU uses more power than it is allowed to use per power supply
+    specifications. Each GPU has a model-specific maximum Power OverDrive that
+    is will take; attempting to set a higher limit than that will cause this
+    command to fail.
+
+    NOTES:
+        Operating the GPU outside of specifications can cause irreparable damage to your hardware
+        Please observe the warning displayed when using this option
+
 --setprofile SETPROFILE:
     The Compute Profile accepts 1 or n parameters, either the Profile to select (see --showprofile for a list
     of preset Power Profiles) or a quoted string of values for the CUSTOM profile.
@@ -148,6 +167,10 @@ optional arguments:
 Show Average Graphics Package power consumption
 
 "Graphics Package" refers to the GPU plus any HBM (High-Bandwidth memory) modules, if present
+
+-M, --showmaxpower:
+Show the maximum Graphics Package power that the GPU will attempt to consume.
+This limit is enforced by the hardware.
 
 
 #### Testing changes

@@ -55,7 +55,10 @@ valuePaths = {
     'fanmax' : {'prefix' : hwmonprefix, 'filepath' : 'pwm1_max', 'needsparse' : False},
     'fanmode' : {'prefix' : hwmonprefix, 'filepath' : 'pwm1_enable', 'needsparse' : False},
     'temp' : {'prefix' : hwmonprefix, 'filepath' : 'temp1_input', 'needsparse' : True},
-    'power' : {'prefix' : powerprefix, 'filepath' : 'amdgpu_pm_info', 'needsparse' : True}
+    'power' : {'prefix' : powerprefix, 'filepath' : 'amdgpu_pm_info', 'needsparse' : True},
+    'power_cap' : {'prefix' : hwmonprefix, 'filepath' : 'power1_cap', 'needsparse' : False},
+    'power_cap_max' : {'prefix' : hwmonprefix, 'filepath' : 'power1_cap_max', 'needsparse' : False},
+    'power_cap_min' : {'prefix' : hwmonprefix, 'filepath' : 'power1_cap_min', 'needsparse' : False}
 }
 
 
@@ -727,7 +730,29 @@ def showPower(deviceList):
             if not power:
                 printLog(device, 'Cannot get Average Graphics Package Power Consumption: Average GPU Power not supported')
             else:
-                printLog(device, 'Average Graphics package Power: ' + power)
+                printLog(device, 'Average Graphics Package Power: ' + power + 'W')
+    print(logSpacer)
+
+
+def showMaxPower(deviceList):
+    """ Display the maximum Graphics Package Power that this GPU will attempt to consume
+    before it begins throttling performance.
+
+    Parameters:
+    deviceList -- List of devices to display maximum Graphics Package Power Consumption (can be a single-item list)
+    """
+    print(logSpacer)
+    for device in deviceList:
+        hwmon = getHwmonFromDevice(device)
+        if not hwmon:
+            printLog(device, 'No corresponding HW Monitor found')
+            continue
+        power_cap = getSysfsValue(device, 'power_cap')
+        if not power_cap:
+            printLog(device, 'Cannot get maximum Graphics Package Power: Max GPU Power reading not supported')
+        else:
+            power_cap = str(int(getSysfsValue(device, 'power_cap')) / 1000000)
+            printLog(device, 'Max Graphics Package Power: ' + power_cap + 'W')
     print(logSpacer)
 
 
@@ -757,7 +782,7 @@ def showAllConcise(deviceList):
     deviceList -- List of all devices
     """
     print(logSpacer)
-    print(' GPU  Temp    AvgPwr   SCLK     MCLK     PCLK           Fan      Perf    SCLK OD    MCLK OD')
+    print('GPU   Temp   AvgPwr   SCLK    MCLK    PCLK           Fan     Perf    PwrCap   SCLK OD   MCLK OD')
     for device in deviceList:
 
         temp = getSysfsValue(device, 'temp')
@@ -794,6 +819,12 @@ def showAllConcise(deviceList):
         if not perf:
             perf = 'N/A'
 
+        power_cap = getSysfsValue(device, 'power_cap')
+        if not power_cap:
+            power_cap = 'N/A'
+        else:
+            power_cap = str(int(power_cap)/1000000) + 'W'
+
         sclk_od = getSysfsValue(device, 'sclk_od')
         if not sclk_od or sclk_od == '-1':
             sclk_od = 'N/A'
@@ -806,7 +837,7 @@ def showAllConcise(deviceList):
         else:
             mclk_od = mclk_od + '%'
 
-        print("  %-4s%-8s%-9s%-9s%-9s%-15s%-9s%-10s%-11s%-9s" % (device[4:], temp, power, sclk, mclk, pclk, fan, perf, sclk_od, mclk_od))
+        print("%-6s%-7s%-9s%-8s%-8s%-15s%-8s%-8s%-9s%-10s%-9s" % (device[4:], temp, power, sclk, mclk, pclk, fan, perf, power_cap, sclk_od, mclk_od))
     print(logSpacer)
 
 
@@ -936,6 +967,67 @@ def setClockOverDrive(deviceList, clktype, value, autoRespond):
         else:
             printLog(device, 'Unable to set OverDrive to ' + value + '%')
 
+def setPowerOverDrive(deviceList, value, autoRespond):
+    """ Use Power OverDrive to change the the maximum power available power
+    available to the GPU in Watts. May be limited by the maximum power the
+    VBIOS is configured to allow this card to use in OverDrive mode.
+
+    Parameters:
+    deviceList -- List of devices to set to OverDrive
+    value -- Percentage amount to set for OverDrive (0-20)
+    autoRespond -- Response to automatically provide for all prompts
+    """
+    global RETCODE
+    try:
+        int(value)
+    except ValueError:
+        print('Cannot set Power OverDrive to value ', value, ', it is not an integer!')
+        RETCODE = 1
+        return
+
+    confirmOverDrive(autoRespond)
+
+    for device in deviceList:
+        if not isDPMAvailable(device):
+            printLog(device, 'DPM not available - Cannot set Power OverDrive')
+            continue
+        hwmon = getHwmonFromDevice(device)
+        if not hwmon:
+            printLog(device, 'No corresponding HW Monitor found')
+            continue
+        power_cap_path = os.path.join(hwmon, 'power1_cap')
+
+        max_power_cap = str(int(getSysfsValue(device, 'power_cap_max')) / 1000000)
+        min_power_cap = str(int(getSysfsValue(device, 'power_cap_min')) / 1000000)
+
+        if int(value) < int(min_power_cap):
+            printLog(device, 'Unable to set Power OverDrive to less than ' + min_power_cap + 'W')
+            RETCODE = 1
+            return
+
+        if int(value) > int(max_power_cap):
+            printLog(device, 'Unable to set Power OverDrive to more than ' + max_power_cap + 'W')
+            RETCODE = 1
+            return;
+
+        if writeToSysfs(power_cap_path, str(int(value) * 1000000)):
+            if int(value) != 0:
+                printLog(device, 'Successfully set Power OverDrive to ' + value + 'W')
+            else:
+                printLog(device, 'Successfully reset Power OverDrive')
+        else:
+            if int(value) != 0:
+                printLog(device, 'Unable to set Power OverDrive to ' + value + 'W')
+            else:
+                printLog(device, 'Unable to reset Power OverDrive to default')
+
+def resetPowerOverDrive(deviceList, autoRespond):
+    """ Reset Power OverDrive to the default power limit that comes with the GPU
+
+    Parameters:
+    deviceList -- List of devices on which to reset the power cap
+    """
+    setPowerOverDrive(deviceList, 0, autoRespond)
 
 def resetFans(deviceList):
     """ Reset fans to driver control for a list of devices.
@@ -1175,6 +1267,7 @@ if __name__ == '__main__':
     groupDisplay.add_argument('-P', '--showpower', help='Show current Average Graphics Package Power Consumption', action='store_true')
     groupDisplay.add_argument('-o', '--showoverdrive', help='Show current GPU Clock OverDrive level', action='store_true')
     groupDisplay.add_argument('-m', '--showmemoverdrive', help='Show current GPU Memory Clock OverDrive level', action='store_true')
+    groupDisplay.add_argument('-M', '--showmaxpower', help='Show maximum graphics package power this GPU will consume', action='store_true')
     groupDisplay.add_argument('-l', '--showprofile', help='Show Compute Profile attributes', action='store_true')
     groupDisplay.add_argument('-s', '--showclkfrq', help='Show supported GPU and Memory Clock', action='store_true')
     groupDisplay.add_argument('-a', '--showallinfo', help='Show Temperature, Fan and Clock values', action='store_true')
@@ -1188,6 +1281,8 @@ if __name__ == '__main__':
     groupAction.add_argument('--setperflevel', help='Set Performance Level', metavar='LEVEL')
     groupAction.add_argument('--setoverdrive', help='Set GPU OverDrive level (requires manual|high Perf level)', metavar='%')
     groupAction.add_argument('--setmemoverdrive', help='Set GPU Memory Overclock OverDrive level (requires manual|high Perf level)', metavar='%')
+    groupAction.add_argument('--setpoweroverdrive', help='Set the maximum GPU power using Power OverDrive in Watts', metavar='WATTS')
+    groupAction.add_argument('--resetpoweroverdrive', help='Set the maximum GPU power back to the device deafult state', action='store_true')
     groupAction.add_argument('--setprofile', help='Specify Power Profile level (#) or a quoted string of CUSTOM Profile attributes "# # # #..." (requires manual Perf level)')
     groupAction.add_argument('--resetprofile', help='Reset Power Profile back to default', action='store_true')
 
@@ -1219,13 +1314,14 @@ if __name__ == '__main__':
         args.showclkfrq = True
         args.showperflevel = True
         args.showoverdrive = True
+        args.showmemoverdrive = True
+        args.showmaxpower = True
         args.showprofile = True
         args.showpower = True
 
     if args.setsclk or args.setmclk or args.setpclk or args.resetfans or args.setfan or args.setperflevel or \
        args.load or args.resetclocks or args.setprofile or args.resetprofile or args.setoverdrive or \
-       args.showpower or \
-       len(sys.argv) == 1:
+       args.showpower or args.setpoweroverdrive or args.resetpoweroverdrive or len(sys.argv) == 1:
         relaunchAsSudo()
 
     # Header for the SMI
@@ -1269,6 +1365,8 @@ if __name__ == '__main__':
         showOverDrive(deviceList, 'gpu')
     if args.showmemoverdrive:
         showOverDrive(deviceList, 'mem')
+    if args.showmaxpower:
+        showMaxPower(deviceList)
     if args.showprofile:
         showProfile(deviceList)
     if args.showpower:
@@ -1291,6 +1389,10 @@ if __name__ == '__main__':
         setClockOverDrive(deviceList, 'gpu', args.setoverdrive, args.autorespond)
     if args.setmemoverdrive:
         setClockOverDrive(deviceList, 'mem', args.setmemoverdrive, args.autorespond)
+    if args.setpoweroverdrive:
+        setPowerOverDrive(deviceList, args.setpoweroverdrive, args.autorespond)
+    if args.resetpoweroverdrive:
+        resetPowerOverDrive(deviceList, args.autorespond)
     if args.setprofile:
         setProfile(deviceList, args.setprofile)
     if args.resetprofile:
