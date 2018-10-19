@@ -724,9 +724,9 @@ def showMemTotal(deviceList):
         total_mem = getSysfsValue(device, 'total_mem')
         if not total_mem:
             printLog(
-                device, 'Cannot get GPU memory usage: GPU used memory not supported')
+                device, 'Cannot get GPU total memory: GPU total memory not supported')
         else:
-            printLog(device, 'Average GPU used memory: ' +
+            printLog(device, 'GPU total memory: ' +
                      str(total_mem) + "MB")
     print(logSpacer)
 
@@ -1177,7 +1177,6 @@ if __name__ == '__main__':
     groupDisplay.add_argument('-P', '--showpower', help='Show current power consumption', action='store_true')
     groupDisplay.add_argument('-o', '--showoverdrive', help='Show current GPU Clock OverDrive level', action='store_true')
     groupDisplay.add_argument('-m', '--showmemoverdrive', help='Show current GPU Memory Clock OverDrive level', action='store_true')
-    groupDisplay.add_argument('-u', '--showmemusage', help='Show current GPU Memory usage', action='store_true')
     groupDisplay.add_argument('-mu', '--showmemusage', help='Show current GPU Memory usage', action='store_true')
     groupDisplay.add_argument('-mt', '--showmemtotal', help='Show total GPU Memory', action='store_true')
     groupDisplay.add_argument('-l', '--showprofile', help='Show Compute Profile attributes', action='store_true')
