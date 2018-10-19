@@ -12,6 +12,7 @@ from subprocess import check_output
 import glob
 import time
 import collections
+import math
 if hasattr(__builtins__, 'raw_input'):
     input = raw_input
 
@@ -27,6 +28,7 @@ def relaunchAsSudo():
     if os.geteuid() != 0:
         os.execvp('sudo', ['sudo'] + sys.argv)
 
+nodesprefix = '/sys/class/kfd/kfd/topology/nodes'
 drmprefix = '/sys/class/drm'
 hwmonprefix = '/sys/class/hwmon'
 powerprefix = '/sys/kernel/debug/dri/'
@@ -47,7 +49,9 @@ valuePaths = {
     'fanmax' : {'prefix' : hwmonprefix, 'filepath' : 'pwm1_max', 'needsparse' : False},
     'fanmode' : {'prefix' : hwmonprefix, 'filepath' : 'pwm1_enable', 'needsparse' : False},
     'temp' : {'prefix' : hwmonprefix, 'filepath' : 'temp1_input', 'needsparse' : True},
-    'power' : {'prefix' : powerprefix, 'filepath' : 'amdgpu_pm_info', 'needsparse' : True}
+    'power' : {'prefix' : powerprefix, 'filepath' : 'amdgpu_pm_info', 'needsparse' : True},
+    'used_mem':{'prefix' : nodesprefix, 'filepath' : 'used_memory', 'needsparse' : True},
+    'total_mem':{'prefix' : nodesprefix, 'filepath' : 'properties', 'needsparse' : True},
 }
 
 
@@ -72,6 +76,11 @@ def getSysfsValue(device, key):
         # Power consumption is in debugfs and has a different path structure
         filePath = os.path.join(powerprefix, device[4:], 'amdgpu_pm_info')
 
+    if pathDict['prefix']==nodesprefix:
+        for root, _, files in os.walk(nodesprefix):
+            if "used_memory" in files:
+                filePath= os.path.join(root,"used_memory" )
+      
     if not os.path.isfile(filePath):
         return None
 
@@ -97,6 +106,9 @@ def parseSysfsValue(key, value):
     Some SysFS files aren't a single line/string, so we need to parse it
     to get the desired value
     """
+    if key=='used_mem':
+        # convert to megabytes
+        return int(math.ceil(float(value)/1024/1024))
     if key == 'id':
         # Strip the 0x prefix
         return value[2:]
@@ -670,6 +682,21 @@ def showPower(deviceList):
                 printLog(device, 'Average GPU Power: ' + power)
     print(logSpacer)
 
+def showMemUsage(deviceList):
+    """ Display current memoery Consumption for a list of devices.
+
+
+    Parameters:
+    deviceList -- List of devices to display current Power Consumption (can be a single-item list)
+    """
+    print(logSpacer)
+    for device in deviceList:
+        used_mem = getSysfsValue(device, 'used_mem')
+        if not used_mem:
+            printLog(device, 'Cannot get GPU memory usage: GPU used memory not supported')
+        else:
+            printLog(device, 'Average GPU used memory: ' + str(used_mem) +"MB")
+    print(logSpacer)
 
 def showAllConciseHw(deviceList):
     """ Display critical Hardware info for all devices in a concise format.
@@ -697,7 +724,7 @@ def showAllConcise(deviceList):
     deviceList -- List of all devices
     """
     print(logSpacer)
-    print(' GPU  Temp    AvgPwr   SCLK     MCLK     Fan      Perf    SCLK OD    MCLK OD')
+    print(' GPU  Temp    AvgPwr   SCLK     MCLK     UsedMem     Fan      Perf    SCLK OD    MCLK OD')
     for device in deviceList:
 
         temp = getSysfsValue(device, 'temp')
@@ -720,6 +747,12 @@ def showAllConcise(deviceList):
         if not mclk:
             mclk = 'N/A'
 
+        used_mem = getSysfsValue(device, 'used_mem')
+        if not used_mem:
+            used_mem = 'N/A'
+        else:
+            used_mem=str(used_mem) + 'MB'
+        
         fan = str(getFanSpeed(device))
         if not fan:
             fan = 'N/A'
@@ -742,8 +775,8 @@ def showAllConcise(deviceList):
         else:
             mclk_od = mclk_od + '%'
 
-        print("  %-4s%-8s%-9s%-9s%-9s%-9s%-10s%-11s%-9s" % (device[4:], temp,
-            power, sclk, mclk, fan, perf, sclk_od, mclk_od))
+        print("  %-4s%-8s%-9s%-9s%-9s%-11s%-9s%-10s%-11s%-9s" % (device[4:], temp,
+            power, sclk, mclk, used_mem, fan, perf, sclk_od, mclk_od))
     print(logSpacer)
 
 
@@ -1105,6 +1138,7 @@ if __name__ == '__main__':
     groupDisplay.add_argument('-P', '--showpower', help='Show current power consumption', action='store_true')
     groupDisplay.add_argument('-o', '--showoverdrive', help='Show current GPU Clock OverDrive level', action='store_true')
     groupDisplay.add_argument('-m', '--showmemoverdrive', help='Show current GPU Memory Clock OverDrive level', action='store_true')
+    groupDisplay.add_argument('-u', '--showmemusage', help='Show current GPU Memory usage', action='store_true')
     groupDisplay.add_argument('-l', '--showprofile', help='Show Compute Profile attributes', action='store_true')
     groupDisplay.add_argument('-s', '--showclkfrq', help='Show supported GPU and Memory Clock', action='store_true')
     groupDisplay.add_argument('-a' ,'--showallinfo', help='Show Temperature, Fan and Clock values', action='store_true')
@@ -1183,6 +1217,8 @@ if __name__ == '__main__':
         showOverDrive(deviceList, 'gpu')
     if args.showmemoverdrive:
         showOverDrive(deviceList, 'mem')
+    if args.showmemusage:
+        showMemUsage(deviceList)
     if args.showprofile:
         showProfile(deviceList)
     if args.showpower:
