@@ -76,11 +76,14 @@ def getSysfsValue(device, key):
         # Power consumption is in debugfs and has a different path structure
         filePath = os.path.join(powerprefix, device[4:], 'amdgpu_pm_info')
 
-    if pathDict['prefix']==nodesprefix:
+    if pathDict['prefix'] == nodesprefix:
         for root, _, files in os.walk(nodesprefix):
             if "used_memory" in files:
-                filePath= os.path.join(root,"used_memory" )
-      
+                if key == "used_mem":
+                    filePath = os.path.join(root, "used_memory")
+                elif key == "total_mem":
+                    filePath = os.path.join(root, "properties")
+
     if not os.path.isfile(filePath):
         return None
 
@@ -106,9 +109,16 @@ def parseSysfsValue(key, value):
     Some SysFS files aren't a single line/string, so we need to parse it
     to get the desired value
     """
-    if key=='used_mem':
+    if key == 'used_mem':
         # convert to megabytes
         return int(math.ceil(float(value)/1024/1024))
+    if key == 'total_mem':
+        m = re.search("size_in_bytes (.*)", value)
+        if m:
+            # convert to megabytes
+            return int(math.ceil(float(m.group(1))/1024/1024))
+        else:
+            return ''
     if key == 'id':
         # Strip the 0x prefix
         return value[2:]
@@ -682,6 +692,7 @@ def showPower(deviceList):
                 printLog(device, 'Average GPU Power: ' + power)
     print(logSpacer)
 
+
 def showMemUsage(deviceList):
     """ Display current memoery Consumption for a list of devices.
 
@@ -693,10 +704,32 @@ def showMemUsage(deviceList):
     for device in deviceList:
         used_mem = getSysfsValue(device, 'used_mem')
         if not used_mem:
-            printLog(device, 'Cannot get GPU memory usage: GPU used memory not supported')
+            printLog(
+                device, 'Cannot get GPU memory usage: GPU used memory not supported')
         else:
-            printLog(device, 'Average GPU used memory: ' + str(used_mem) +"MB")
+            printLog(device, 'Average GPU used memory: ' +
+                     str(used_mem) + "MB")
     print(logSpacer)
+
+
+def showMemTotal(deviceList):
+    """ Display current memoery Consumption for a list of devices.
+
+
+    Parameters:
+    deviceList -- List of devices to display current Power Consumption (can be a single-item list)
+    """
+    print(logSpacer)
+    for device in deviceList:
+        total_mem = getSysfsValue(device, 'total_mem')
+        if not total_mem:
+            printLog(
+                device, 'Cannot get GPU memory usage: GPU used memory not supported')
+        else:
+            printLog(device, 'Average GPU used memory: ' +
+                     str(total_mem) + "MB")
+    print(logSpacer)
+
 
 def showAllConciseHw(deviceList):
     """ Display critical Hardware info for all devices in a concise format.
@@ -724,7 +757,7 @@ def showAllConcise(deviceList):
     deviceList -- List of all devices
     """
     print(logSpacer)
-    print(' GPU  Temp    AvgPwr   SCLK     MCLK     UsedMem     Fan      Perf    SCLK OD    MCLK OD')
+    print(' GPU  Temp    AvgPwr   SCLK     MCLK     UsedMem  TotalMem   Fan      Perf    SCLK OD    MCLK OD')
     for device in deviceList:
 
         temp = getSysfsValue(device, 'temp')
@@ -751,8 +784,14 @@ def showAllConcise(deviceList):
         if not used_mem:
             used_mem = 'N/A'
         else:
-            used_mem=str(used_mem) + 'MB'
-        
+            used_mem = str(used_mem) + 'MB'
+
+        total_mem = getSysfsValue(device, 'total_mem')
+        if not total_mem:
+            total_mem = 'N/A'
+        else:
+            total_mem = str(total_mem) + 'MB'
+
         fan = str(getFanSpeed(device))
         if not fan:
             fan = 'N/A'
@@ -775,8 +814,8 @@ def showAllConcise(deviceList):
         else:
             mclk_od = mclk_od + '%'
 
-        print("  %-4s%-8s%-9s%-9s%-9s%-11s%-9s%-10s%-11s%-9s" % (device[4:], temp,
-            power, sclk, mclk, used_mem, fan, perf, sclk_od, mclk_od))
+        print("  %-4s%-8s%-9s%-9s%-9s%-9s%-11s%-9s%-10s%-11s%-9s" % (device[4:], temp,
+                                                                    power, sclk, mclk, used_mem, total_mem, fan, perf, sclk_od, mclk_od))
     print(logSpacer)
 
 
@@ -1119,7 +1158,7 @@ def save(deviceList, savefilepath):
 # Below is for when called as a script instead of when imported as a module
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='AMD ROCm System Management Interface',
-             formatter_class=lambda prog: argparse.HelpFormatter(prog, max_help_position=90, width=110))
+                                     formatter_class=lambda prog: argparse.HelpFormatter(prog, max_help_position=90, width=110))
     groupDev = parser.add_argument_group()
     groupDisplay = parser.add_argument_group()
     groupAction = parser.add_argument_group()
@@ -1139,6 +1178,8 @@ if __name__ == '__main__':
     groupDisplay.add_argument('-o', '--showoverdrive', help='Show current GPU Clock OverDrive level', action='store_true')
     groupDisplay.add_argument('-m', '--showmemoverdrive', help='Show current GPU Memory Clock OverDrive level', action='store_true')
     groupDisplay.add_argument('-u', '--showmemusage', help='Show current GPU Memory usage', action='store_true')
+    groupDisplay.add_argument('-mu', '--showmemusage', help='Show current GPU Memory usage', action='store_true')
+    groupDisplay.add_argument('-mt', '--showmemtotal', help='Show total GPU Memory', action='store_true')
     groupDisplay.add_argument('-l', '--showprofile', help='Show Compute Profile attributes', action='store_true')
     groupDisplay.add_argument('-s', '--showclkfrq', help='Show supported GPU and Memory Clock', action='store_true')
     groupDisplay.add_argument('-a' ,'--showallinfo', help='Show Temperature, Fan and Clock values', action='store_true')
@@ -1188,7 +1229,7 @@ if __name__ == '__main__':
     if args.setsclk or args.setmclk or args.resetfans or args.setfan or args.setperflevel or args.load or \
        args.resetclocks or args.setprofile or args.resetprofile or args.setoverdrive or args.showpower or \
        len(sys.argv) == 1:
-           relaunchAsSudo()
+        relaunchAsSudo()
 
     # Header for the SMI
     print('\n\n', headerSpacer, '    ROCm System Management Interface    ', headerSpacer, sep='')
@@ -1219,6 +1260,8 @@ if __name__ == '__main__':
         showOverDrive(deviceList, 'mem')
     if args.showmemusage:
         showMemUsage(deviceList)
+    if args.showmemtotal:
+        showMemTotal(deviceList)
     if args.showprofile:
         showProfile(deviceList)
     if args.showpower:
