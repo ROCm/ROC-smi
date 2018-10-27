@@ -23,52 +23,58 @@ For convenience purposes, following is a quick excerpt:
 ```shell
 
 usage: rocm-smi [-h] [-d DEVICE] [-i] [-v] [--showhw] [-t] [-c] [-g] [-f] [-p] [-P] [-o] [-m] [-M] [-l] [-s]
-                [-a] [-r] [--setsclk LEVEL [LEVEL ...]] [--setmclk LEVEL [LEVEL ...]] [--resetfans]
-                [--setfan LEVEL] [--setperflevel LEVEL] [--setoverdrive %] [--setmemoverdrive %]
-                [--setpoweroverdrive WATTS] [--resetpoweroverdrive] [--setprofile SETPROFILE] [--resetprofile]
-                [--load FILE | --save FILE] [--autorespond RESPONSE]
+                [-u] [-S] [-a] [-r] [--setsclk LEVEL [LEVEL ...]] [--setmclk LEVEL [LEVEL ...]]
+                [--setpclk LEVEL [LEVEL ...]] [--setslevel SCLKLEVEL SCLK SVOLT]
+                [--setmlevel MCLKLEVEL MCLK MVOLT] [--resetfans] [--setfan LEVEL] [--setperflevel LEVEL]
+                [--setoverdrive %] [--setmemoverdrive %] [--setpoweroverdrive WATTS] [--resetpoweroverdrive]
+                [--setprofile SETPROFILE] [--resetprofile] [--load FILE | --save FILE]
+                [--autorespond RESPONSE]
 
 AMD ROCm System Management Interface
 
 optional arguments:
-  -h, --help                   show this help message and exit
-  --load FILE                  Load Clock, Fan, Performance and Profile settings from FILE
-  --save FILE                  Save Clock, Fan, Performance and Profile settings to FILE
+  -h, --help                        show this help message and exit
+  --load FILE                       Load Clock, Fan, Performance and Profile settings from FILE
+  --save FILE                       Save Clock, Fan, Performance and Profile settings to FILE
 
-  -d DEVICE, --device DEVICE   Execute command on specified device
+  -d DEVICE, --device DEVICE        Execute command on specified device
 
-  -i, --showid                 Show GPU ID
-  -v, --showvbios              Show VBIOS version
-  --showhw                     Show Hardware details
-  -t, --showtemp               Show current temperature
-  -c, --showclocks             Show current clock frequencies
-  -g, --showgpuclocks          Show current GPU clock frequencies
-  -f, --showfan                Show current fan speed
-  -p, --showperflevel          Show current Performance Level
-  -P, --showpower              Show current Average Graphics Package Power Consumption
-  -o, --showoverdrive          Show current GPU Clock OverDrive level
-  -m, --showmemoverdrive       Show current GPU Memory Clock OverDrive level
-  -M, --showmaxpower           Show maximum graphics package power this GPU will consume
-  -l, --showprofile            Show Compute Profile attributes
-  -s, --showclkfrq             Show supported GPU and Memory Clock
-  -u, --showuse                Show current GPU use
-  -a, --showallinfo            Show Temperature, Fan and Clock values
+  -i, --showid                      Show GPU ID
+  -v, --showvbios                   Show VBIOS version
+  --showhw                          Show Hardware details
+  -t, --showtemp                    Show current temperature
+  -c, --showclocks                  Show current clock frequencies
+  -g, --showgpuclocks               Show current GPU clock frequencies
+  -f, --showfan                     Show current fan speed
+  -p, --showperflevel               Show current DPM Performance Level
+  -P, --showpower                   Show current Average Graphics Package Power Consumption
+  -o, --showoverdrive               Show current GPU Clock OverDrive level
+  -m, --showmemoverdrive            Show current GPU Memory Clock OverDrive level
+  -M, --showmaxpower                Show maximum graphics package power this GPU will consume
+  -l, --showprofile                 Show Compute Profile attributes
+  -s, --showclkfrq                  Show supported GPU and Memory Clock
+  -u, --showuse                     Show current GPU use
+  -S, --showclkvolt                 Show supported GPU and Memory Clocks and Voltages
+  -a, --showallinfo                 Show Temperature, Fan and Clock values
 
-  -r, --resetclocks            Reset sclk and mclk to default
-  --setsclk LEVEL [LEVEL ...]  Set GPU Clock Frequency Level(s) (requires manual Perf level)
-  --setmclk LEVEL [LEVEL ...]  Set GPU Memory Clock Frequency Level(s) (requires manual Perf level)
-  --resetfans                  Reset fans to automatic (driver) control
-  --setfan LEVEL               Set GPU Fan Speed (Level or %)
-  --setperflevel LEVEL         Set Performance Level
-  --setoverdrive %             Set GPU OverDrive level (requires manual|high Perf level)
-  --setmemoverdrive %          Set GPU Memory Overclock OverDrive level (requires manual|high Perf level)
-  --setpoweroverdrive WATTS    Set the maximum GPU power using Power OverDrive in Watts
-  --resetpoweroverdrive        Set the maximum GPU power back to the device deafult state
-  --setprofile SETPROFILE      Specify Power Profile level (#) or a quoted string of CUSTOM profile attributes
-                               "# # # #..." (requires manual Perf level)
-  --resetprofile               Reset Power Profile back to default
+  -r, --resetclocks                 Reset sclk, mclk and pclk to default
+  --setsclk LEVEL [LEVEL ...]       Set GPU Clock Frequency Level(s) (requires manual Perf level)
+  --setmclk LEVEL [LEVEL ...]       Set GPU Memory Clock Frequency Level(s) (requires manual Perf level)
+  --setpclk LEVEL [LEVEL ...]       Set PCIE Clock Frequency Level(s) (requires manual Perf level)
+  --setslevel SCLKLEVEL SCLK SVOLT  Change GPU Clock frequency (MHz) and Voltage (mV) for a specific Level
+  --setmlevel MCLKLEVEL MCLK MVOLT  Change GPU Memory clock frequency (MHz) and Voltage for (mV) a specific Level
+  --resetfans                       Reset fans to automatic (driver) control
+  --setfan LEVEL                    Set GPU Fan Speed (Level or %)
+  --setperflevel LEVEL              Set Performance Level
+  --setoverdrive %                  Set GPU OverDrive level (requires manual|high Perf level)
+  --setmemoverdrive %               Set GPU Memory Overclock OverDrive level (requires manual|high Perf level)
+  --setpoweroverdrive WATTS         Set the maximum GPU power using Power OverDrive in Watts
+  --resetpoweroverdrive             Set the maximum GPU power back to the device deafult state
+  --setprofile SETPROFILE           Specify Power Profile level (#) or a quoted string of CUSTOM Profile
+                                    attributes "# # # #..." (requires manual Perf level)
+  --resetprofile                    Reset Power Profile back to default
 
-  --autorespond RESPONSE       Response to automatically provide for all prompts (NOT RECOMMENDED)
+  --autorespond RESPONSE            Response to automatically provide for all prompts (NOT RECOMMENDED)
 ```
 
 
