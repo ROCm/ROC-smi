@@ -42,6 +42,7 @@ valuePaths = {
     'mclk_od' : {'prefix' : drmprefix, 'filepath' : 'pp_mclk_od', 'needsparse' : False},
     'sclk' : {'prefix' : drmprefix, 'filepath' : 'pp_dpm_sclk', 'needsparse' : False},
     'mclk' : {'prefix' : drmprefix, 'filepath' : 'pp_dpm_mclk', 'needsparse' : False},
+    'clk_voltage' : {'prefix' : drmprefix, 'filepath' : 'pp_od_clk_voltage', 'needsparse' : False},
     'profile' : {'prefix' : drmprefix, 'filepath' : 'pp_power_profile_mode', 'needsparse' : False},
     'fan' : {'prefix' : hwmonprefix, 'filepath' : 'pwm1', 'needsparse' : False},
     'fanmax' : {'prefix' : hwmonprefix, 'filepath' : 'pwm1_max', 'needsparse' : False},
@@ -589,6 +590,28 @@ def showClocks(deviceList):
     print(logSpacer)
 
 
+def showPowerPlayTable(deviceList):
+    """ Display current GPU and GPU Memory clock frequencies and voltges for a list of devices.
+
+    Parameters:
+    deviceList -- List of devices to display current clock frequencies and voltages (can be a single-item list)
+    """
+    print(logSpacer)
+    for device in deviceList:
+        devpath = os.path.join(drmprefix, device, 'device')
+        clkvoltPath = os.path.join(devpath, 'pp_od_clk_voltage')
+        if not isPowerplayEnabled(device):
+            printLog(device, 'PowerPlay not enabled - Cannot display clocks')
+            continue
+        if not os.path.isfile(clkvoltPath):
+            continue
+        with open(clkvoltPath, 'r') as sclk:
+            sclkLog = 'PowerPlay Table on GPU' + parseDeviceName(device) + '\n' + sclk.read()
+        for line in sclkLog.split('\n'):
+            printLog(device, line)
+    print(logSpacer)
+
+
 def showPerformanceLevel(deviceList):
     """ Display current PowerPlay Performance Level for a list of devices.
 
@@ -798,6 +821,53 @@ def setClocks(deviceList, clktype, clk):
         # 4 5 6 for levels 4, 5 and 6). Don't compare against the max level for gpu
         # clocks in this case
         if any(int(item) > getMaxLevel(device, clktype) for item in clk):
+            printLog(device, 'Unable to set clock to unsupported Level - Max Level is ' + str(getMaxLevel(device, clktype)))
+            RETCODE = 1
+            continue
+        setPerfLevel(device, 'manual')
+        if writeToSysfs(clkFile, value):
+            if clktype == 'gpu':
+                printLog(device, 'Successfully set GPU Clock frequency mask to Level ' + value)
+            else:
+                printLog(device, 'Successfully set GPU Memory Clock frequency mask to Level ' + value)
+        else:
+            printLog(device, 'Unable to set ' + clktype + ' clock to Level ' + value)
+            RETCODE = 1
+
+
+def setPowerPlayTableLevel(deviceList, clktype, levelList):
+    """ Set clock frequency and voltage for a level in the PowerPlay table for a list of devices.
+
+    Parameters:
+    deviceList -- List of devices to set the clock frequency (can be a single-item list)
+    clktype -- [gpu|mem] Set the GPU (gpu) or GPU Memory (mem) clock frequency level
+    levelList -- Clock frequency level to set
+    """
+    global RETCODE
+    if not levelList:
+        print('Invalid clock state')
+        RETCODE = 1
+        return
+    value = ' '.join(map(str, levelList))
+    try:
+        all(int(item) for item in levelList)
+    except ValueError:
+        print('Cannot set PowerPlay table level to ', levelList, ', non-integer characters are present!')
+        RETCODE = 1
+        return
+    if clktype == 'gpu':
+        value = 's ' + value
+    else:
+        value = 'm ' + value
+    for device in deviceList:
+        if not isPowerplayEnabled(device):
+            printLog(device, 'PowerPlay not enabled - Cannot set clocks')
+            RETCODE = 1
+            continue
+        devpath = os.path.join(drmprefix, device, 'device')
+        clkFile = os.path.join(devpath, 'pp_od_clk_voltage')
+
+        if int(levelList[0]) > getMaxLevel(device, clktype):
             printLog(device, 'Unable to set clock to unsupported Level - Max Level is ' + str(getMaxLevel(device, clktype)))
             RETCODE = 1
             continue
@@ -1107,11 +1177,14 @@ if __name__ == '__main__':
     groupDisplay.add_argument('-m', '--showmemoverdrive', help='Show current GPU Memory Clock OverDrive level', action='store_true')
     groupDisplay.add_argument('-l', '--showprofile', help='Show Compute Profile attributes', action='store_true')
     groupDisplay.add_argument('-s', '--showclkfrq', help='Show supported GPU and Memory Clock', action='store_true')
+    groupDisplay.add_argument('-S', '--showclkvolt', help='Show supported GPU and Memory Clocks and Voltages', action='store_true')
     groupDisplay.add_argument('-a' ,'--showallinfo', help='Show Temperature, Fan and Clock values', action='store_true')
 
     groupAction.add_argument('-r', '--resetclocks', help='Reset sclk and mclk to default', action='store_true')
     groupAction.add_argument('--setsclk', help='Set GPU Clock Frequency Level(s) (requires manual Perf level)', type=int, metavar='LEVEL', nargs='+')
     groupAction.add_argument('--setmclk', help='Set GPU Memory Clock Frequency Level(s) (requires manual Perf level)', type=int, metavar='LEVEL', nargs='+')
+    groupAction.add_argument('--setslevel', help='Change GPU Clock frequency (MHz) and Voltage (mV) for a specific Level', metavar=('SCLKLEVEL', 'SCLK', 'SVOLT'), nargs=3)
+    groupAction.add_argument('--setmlevel', help='Change GPU Memory clock frequency (MHz) and Voltage for (mV) a specific Level', metavar=('MCLKLEVEL', 'MCLK', 'MVOLT'), nargs=3)
     groupAction.add_argument('--resetfans', help='Reset fans to automatic (driver) control', action='store_true')
     groupAction.add_argument('--setfan', help='Set GPU Fan Speed (Level or %%)', metavar='LEVEL')
     groupAction.add_argument('--setperflevel', help='Set PowerPlay Performance Level', metavar='LEVEL')
@@ -1153,6 +1226,7 @@ if __name__ == '__main__':
 
     if args.setsclk or args.setmclk or args.resetfans or args.setfan or args.setperflevel or args.load or \
        args.resetclocks or args.setprofile or args.resetprofile or args.setoverdrive or args.showpower or \
+       args.setslevel or args.setmlevel or \
        len(sys.argv) == 1:
            relaunchAsSudo()
 
@@ -1189,10 +1263,16 @@ if __name__ == '__main__':
         showPower(deviceList)
     if args.showclkfrq:
         showClocks(deviceList)
+    if args.showclkvolt:
+        showPowerPlayTable(deviceList)
     if args.setsclk:
         setClocks(deviceList, 'gpu', args.setsclk)
     if args.setmclk:
         setClocks(deviceList, 'mem', args.setmclk)
+    if args.setslevel:
+        setPowerPlayTableLevel(deviceList, 'gpu', args.setslevel)
+    if args.setmlevel:
+        setPowerPlayTableLevel(deviceList, 'mem', args.setmlevel)
     if args.resetfans:
         resetFans(deviceList)
     if args.setfan:
