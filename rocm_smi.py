@@ -1324,7 +1324,7 @@ if __name__ == '__main__':
 
     if args.setsclk or args.setmclk or args.setpclk or args.resetfans or args.setfan or args.setperflevel or \
        args.load or args.resetclocks or args.setprofile or args.resetprofile or args.setoverdrive or \
-       args.setpoweroverdrive or args.resetpoweroverdrive or len(sys.argv) == 1:
+       args.setmemoverdrive or args.setpoweroverdrive or args.resetpoweroverdrive or len(sys.argv) == 1:
         relaunchAsSudo()
 
     # Header for the SMI
