@@ -151,7 +151,8 @@ def printLog(device, log):
     device -- Device that the log will reference
     log -- String to print to the log
     """
-    print('GPU[', parseDeviceName(device), '] \t\t: ', log, sep='')
+    for line in log.split('\n'):
+        print('GPU[', parseDeviceName(device), '] \t\t: ', line, sep='')
 
 
 def doesDeviceExist(device):
@@ -648,12 +649,9 @@ def showClocks(deviceList):
             mclkLog = 'Supported GPU Memory clock frequencies on GPU' + parseDeviceName(device) + '\n' + mclk.read()
         with open(pclkPath, 'r') as pclk:
             pclkLog = 'Supported PCIE clock frequencies on GPU' + parseDeviceName(device) + '\n' + pclk.read()
-        for line in sclkLog.split('\n'):
-            printLog(device, line)
-        for line in mclkLog.split('\n'):
-            printLog(device, line)
-        for line in pclkLog.split('\n'):
-            printLog(device, line)
+        printLog(device, sclkLog)
+        printLog(device, mclkLog)
+        printLog(device, pclkLog)
     print(logSpacer)
 
 
