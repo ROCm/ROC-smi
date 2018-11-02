@@ -371,13 +371,13 @@ def writeToSysfs(fsFile, fsValue):
         print('Cannot write to sysfs file ' + fsFile + '. File does not exist', sep='')
         RETCODE = 1
         return False
-    with open(fsFile, 'w') as fs:
-        try:
+    try:
+        with open(fsFile, 'w') as fs:
             fs.write(fsValue + '\n') # Certain sysfs files require \n at the end
-        except OSError:
-            print('Unable to write to sysfs file' + fsFile)
-            RETCODE = 1
-            return False
+    except (IOError, OSError):
+        print('Unable to write to sysfs file' + fsFile)
+        RETCODE = 1
+        return False
     return True
 
 
