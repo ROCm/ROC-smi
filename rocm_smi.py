@@ -172,8 +172,8 @@ def getPid(name):
     return check_output(["pidof", name])
 
 
-def confirmOverDrive(autoRespond):
-    """ Print the warning for OverDrive functionality and prompt user to accept the terms.
+def confirmOutOfSpecWarning(autoRespond):
+    """ Print the warning for running outside of specification and prompt user to accept the terms.
 
     Parameters:
     autoRespond -- Response to automatically provide for all prompts
@@ -182,14 +182,15 @@ def confirmOverDrive(autoRespond):
     print('''
           ******WARNING******\n
           Operating your AMD GPU outside of official AMD specifications or outside of
-          factory settings, including but not limited to the conducting of overclocking
-          (including use of this overclocking software, even if such software has been
-          directly or indirectly provided by AMD or otherwise affiliated in any way
-          with AMD), may cause damage to your AMD GPU, system components and/or result
-          in system failure, as well as cause other problems. DAMAGES CAUSED BY USE OF
-          YOUR AMD GPU OUTSIDE OF OFFICIAL AMD SPECIFICATIONS OR OUTSIDE OF FACTORY
-          SETTINGS ARE NOT COVERED UNDER ANY AMD PRODUCT WARRANTY AND MAY NOT BE COVERED
-          BY YOUR BOARD OR SYSTEM MANUFACTURER'S WARRANTY. Please use this utility with caution.
+          factory settings, including but not limited to the conducting of overclocking,
+          over-volting or under-volting (including use of this interface software,
+          even if such software has been directly or indirectly provided by AMD or otherwise
+          affiliated in any way with AMD), may cause damage to your AMD GPU, system components
+          and/or result in system failure, as well as cause other problems.
+          DAMAGES CAUSED BY USE OF YOUR AMD GPU OUTSIDE OF OFFICIAL AMD SPECIFICATIONS OR
+          OUTSIDE OF FACTORY SETTINGS ARE NOT COVERED UNDER ANY AMD PRODUCT WARRANTY AND
+          MAY NOT BE COVERED BY YOUR BOARD OR SYSTEM MANUFACTURER'S WARRANTY.
+          Please use this utility with caution.
           ''')
     if not autoRespond:
         user_input = input('Do you accept these terms? [y/N] ')
@@ -198,7 +199,7 @@ def confirmOverDrive(autoRespond):
     if user_input in ['Yes', 'yes', 'y', 'Y', 'YES']:
         return
     else:
-        sys.exit('Confirmation not given. Exiting without setting OverDrive value')
+        sys.exit('Confirmation not given. Exiting without setting value')
 
 
 def isDPMAvailable(device):
@@ -962,13 +963,14 @@ def setClocks(deviceList, clktype, clk):
             RETCODE = 1
 
 
-def setPowerPlayTableLevel(deviceList, clktype, levelList):
+def setPowerPlayTableLevel(deviceList, clktype, levelList, autoRespond):
     """ Set clock frequency and voltage for a level in the PowerPlay table for a list of devices.
 
     Parameters:
     deviceList -- List of devices to set the clock frequency (can be a single-item list)
     clktype -- [gpu|mem] Set the GPU (gpu) or GPU Memory (mem) clock frequency level
     levelList -- Clock frequency level to set
+    autoRespond -- Response to automatically provide for all prompts
     """
     global RETCODE
     if not levelList:
@@ -993,6 +995,8 @@ def setPowerPlayTableLevel(deviceList, clktype, levelList):
             continue
         devpath = os.path.join(drmprefix, device, 'device')
         clkFile = os.path.join(devpath, 'pp_od_clk_voltage')
+
+        confirmOutOfSpecWarning(autoRespond)
 
         if int(levelList[0]) > getMaxLevel(device, clktype):
             printLog(device, 'Unable to set clock to unsupported Level - Max Level is ' + str(getMaxLevel(device, clktype)))
@@ -1025,7 +1029,7 @@ def setClockOverDrive(deviceList, clktype, value, autoRespond):
         print('Cannot set OverDrive to value', value, ', it is not an integer!')
         RETCODE = 1
         return
-    confirmOverDrive(autoRespond)
+    confirmOutOfSpecWarning(autoRespond)
 
     for device in deviceList:
         if not isDPMAvailable(device):
@@ -1076,7 +1080,7 @@ def setPowerOverDrive(deviceList, value, autoRespond):
         RETCODE = 1
         return
 
-    confirmOverDrive(autoRespond)
+    confirmOutOfSpecWarning(autoRespond)
 
     for device in deviceList:
         if not isDPMAvailable(device):
@@ -1481,9 +1485,9 @@ if __name__ == '__main__':
     if args.setpclk:
         setClocks(deviceList, 'pcie', args.setpclk)
     if args.setslevel:
-        setPowerPlayTableLevel(deviceList, 'gpu', args.setslevel)
+        setPowerPlayTableLevel(deviceList, 'gpu', args.setslevel, args.autorespond)
     if args.setmlevel:
-        setPowerPlayTableLevel(deviceList, 'mem', args.setmlevel)
+        setPowerPlayTableLevel(deviceList, 'mem', args.setmlevel, args.autorespond)
     if args.resetfans:
         resetFans(deviceList)
     if args.setfan:
