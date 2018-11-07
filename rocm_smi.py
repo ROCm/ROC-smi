@@ -1003,7 +1003,7 @@ def setPowerPlayTableLevel(deviceList, clktype, levelList, autoRespond):
             RETCODE = 1
             continue
         setPerfLevel(device, 'manual')
-        if writeToSysfs(clkFile, value):
+        if writeToSysfs(clkFile, value) and writeToSysfs(clkFile, 'c'):
             if clktype == 'gpu':
                 printLog(device, 'Successfully set GPU Clock frequency mask to Level ' + value)
             else:
@@ -1237,6 +1237,7 @@ def resetOverDrive(deviceList):
     for device in deviceList:
         devpath = os.path.join(drmprefix, device, 'device')
         odpath = os.path.join(devpath, 'pp_sclk_od')
+        odclkpath = os.path.join(devpath, 'pp_od_clk_voltage')
         if not os.path.isfile(odpath):
             printLog(device, 'Unable to reset OverDrive; OverDrive not available')
             continue
@@ -1246,6 +1247,9 @@ def resetOverDrive(deviceList):
                 printLog(device, 'Unable to reset OverDrive')
                 continue
         printLog(device, 'OverDrive set to 0')
+        if os.path.isfile(odclkpath):
+            if writeToSysfs(odclkpath, 'r') and writeToSysfs(odclkpath, 'c'):
+                printLog(device, 'Reset OverDrive DPM table')
 
 
 def resetClocks(deviceList):
