@@ -457,7 +457,6 @@ def showId(deviceList):
     print(logSpacer)
     for device in deviceList:
         printLog(device, 'GPU ID: 0x' + getSysfsValue(device, 'id'))
-    print(logSpacer)
 
 
 def showVbiosVersion(deviceList):
@@ -473,7 +472,6 @@ def showVbiosVersion(deviceList):
             printLog(device, 'VBIOS version: ' + vbios)
         else:
             printLog(device, 'Cannot get VBIOS version')
-    print(logSpacer)
 
 
 def showCurrentGpuClocks(deviceList):
@@ -497,7 +495,6 @@ def showCurrentGpuClocks(deviceList):
             return
 
         printLog(device, 'GPU Clock Level: ' + str(gpulevel) + ' (' + str(gpuclk) + ')')
-    print(logSpacer)
 
 
 def showCurrentClocks(deviceList):
@@ -524,7 +521,6 @@ def showCurrentClocks(deviceList):
 
         printLog(device, 'GPU Clock Level: ' + str(gpulevel) + ' (' + str(gpuclk) + ')')
         printLog(device, 'GPU Memory Clock Level: ' + str(memlevel) + ' (' + str(memclk) + ')')
-    print(logSpacer)
 
 
 def showCurrentTemps(deviceList):
@@ -542,7 +538,6 @@ def showCurrentTemps(deviceList):
             printLog(device, 'Unable to display temperature')
             continue
         printLog(device, 'Temperature: ' + str(temp) + 'c')
-    print(logSpacer)
 
 
 def showCurrentFans(deviceList):
@@ -559,7 +554,6 @@ def showCurrentFans(deviceList):
             printLog(device, 'Unable to determine current fan speed')
             continue
         printLog(device, 'Fan Level: ' + str(fanlevel) + ' (' + str(fanspeed) + ')%')
-    print(logSpacer)
 
 
 def showClocks(deviceList):
@@ -586,7 +580,6 @@ def showClocks(deviceList):
             printLog(device, line)
         for line in mclkLog.split('\n'):
             printLog(device, line)
-    print(logSpacer)
 
 
 def showPerformanceLevel(deviceList):
@@ -602,7 +595,6 @@ def showPerformanceLevel(deviceList):
             printLog(device, 'Cannot get Performance Level: Performance Level not supported')
         else:
             printLog(device, 'Current PowerPlay Level: ' + level)
-    print(logSpacer)
 
 
 def showOverDrive(deviceList, type):
@@ -625,7 +617,6 @@ def showOverDrive(deviceList, type):
             printLog(device, 'Cannot get ' + odStr + ' OverDrive value: OverDrive not supported')
         else:
             printLog(device, 'Current ' + odStr + ' OverDrive value: ' + str(od) + '%')
-    print(logSpacer)
 
 
 def showProfile(deviceList):
@@ -648,7 +639,6 @@ def showProfile(deviceList):
             printLog(device, '\n' + profile)
         else:
             printLog(device, 'Invalid return value from Power Profile SysFS file')
-    print(logSpacer)
 
 
 def showPower(deviceList):
@@ -668,7 +658,6 @@ def showPower(deviceList):
                 printLog(device, 'Cannot get GPU power Consumption: Average GPU Power not supported')
             else:
                 printLog(device, 'Average GPU Power: ' + power)
-    print(logSpacer)
 
 
 def showAllConciseHw(deviceList):
@@ -744,7 +733,6 @@ def showAllConcise(deviceList):
 
         print("  %-4s%-8s%-9s%-9s%-9s%-9s%-10s%-11s%-9s" % (device[4:], temp,
             power, sclk, mclk, fan, perf, sclk_od, mclk_od))
-    print(logSpacer)
 
 
 def setPerformanceLevel(deviceList, level):
@@ -760,7 +748,6 @@ def setPerformanceLevel(deviceList, level):
             printLog(device, 'Successfully set current PowerPlay Level to ' + level)
         else:
             printLog(device, 'Unable to set current PowerPlay Level to ' + level)
-    print(logSpacer)
 
 
 def setClocks(deviceList, clktype, clk):
@@ -1108,6 +1095,7 @@ if __name__ == '__main__':
     groupDisplay.add_argument('-l', '--showprofile', help='Show Compute Profile attributes', action='store_true')
     groupDisplay.add_argument('-s', '--showclkfrq', help='Show supported GPU and Memory Clock', action='store_true')
     groupDisplay.add_argument('-a' ,'--showallinfo', help='Show Temperature, Fan and Clock values', action='store_true')
+    groupDisplay.add_argument('--repeat', help='Repeat output every X seconds', type=int, metavar='SECONDS', nargs='+')
 
     groupAction.add_argument('-r', '--resetclocks', help='Reset sclk and mclk to default', action='store_true')
     groupAction.add_argument('--setsclk', help='Set GPU Clock Frequency Level(s) (requires manual Perf level)', type=int, metavar='LEVEL', nargs='+')
@@ -1158,59 +1146,70 @@ if __name__ == '__main__':
 
     # Header for the SMI
     print('\n\n', headerSpacer, '    ROCm System Management Interface    ', headerSpacer, sep='')
+    try: 
+        while True:
 
-    if len(sys.argv) == 1:
-        showAllConcise(deviceList)
-    if args.showhw:
-        showAllConciseHw(deviceList)
-    if args.showid:
-        showId(deviceList)
-    if args.showvbios:
-        showVbiosVersion(deviceList)
-    if args.resetclocks:
-        resetClocks(deviceList)
-    if args.showtemp:
-        showCurrentTemps(deviceList)
-    if args.showclocks:
-        showCurrentClocks(deviceList)
-    if args.showgpuclocks:
-        showCurrentGpuClocks(deviceList)
-    if args.showfan:
-        showCurrentFans(deviceList)
-    if args.showperflevel:
-        showPerformanceLevel(deviceList)
-    if args.showoverdrive:
-        showOverDrive(deviceList, 'gpu')
-    if args.showmemoverdrive:
-        showOverDrive(deviceList, 'mem')
-    if args.showprofile:
-        showProfile(deviceList)
-    if args.showpower:
-        showPower(deviceList)
-    if args.showclkfrq:
-        showClocks(deviceList)
-    if args.setsclk:
-        setClocks(deviceList, 'gpu', args.setsclk)
-    if args.setmclk:
-        setClocks(deviceList, 'mem', args.setmclk)
-    if args.resetfans:
-        resetFans(deviceList)
-    if args.setfan:
-        setFanSpeed(deviceList, args.setfan)
-    if args.setperflevel:
-        setPerformanceLevel(deviceList, args.setperflevel)
-    if args.setoverdrive:
-        setClockOverDrive(deviceList, 'gpu', args.setoverdrive, args.autorespond)
-    if args.setmemoverdrive:
-        setClockOverDrive(deviceList, 'mem', args.setmemoverdrive, args.autorespond)
-    if args.setprofile:
-        setProfile(deviceList, args.setprofile)
-    if args.resetprofile:
-        resetProfile(deviceList)
-    if args.load:
-        load(args.load, args.autorespond)
-    if args.save:
-        save(deviceList, args.save)
+            if len(sys.argv) == 1 or (len(sys.argv) == 3 and args.repeat):
+                showAllConcise(deviceList)
+            if args.showhw:
+                showAllConciseHw(deviceList)
+            if args.showid:
+                showId(deviceList)
+            if args.showvbios:
+                showVbiosVersion(deviceList)
+            if args.resetclocks:
+                resetClocks(deviceList)
+            if args.showtemp:
+                showCurrentTemps(deviceList)
+            if args.showclocks:
+                showCurrentClocks(deviceList)
+            if args.showgpuclocks:
+                showCurrentGpuClocks(deviceList)
+            if args.showfan:
+                showCurrentFans(deviceList)
+            if args.showperflevel:
+                showPerformanceLevel(deviceList)
+            if args.showoverdrive:
+                showOverDrive(deviceList, 'gpu')
+            if args.showmemoverdrive:
+                showOverDrive(deviceList, 'mem')
+            if args.showprofile:
+                showProfile(deviceList)
+            if args.showpower:
+                showPower(deviceList)
+            if args.showclkfrq:
+                showClocks(deviceList)
+            if args.setsclk:
+                setClocks(deviceList, 'gpu', args.setsclk)
+            if args.setmclk:
+                setClocks(deviceList, 'mem', args.setmclk)
+            if args.resetfans:
+                resetFans(deviceList)
+            if args.setfan:
+                setFanSpeed(deviceList, args.setfan)
+            if args.setperflevel:
+                setPerformanceLevel(deviceList, args.setperflevel)
+            if args.setoverdrive:
+                setClockOverDrive(deviceList, 'gpu', args.setoverdrive, args.autorespond)
+            if args.setmemoverdrive:
+                setClockOverDrive(deviceList, 'mem', args.setmemoverdrive, args.autorespond)
+            if args.setprofile:
+                setProfile(deviceList, args.setprofile)
+            if args.resetprofile:
+                resetProfile(deviceList)
+            if args.load:
+                load(args.load, args.autorespond)
+            if args.save:
+                save(deviceList, args.save)
+
+            if args.repeat:
+                time.sleep(args.repeat[0])
+            else:
+                print(logSpacer)
+                break
+                
+    except KeyboardInterrupt:
+        pass
 
     # If RETCODE isn't 0, inform the user
     if RETCODE:
