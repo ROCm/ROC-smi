@@ -378,7 +378,7 @@ def writeToSysfs(fsFile, fsValue):
         with open(fsFile, 'w') as fs:
             fs.write(fsValue + '\n') # Certain sysfs files require \n at the end
     except (IOError, OSError):
-        print('Unable to write to sysfs file' + fsFile)
+        print('Unable to write to sysfs file ' + fsFile)
         RETCODE = 1
         return False
     return True
