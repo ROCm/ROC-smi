@@ -16,6 +16,7 @@ import subprocess
 from subprocess import check_output
 import json
 import collections
+import logging
 if hasattr(__builtins__, 'raw_input'):
     input = raw_input
 
@@ -375,6 +376,7 @@ def writeToSysfs(fsFile, fsValue):
         RETCODE = 1
         return False
     try:
+        logging.debug('Writing to file ' + fsFile + ':\n' + fsValue)
         with open(fsFile, 'w') as fs:
             fs.write(fsValue + '\n') # Certain sysfs files require \n at the end
     except (IOError, OSError):
@@ -1353,6 +1355,7 @@ if __name__ == '__main__':
     groupAction = parser.add_argument_group()
     groupFile = parser.add_mutually_exclusive_group()
     groupResponse = parser.add_argument_group()
+    groupOutput = parser.add_argument_group()
 
     groupDev.add_argument('-d', '--device', help='Execute command on specified device', type=int)
     groupDisplay.add_argument('-i', '--showid', help='Show GPU ID', action='store_true')
@@ -1394,7 +1397,13 @@ if __name__ == '__main__':
 
     groupResponse.add_argument('--autorespond', help='Response to automatically provide for all prompts (NOT RECOMMENDED)', metavar='RESPONSE')
 
+    groupOutput.add_argument('--loglevel', help='How much output will be printed for what program is doing, one of debug/info/warning/error/critical', metavar='ILEVEL')
+
     args = parser.parse_args()
+
+    if args.loglevel is not None:
+        numericLogLevel = getattr(logging, args.loglevel.upper(), logging.WARNING)
+        logging.basicConfig(level=numericLogLevel)
 
     # If there is a single device specified, use that for all commands, otherwise use a
     # list of all available devices. Also use "is not None" as device 0 would
@@ -1446,7 +1455,7 @@ if __name__ == '__main__':
                 printLog(device, 'WARNING: DPM not available, skipping output for this device')
                 deviceList.remove(device)
 
-    if len(sys.argv) == 1:
+    if len(sys.argv) == 1 or len(sys.argv) == 2 and args.loglevel:
         showAllConcise(deviceList)
     if args.showhw:
         showAllConciseHw(deviceList)
