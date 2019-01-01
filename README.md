@@ -75,6 +75,10 @@ optional arguments:
   --resetprofile                    Reset Power Profile back to default
 
   --autorespond RESPONSE            Response to automatically provide for all prompts (NOT RECOMMENDED)
+
+  --loglevel ILEVEL                 How much output will be printed for what program is doing, one of
+                                    debug/info/warning/error/critical
+
 ```
 
 
@@ -179,6 +183,10 @@ Show Average Graphics Package power consumption
 Show the maximum Graphics Package power that the GPU will attempt to consume.
 This limit is enforced by the hardware.
 
+--loglevel:
+This will allow the user to set a logging level for the SMI's actions. Currently this is
+only implemented for sysfs writes, but can easily be expanded upon in the future to log
+other things from the SMI
 
 #### Testing changes
 
@@ -198,4 +206,4 @@ The information contained herein is for informational purposes only, and is subj
 
 AMD, the AMD Arrow logo, and combinations thereof are trademarks of Advanced Micro Devices, Inc. Other product names used in this publication are for identification purposes only and may be trademarks of their respective companies.
 
-Copyright (c) 2014-2018 Advanced Micro Devices, Inc. All rights reserved.
+Copyright (c) 2014-2019 Advanced Micro Devices, Inc. All rights reserved.
