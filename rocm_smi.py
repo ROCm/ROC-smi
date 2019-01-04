@@ -6,8 +6,7 @@ the ROCK (Radeon Open Compute Kernel) via sysfs files.
 Please view the README.md file for more information
 """
 
-from __future__ import print_function
-
+from __future__ import print_function, division
 import os
 import argparse
 import re
@@ -54,6 +53,7 @@ valuePaths = {
     'clk_voltage' : {'prefix' : drmprefix, 'filepath' : 'pp_od_clk_voltage', 'needsparse' : False},
     'profile' : {'prefix' : drmprefix, 'filepath' : 'pp_power_profile_mode', 'needsparse' : False},
     'use' : {'prefix' : drmprefix, 'filepath' : 'gpu_busy_percent', 'needsparse' : False},
+    'pcie_bw' : {'prefix' : drmprefix, 'filepath' : 'pcie_bw', 'needsparse' : False},
     'fan' : {'prefix' : hwmonprefix, 'filepath' : 'pwm1', 'needsparse' : False},
     'fanmax' : {'prefix' : hwmonprefix, 'filepath' : 'pwm1_max', 'needsparse' : False},
     'fanmode' : {'prefix' : hwmonprefix, 'filepath' : 'pwm1_enable', 'needsparse' : False},
@@ -797,6 +797,33 @@ def showGpuUse(deviceList):
     print(logSpacer)
 
 
+def showPcieBw(deviceList):
+    """ Display estimated PCIe bandwidth usage for a list of devices.
+
+    Parameters:
+    deviceList -- List of all devices
+    """
+    print(logSpacer)
+    for device in deviceList:
+        fsvals = getSysfsValue(device, 'pcie_bw')
+        if fsvals == None:
+            printLog(device, 'Cannot get PCIe bandwidth')
+        else:
+            # The sysfs file returns 3 integers: bytes-received, bytes-sent, maxsize
+            # Multiply the number of packets by the maxsize to estimate the PCIe usage
+            received = int(fsvals.split()[0])
+            sent = int(fsvals.split()[1])
+            mps = int(fsvals.split()[2])
+
+            # Use 1024.0 to ensure that the result is a float and not integer division
+            bw = ((received + sent) * mps) / 1024.0 / 1024.0
+            # Use the bwstr below to control precision on the string
+            bwstr = '%.3f' % bw
+
+            printLog(device, 'Estimated maximum PCIe bandwidth over the last second: ' + bwstr + ' MB/s')
+    print(logSpacer)
+
+
 def showAllConciseHw(deviceList):
     """ Display critical Hardware info for all devices in a concise format.
 
@@ -1379,6 +1406,7 @@ if __name__ == '__main__':
     groupDisplay.add_argument('-l', '--showprofile', help='Show Compute Profile attributes', action='store_true')
     groupDisplay.add_argument('-s', '--showclkfrq', help='Show supported GPU and Memory Clock', action='store_true')
     groupDisplay.add_argument('-u', '--showuse', help='Show current GPU use', action='store_true')
+    groupDisplay.add_argument('-b', '--showbw', help='Show estimated PCIe use', action='store_true')
     groupDisplay.add_argument('-S', '--showclkvolt', help='Show supported GPU and Memory Clocks and Voltages', action='store_true')
     groupDisplay.add_argument('-a' ,'--showallinfo', help='Show Temperature, Fan and Clock values', action='store_true')
 
@@ -1437,6 +1465,7 @@ if __name__ == '__main__':
         args.showmaxpower = True
         args.showprofile = True
         args.showpower = True
+        args.showbw = True
 
     if args.setsclk or args.setmclk or args.setpclk or args.resetfans or args.setfan or args.setperflevel or \
        args.load or args.resetclocks or args.setprofile or args.resetprofile or args.setoverdrive or \
@@ -1495,6 +1524,8 @@ if __name__ == '__main__':
         showClocks(deviceList)
     if args.showuse:
         showGpuUse(deviceList)
+    if args.showbw:
+        showPcieBw(deviceList)
     if args.showclkvolt:
         showPowerPlayTable(deviceList)
     if args.setsclk:

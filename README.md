@@ -54,6 +54,7 @@ optional arguments:
   -l, --showprofile                 Show Compute Profile attributes
   -s, --showclkfrq                  Show supported GPU and Memory Clock
   -u, --showuse                     Show current GPU use
+  -b, --showbw                      Show estimated PCIe use
   -S, --showclkvolt                 Show supported GPU and Memory Clocks and Voltages
   -a, --showallinfo                 Show Temperature, Fan and Clock values
 
@@ -187,6 +188,18 @@ This limit is enforced by the hardware.
 This will allow the user to set a logging level for the SMI's actions. Currently this is
 only implemented for sysfs writes, but can easily be expanded upon in the future to log
 other things from the SMI
+
+-b, --showbw:
+This shows an approximation of the number of bytes received and sent by the GPU over
+the last second through the PCIe bus. Note that this will not work for APUs since data for
+the GPU portion of the APU goes through the memory fabric and does not 'enter/exit'
+the chip via the PCIe interface, thus no accesses are generated, and the performance
+counters can't count accesses that are not generated.
+NOTE: It is not possible to easily grab the size of every packet that is transmitted
+in real time, so the kernel estimates the bandwidth by taking the maximum payload size (mps),
+which is the max size that a PCIe packet can be. and multiplies it by the number of packets
+received and sent. This means that the SMI will report the maximum estimated bandwidth,
+the actual usage could (and likely will be) less
 
 #### Testing changes
 
