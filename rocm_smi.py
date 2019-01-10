@@ -944,9 +944,10 @@ def setClocks(deviceList, clktype, clk):
         print('Invalid clock frequency')
         RETCODE = 1
         return
-    value = ''.join(map(str, clk))
+    check_value = ''.join(map(str, clk))
+    value = ' '.join(map(str, clk))
     try:
-        int(value)
+        int(check_value)
     except ValueError:
         print('Cannot set Clock level to value', value, ', non-integer characters are present!')
         RETCODE = 1
