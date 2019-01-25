@@ -23,7 +23,7 @@ For convenience purposes, following is a quick excerpt:
 ```shell
 
 usage: rocm-smi [-h] [-d DEVICE] [-i] [-v] [--showhw] [-t] [-c] [-g] [-f] [-p] [-P] [-o] [-m] [-M] [-l] [-s]
-                [-u] [-S] [-a] [-r] [--setsclk LEVEL [LEVEL ...]] [--setmclk LEVEL [LEVEL ...]]
+                [-u] [-S] [-a] [--alldevices] [-r] [--setsclk LEVEL [LEVEL ...]] [--setmclk LEVEL [LEVEL ...]]
                 [--setpclk LEVEL [LEVEL ...]] [--setslevel SCLKLEVEL SCLK SVOLT]
                 [--setmlevel MCLKLEVEL MCLK MVOLT] [--resetfans] [--setfan LEVEL] [--setperflevel LEVEL]
                 [--setoverdrive %] [--setmemoverdrive %] [--setpoweroverdrive WATTS] [--resetpoweroverdrive]
@@ -57,6 +57,7 @@ optional arguments:
   -b, --showbw                      Show estimated PCIe use
   -S, --showclkvolt                 Show supported GPU and Memory Clocks and Voltages
   -a, --showallinfo                 Show Temperature, Fan and Clock values
+  --alldevices                      Execute command on non-AMD devices as well as AMD devices
 
   -r, --resetclocks                 Reset sclk, mclk and pclk to default
   --setsclk LEVEL [LEVEL ...]       Set GPU Clock Frequency Level(s) (requires manual Perf level)

@@ -54,6 +54,7 @@ valuePaths = {
     'profile' : {'prefix' : drmprefix, 'filepath' : 'pp_power_profile_mode', 'needsparse' : False},
     'use' : {'prefix' : drmprefix, 'filepath' : 'gpu_busy_percent', 'needsparse' : False},
     'pcie_bw' : {'prefix' : drmprefix, 'filepath' : 'pcie_bw', 'needsparse' : False},
+    'vendor' : {'prefix' : drmprefix, 'filepath' : 'vendor', 'needsparse' : False},
     'fan' : {'prefix' : hwmonprefix, 'filepath' : 'pwm1', 'needsparse' : False},
     'fanmax' : {'prefix' : hwmonprefix, 'filepath' : 'pwm1_max', 'needsparse' : False},
     'fanmode' : {'prefix' : hwmonprefix, 'filepath' : 'pwm1_enable', 'needsparse' : False},
@@ -386,9 +387,14 @@ def writeToSysfs(fsFile, fsValue):
     return True
 
 
-def listDevices():
-    """ Return a list of GPU devices."""
-    devicelist = [device for device in os.listdir(drmprefix) if re.match(r'^card\d+$', device)]
+def listDevices(showall):
+    """ Return a list of GPU devices.
+
+    Parameters:
+    showall -- Boolean whether we should show all devices, or just AMD devices
+    """
+
+    devicelist = [device for device in os.listdir(drmprefix) if re.match(r'^card\d+$', device) and (isAmdDevice(device) or showall)]
     devicelist.sort()
     return devicelist
 
@@ -491,6 +497,18 @@ def getMaxLevel(device, leveltype):
     if leveltype == 'profile':
         levels = levels.splitlines()[-1].lstrip(' ')
     return int(levels.splitlines()[-1][0])
+
+
+def isAmdDevice(device):
+    """ Return whether the specified device is an AMD device or not
+
+    Parameters:
+    device -- Device to return whether or not it's an AMD device
+    """
+    vid = getSysfsValue(device, 'vendor')
+    if vid == '0x1002':
+        return True
+    return False
 
 
 def setPerfLevel(device, level):
@@ -1410,6 +1428,7 @@ if __name__ == '__main__':
     groupDisplay.add_argument('-b', '--showbw', help='Show estimated PCIe use', action='store_true')
     groupDisplay.add_argument('-S', '--showclkvolt', help='Show supported GPU and Memory Clocks and Voltages', action='store_true')
     groupDisplay.add_argument('-a' ,'--showallinfo', help='Show Temperature, Fan and Clock values', action='store_true')
+    groupDisplay.add_argument('--alldevices', help='Execute command on non-AMD devices as well as AMD devices', action='store_true')
 
     groupAction.add_argument('-r', '--resetclocks', help='Reset sclk, mclk and pclk to default', action='store_true')
     groupAction.add_argument('--setsclk', help='Set GPU Clock Frequency Level(s) (requires manual Perf level)', type=int, metavar='LEVEL', nargs='+')
@@ -1448,9 +1467,12 @@ if __name__ == '__main__':
         if not doesDeviceExist(device):
             print('No such device ' + device)
             sys.exit()
-        deviceList = [device]
+        if isAmdDevice(device) or args.alldevices:
+            deviceList = [device]
+        else:
+            print('No supported devices available to display')
     else:
-        deviceList = listDevices()
+        deviceList = listDevices(args.alldevices)
 
     if args.showallinfo:
         args.showid = True
@@ -1491,7 +1513,7 @@ if __name__ == '__main__':
                 printLog(device, 'WARNING: DPM not available, skipping output for this device')
                 deviceList.remove(device)
 
-    if len(sys.argv) == 1 or len(sys.argv) == 2 and args.loglevel:
+    if len(sys.argv) == 1 or len(sys.argv) == 2 and (args.loglevel or args.alldevices):
         showAllConcise(deviceList)
     if args.showhw:
         showAllConciseHw(deviceList)
