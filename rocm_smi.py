@@ -255,6 +255,9 @@ def verifySetProfile(device, profile):
     # If it's 1 number, we're setting the level, not the Custom Profile
     if profile.isdigit():
         maxProfileLevel = getMaxLevel(device, 'profile')
+        if maxProfileLevel is None:
+            printLog(device, 'Cannot set profile, unable to obtain max level')
+            return False
         if int(profile) > maxProfileLevel:
             printLog(device, 'Cannot set profile to level ' + str(profile) + ', max level is ' + str(maxProfileLevel))
             return False
@@ -347,6 +350,9 @@ def writeProfileSysfs(device, value):
     setPerfLevel(device, 'manual')
     profilePath = os.path.join(drmprefix, device, 'device', 'pp_power_profile_mode')
     maxLevel = getMaxLevel(device, 'profile')
+    if maxLevel is None:
+        printLog(device, 'Cannot set profile, max level could not be obtained')
+        return False
     # If it's a single number, then we're choosing the Power Profile, not setting CUSTOM
     if isinstance(value, str) and len(value) == 1:
         profileString = value
@@ -354,8 +360,9 @@ def writeProfileSysfs(device, value):
     elif value.isdigit():
         profileString = str(value)
     elif isinstance(value, str) and len(value) > 1:
-        # Prepend the Max Level of Profiles since that will always be the CUSTOM profile
-        profileString = str(maxLevel) + value
+        if maxLevel is not None:
+            # Prepend the Max Level of Profiles since that will always be the CUSTOM profile
+            profileString = str(maxLevel) + value
     else:
         printLog(device, 'Invalid input argument ' + value)
         return False
@@ -488,11 +495,11 @@ def getMaxLevel(device, leveltype):
     except KeyError:
         printLog(device, 'Invalid level type ' + leveltype)
         RETCODE = 1
-        return ''
+        return None
 
     levels = getSysfsValue(device, key)
     if not levels:
-        return 0
+        return None
     # lstrip since there are leading spaces for this sysfs file, but no others
     if leveltype == 'profile':
         levels = levels.splitlines()[-1].lstrip(' ')
@@ -988,8 +995,9 @@ def setClocks(deviceList, clktype, clk):
             return
 
         # If maxLevel is empty, it means that the sysfs file is empty, so quit
+        # But 0 is a max level option, so use "is None" instead of "not maxLevel"
         maxLevel = getMaxLevel(device, clktype)
-        if not maxLevel:
+        if maxLevel is None:
             printLog(device, 'Unable to set clock for type ' + clktype + ', Sysfs file is empty')
             RETCODE = 1
             continue
@@ -1046,7 +1054,12 @@ def setPowerPlayTableLevel(deviceList, clktype, levelList, autoRespond):
 
         confirmOutOfSpecWarning(autoRespond)
 
-        if int(levelList[0]) > getMaxLevel(device, clktype):
+        maxLevel = getMaxLevel(device, clktype)
+        if maxLevel is None:
+            printLog(device, 'Unable to set clock, cannot obtain maximum level')
+            RETCODE = 1
+            continue
+        if int(levelList[0]) > maxLevel:
             printLog(device, 'Unable to set clock to unsupported Level - Max Level is ' + str(getMaxLevel(device, clktype)))
             RETCODE = 1
             continue
