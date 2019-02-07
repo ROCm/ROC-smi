@@ -46,7 +46,7 @@ testSetGpuOverDrive() {
     local sysOdVolt=$(cat $DRM_PREFIX/card${smiDev:3}/device/pp_od_clk_voltage)
     if [ -z "$sysOdVolt" ]; then
         echo "OverDrive not supported. Skipping test."
-        continue
+        return 0
     fi
     local currOd="$(cat $odPath)" # OverDrive level
     local newOd="3"
