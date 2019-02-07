@@ -62,8 +62,33 @@ valuePaths = {
     'power' : {'prefix' : hwmonprefix, 'filepath' : 'power1_average', 'needsparse' : True},
     'power_cap' : {'prefix' : hwmonprefix, 'filepath' : 'power1_cap', 'needsparse' : False},
     'power_cap_max' : {'prefix' : hwmonprefix, 'filepath' : 'power1_cap_max', 'needsparse' : False},
-    'power_cap_min' : {'prefix' : hwmonprefix, 'filepath' : 'power1_cap_min', 'needsparse' : False}
+    'power_cap_min' : {'prefix' : hwmonprefix, 'filepath' : 'power1_cap_min', 'needsparse' : False},
+    'dpm_state' : {'prefix' : drmprefix, 'filepath' : 'power_dpm_state', 'needsparse' : False}
 }
+
+
+def getFilePath(device, key):
+    """ Return the filepath for a specific device and key
+
+    Parameters:
+    device -- Device to return the filepath
+    key -- The sysfs path to return
+    """
+    pathDict = valuePaths[key]
+    fileValue = ''
+
+    if pathDict['prefix'] == hwmonprefix:
+        # HW Monitor values have a different path structure
+        if not getHwmonFromDevice(device):
+            printLog(device, 'No corresponding HW Monitor found')
+            return None
+        filePath = os.path.join(getHwmonFromDevice(device), pathDict['filepath'])
+    else:
+        filePath = os.path.join(pathDict['prefix'], device, 'device', pathDict['filepath'])
+
+    if not os.path.isfile(filePath):
+        return None
+    return filePath
 
 
 def getSysfsValue(device, key):
@@ -73,19 +98,11 @@ def getSysfsValue(device, key):
     device -- Device to return the desired value
     value -- SysFS value to return (defined in dict above)
     """
+    filePath = getFilePath(device, key)
     pathDict = valuePaths[key]
-    fileValue = ''
-    filePath = os.path.join(pathDict['prefix'], device, 'device', pathDict['filepath'])
 
-    if pathDict['prefix'] == hwmonprefix:
-        # HW Monitor values have a different path structure
-        if not getHwmonFromDevice(device):
-            return None
-        filePath = os.path.join(getHwmonFromDevice(device), pathDict['filepath'])
-
-    if not os.path.isfile(filePath):
+    if not filePath:
         return None
-
     # Use try since some sysfs files like power1_average will throw -EINVAL
     # instead of giving something useful.
     try:
@@ -210,7 +227,7 @@ def isDPMAvailable(device):
     Parameters:
     device -- Device to check for DPM availability
     """
-    if not doesDeviceExist(device) or os.path.isfile(os.path.join(drmprefix, device, 'device', 'power_dpm_state')) == 0:
+    if not doesDeviceExist(device) or not os.path.isfile(getFilePath(device, 'dpm_state')):
         return False
     return True
 
@@ -348,7 +365,7 @@ def writeProfileSysfs(device, value):
     # Perf Level must be set to manual for a Power Profile to be specified
     # This is new compared to previous versions of the Power Profile
     setPerfLevel(device, 'manual')
-    profilePath = os.path.join(drmprefix, device, 'device', 'pp_power_profile_mode')
+    profilePath = getFilePath(device, 'profile')
     maxLevel = getMaxLevel(device, 'profile')
     if maxLevel is None:
         printLog(device, 'Cannot set profile, max level could not be obtained')
@@ -527,7 +544,7 @@ def setPerfLevel(device, level):
     """
     global RETCODE
     validLevels = ['auto', 'low', 'high', 'manual']
-    perfPath = os.path.join(drmprefix, device, 'device', 'power_dpm_force_performance_level')
+    perfPath = getFilePath(device, 'perf')
 
     if level not in validLevels:
         print(device, 'Invalid Performance level:' + level)
@@ -663,14 +680,13 @@ def showClocks(deviceList):
     """
     print(logSpacer)
     for device in deviceList:
-        devpath = os.path.join(drmprefix, device, 'device')
-        sclkPath = os.path.join(devpath, 'pp_dpm_sclk')
-        mclkPath = os.path.join(devpath, 'pp_dpm_mclk')
-        pclkPath = os.path.join(devpath, 'pp_dpm_pcie')
+        sclkPath = getFilePath(device, 'sclk')
+        mclkPath = getFilePath(device, 'mclk')
+        pclkPath = getFilePath(device, 'pclk')
         if not isDPMAvailable(device):
             printLog(device, 'DPM not available - Cannot display clocks')
             continue
-        if not os.path.isfile(sclkPath) or not os.path.isfile(mclkPath):
+        if not os.path.isfile(sclkPath) or not os.path.isfile(mclkPath) or not os.path.isfile(pclkPath):
             continue
         with open(sclkPath, 'r') as sclk:
             sclkLog = 'Supported GPU clock frequencies on GPU' + parseDeviceName(device) + '\n' + sclk.read()
@@ -793,10 +809,6 @@ def showMaxPower(deviceList):
     """
     print(logSpacer)
     for device in deviceList:
-        hwmon = getHwmonFromDevice(device)
-        if not hwmon:
-            printLog(device, 'No corresponding HW Monitor found')
-            continue
         power_cap = getSysfsValue(device, 'power_cap')
         if not power_cap:
             printLog(device, 'Cannot get maximum Graphics Package Power: Max GPU Power reading not supported')
@@ -1049,8 +1061,7 @@ def setPowerPlayTableLevel(deviceList, clktype, levelList, autoRespond):
             printLog(device, 'DPM not enabled - Cannot set voltages')
             RETCODE = 1
             continue
-        devpath = os.path.join(drmprefix, device, 'device')
-        clkFile = os.path.join(devpath, 'pp_od_clk_voltage')
+        clkFile = getFilePath(device, 'clk_voltage')
 
         confirmOutOfSpecWarning(autoRespond)
 
@@ -1096,12 +1107,11 @@ def setClockOverDrive(deviceList, clktype, value, autoRespond):
         if not isDPMAvailable(device):
             printLog(device, 'DPM not available - Cannot set OverDrive')
             continue
-        devpath = os.path.join(drmprefix, device, 'device')
         if clktype == 'gpu':
-            odPath = os.path.join(devpath, 'pp_sclk_od')
+            odPath = getFilePath(device, 'sclk_od')
             odStr = 'GPU'
         elif clktype == 'mem':
-            odPath = os.path.join(devpath, 'pp_mclk_od')
+            odPath = getFilePath(device, 'mclk_od')
             odStr = 'GPU Memory'
         else:
             printLog(device, 'Unsupported clock type ' + clktype + ' - Cannot set OverDrive')
@@ -1152,11 +1162,7 @@ def setPowerOverDrive(deviceList, value, autoRespond):
         if not isDPMAvailable(device):
             printLog(device, 'DPM not available - Cannot set Power OverDrive')
             continue
-        hwmon = getHwmonFromDevice(device)
-        if not hwmon:
-            printLog(device, 'No corresponding HW Monitor found')
-            continue
-        power_cap_path = os.path.join(hwmon, 'power1_cap')
+        power_cap_path = getFilePath(device, 'power1_cap')
 
         # Avoid early unnecessary conversions
         max_power_cap = int(getSysfsValue(device, 'power_cap_max'))
@@ -1201,11 +1207,7 @@ def resetFans(deviceList):
         if not isDPMAvailable(device):
             printLog(device, 'DPM not available - Cannot reset fan speed')
             continue
-        hwmon = getHwmonFromDevice(device)
-        if not hwmon:
-            printLog(device, 'No corresponding HW Monitor found')
-            continue
-        fanpath = os.path.join(hwmon, 'pwm1_enable')
+        fanpath = getFilePath(device, 'fanmode')
         if writeToSysfs(fanpath, '2'):
             printLog(device, 'Successfully reset fan speed to driver control')
         else:
@@ -1225,13 +1227,8 @@ def setFanSpeed(deviceList, fan):
             printLog(device, 'DPM not available - Cannot set fan speed')
             RETCODE = 1
             continue
-        hwmon = getHwmonFromDevice(device)
-        if not hwmon:
-            printLog(device, 'No corresponding HW Monitor found')
-            RETCODE = 1
-            continue
-        fanpath = os.path.join(hwmon, 'pwm1')
-        modepath = os.path.join(hwmon, 'pwm1_enable')
+        fanpath = getFilePath(device, 'fan')
+        modepath = getFilePath(device, 'fanmode')
         maxfan = getSysfsValue(device, 'fanmax')
         if not maxfan:
             printLog(device, 'Cannot get max fan speed')
@@ -1302,10 +1299,9 @@ def resetOverDrive(deviceList):
     deviceList -- List of devices to reset OverDrive (can be a single-item list)
     """
     for device in deviceList:
-        devpath = os.path.join(drmprefix, device, 'device')
-        odpath = os.path.join(devpath, 'pp_sclk_od')
-        odclkpath = os.path.join(devpath, 'pp_od_clk_voltage')
-        if not os.path.isfile(odpath):
+        odpath = getFilePath(device, 'sclk_od')
+        odclkpath = getFilePath(device, 'clk_voltage')
+        if not odpath or not os.path.isfile(odpath):
             printLog(device, 'Unable to reset OverDrive; OverDrive not available')
             continue
         od = getSysfsValue(device, 'sclk_od')
@@ -1314,7 +1310,7 @@ def resetOverDrive(deviceList):
                 printLog(device, 'Unable to reset OverDrive')
                 continue
         printLog(device, 'OverDrive set to 0')
-        if os.path.isfile(odclkpath):
+        if odclkpath and os.path.isfile(odclkpath):
             if writeToSysfs(odclkpath, 'r') and writeToSysfs(odclkpath, 'c'):
                 printLog(device, 'Reset OverDrive DPM table')
 
