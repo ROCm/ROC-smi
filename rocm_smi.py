@@ -596,6 +596,12 @@ def showCurrentClock(deviceList, clocktype):
         if not isDPMAvailable(device):
             printLog(device, 'DPM not available - Cannot display ' + clocktype)
             continue
+        if not getFilePath(device, clocktype):
+            # If the clock file doesn't exist, don't print it out.
+            # It may not be an error if the HW doesn't support it,
+            # like fclk on Vega10 for example
+            # TODO: Add a debug-level log explaining a lack of file
+            continue
         clk = getCurrentClock(device, clocktype, 'freq')
         level = getCurrentClock(device, clocktype, 'level')
 
