@@ -1501,7 +1501,7 @@ if __name__ == '__main__':
         args.showmaxpower = True
         args.showprofile = True
         args.showpower = True
-        args.showbw = True
+        args.showclkvolt = True
 
     if args.setsclk or args.setmclk or args.setpclk or args.resetfans or args.setfan or args.setperflevel or \
        args.load or args.resetclocks or args.setprofile or args.resetprofile or args.setoverdrive or \
