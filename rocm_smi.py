@@ -41,7 +41,14 @@ powerprefix = '/sys/kernel/debug/dri/'
 headerSpacer = '='*24
 logSpacer = headerSpacer * 4
 
-validClockNames = ['mclk', 'pclk', 'sclk']
+# These are the valid clock types that can be returned/modified,
+# dcefclk (only supported on Vega10 and later)
+# fclk (only supported on Vega20 and later)
+# mclk
+# pclk
+# sclk
+# socclk (only supported on Vega10 and later)
+validClockNames = ['dcefclk', 'fclk', 'mclk', 'pclk', 'sclk', 'socclk']
 
 valuePaths = {
     'id' : {'prefix' : drmprefix, 'filepath' : 'device', 'needsparse' : True},
@@ -49,9 +56,12 @@ valuePaths = {
     'perf' : {'prefix' : drmprefix, 'filepath' : 'power_dpm_force_performance_level', 'needsparse' : False},
     'sclk_od' : {'prefix' : drmprefix, 'filepath' : 'pp_sclk_od', 'needsparse' : False},
     'mclk_od' : {'prefix' : drmprefix, 'filepath' : 'pp_mclk_od', 'needsparse' : False},
-    'sclk' : {'prefix' : drmprefix, 'filepath' : 'pp_dpm_sclk', 'needsparse' : False},
+    'dcefclk' : {'prefix' : drmprefix, 'filepath' : 'pp_dpm_dcefclk', 'needsparse' : False},
+    'fclk' : {'prefix' : drmprefix, 'filepath' : 'pp_dpm_fclk', 'needsparse' : False},
     'mclk' : {'prefix' : drmprefix, 'filepath' : 'pp_dpm_mclk', 'needsparse' : False},
     'pclk' : {'prefix' : drmprefix, 'filepath' : 'pp_dpm_pcie', 'needsparse' : False},
+    'sclk' : {'prefix' : drmprefix, 'filepath' : 'pp_dpm_sclk', 'needsparse' : False},
+    'socclk' : {'prefix' : drmprefix, 'filepath' : 'pp_dpm_socclk', 'needsparse' : False},
     'clk_voltage' : {'prefix' : drmprefix, 'filepath' : 'pp_od_clk_voltage', 'needsparse' : False},
     'profile' : {'prefix' : drmprefix, 'filepath' : 'pp_power_profile_mode', 'needsparse' : False},
     'use' : {'prefix' : drmprefix, 'filepath' : 'gpu_busy_percent', 'needsparse' : False},

@@ -202,6 +202,18 @@ which is the max size that a PCIe packet can be. and multiplies it by the number
 received and sent. This means that the SMI will report the maximum estimated bandwidth,
 the actual usage could (and likely will be) less
 
+### Clock Type Descriptions
+DCEFCLK - DCE (Display)
+FCLK    - Data fabric (VG20 and later) - Data flow from XGMI, Memory, PCIe
+SCLK    - GFXCLK (Graphics core)
+          Note - SOCCLK split from SCLK as of Vega10. Pre-Vega10 they were both controlled by SCLK
+MCLK    - GPU Memory (VRAM)
+PCLK    - PCIe bus
+          Note - This gives 2 speeds, PCIe Gen1 x1 and the highest available based on the hardware
+SOCCLK  - System clock (VG10 and later) - Data Fabric (DF), MM HUB, AT HUB, SYSTEM HUB, OSS, DFD
+          Note - DF split from SOCCLK as of Vega20. Pre-Vega20 they were both controlled by SOCCLK
+
+
 #### Testing changes
 
 After making changes to the SMI, run the test script to ensure that all functionality
