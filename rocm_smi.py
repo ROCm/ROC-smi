@@ -38,8 +38,19 @@ drmprefix = '/sys/class/drm'
 hwmonprefix = '/sys/class/hwmon'
 powerprefix = '/sys/kernel/debug/dri/'
 
-headerSpacer = '='*24
-logSpacer = headerSpacer * 4
+headerString = 'ROCm System Management Interface'
+footerString = 'End of ROCm SMI Log'
+
+# 80 characters for string and '=' fillers will be the soft-max
+headerSpacer = '='* int((80 - (len(headerString))) / 2)
+footerSpacer = '='* int((80 - (len(footerString))) / 2)
+
+# If the string has an odd number of digits, pad with a space for symmetry
+if len(headerString) % 2:
+    headerString += ' '
+if len(footerString) % 2:
+    footerString += ' '
+logSpacer = '=' * 80
 
 # These are the valid clock types that can be returned/modified,
 # dcefclk (only supported on Vega10 and later)
@@ -863,7 +874,9 @@ def showAllConciseHw(deviceList):
     deviceList -- List of all devices
     """
     print(logSpacer)
-    print(' GPU  DID    ECC        VBIOS')
+    header = ['GPU', 'DID', 'ECC', 'VBIOS']
+    head_widths = [len(head)+2 for head in header]
+    values = {}
     for device in deviceList:
         gpuid = getSysfsValue(device, 'id')
 
@@ -872,7 +885,17 @@ def showAllConciseHw(deviceList):
 
         vbios = getSysfsValue(device, 'vbios')
 
-        print("  %-4s%-7s%-6s%-17s" % (device[4:], gpuid, ecc, vbios))
+        values[device] = [device[4:], gpuid, ecc, vbios]
+    val_widths = {}
+    for device in deviceList:
+        val_widths[device] = [len(val)+2 for val in values[device]]
+    max_widths = head_widths
+    for device in deviceList:
+        for col in range(len(val_widths[device])):
+            max_widths[col] = max(max_widths[col], val_widths[device][col])
+    print("".join(word.ljust(max_widths[col]) for col,word in zip(range(len(max_widths)),header)))
+    for device in deviceList:
+        print("".join(word.ljust(max_widths[col]) for col,word in zip(range(len(max_widths)),values[device])))
 
 
 def showAllConcise(deviceList):
@@ -882,7 +905,9 @@ def showAllConcise(deviceList):
     deviceList -- List of all devices
     """
     print(logSpacer)
-    print('GPU   Temp   AvgPwr   SCLK    MCLK    PCLK           Fan     Perf    PwrCap   SCLK OD   MCLK OD  GPU%')
+    header = ['GPU', 'Temp', 'AvgPwr', 'SCLK', 'MCLK', 'Fan', 'Perf', 'PwrCap', 'SCLK OD', 'MCLK OD', 'GPU%']
+    head_widths = [len(head)+2 for head in header]
+    values = {}
     for device in deviceList:
 
         temp = getSysfsValue(device, 'temp')
@@ -897,7 +922,6 @@ def showAllConcise(deviceList):
         else:
             power = str(power) + 'W'
 
-        # TODO: Use validClockNames to consolidate below
         sclk = getCurrentClock(device, 'sclk', 'freq')
         if not sclk:
             sclk = 'N/A'
@@ -905,10 +929,6 @@ def showAllConcise(deviceList):
         mclk = getCurrentClock(device, 'mclk', 'freq')
         if not mclk:
             mclk = 'N/A'
-
-        pclk = getCurrentClock(device, 'pclk', 'freq')
-        if not pclk:
-            pclk = 'N/A'
 
         fan = str(getFanSpeed(device))
         if not fan:
@@ -944,8 +964,17 @@ def showAllConcise(deviceList):
         else:
             use = use + '%'
 
-        # TODO: Dynamically add the strings below based on available clocks
-        print("%-6s%-7s%-9s%-8s%-8s%-15s%-8s%-8s%-9s%-10s%-9s%-9s" % (device[4:], temp, power, sclk, mclk, pclk, fan, perf, power_cap, sclk_od, mclk_od, use))
+        values[device] = [device[4:], temp, power, sclk, mclk, fan, perf, power_cap, sclk_od, mclk_od, use]
+    val_widths = {}
+    for device in deviceList:
+        val_widths[device] = [len(val)+2 for val in values[device]]
+    max_widths = head_widths
+    for device in deviceList:
+        for col in range(len(val_widths[device])):
+            max_widths[col] = max(max_widths[col], val_widths[device][col])
+    print("".join(word.ljust(max_widths[col]) for col,word in zip(range(len(max_widths)),header)))
+    for device in deviceList:
+        print("".join(word.ljust(max_widths[col]) for col,word in zip(range(len(max_widths)),values[device])))
     print(logSpacer)
 
 
@@ -1494,7 +1523,7 @@ if __name__ == '__main__':
         relaunchAsSudo()
 
     # Header for the SMI
-    print('\n\n', headerSpacer, '        ROCm System Management Interface        ', headerSpacer, sep='')
+    print('\n\n', headerSpacer + headerString + headerSpacer, sep='')
 
     # If all fields are requested, only print it for devices with DPM support. There is no point
     # in printing a bunch of "Feature unavailable" messages and cluttering the output
@@ -1586,5 +1615,5 @@ if __name__ == '__main__':
         print('WARNING: One or more commands failed')
 
     # Footer for the SMI
-    print(headerSpacer, '               End of ROCm SMI Log              ', headerSpacer, '\n', sep='')
+    print(footerSpacer + footerString + footerSpacer, sep='')
     sys.exit(RETCODE)
