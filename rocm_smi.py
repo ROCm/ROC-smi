@@ -474,7 +474,9 @@ def getHwmonFromDevice(device):
 
 
 def getFanSpeed(device):
-    """ Return the fan speed (%) for a specified device.
+    """ Return an tuple with the fan speed (value,%) for a specified device,
+    or (None,None) if either current fan speed or max fan speed cannot be
+    obtained.
 
     Parameters:
     device -- Device to return the current fan speed
@@ -483,8 +485,8 @@ def getFanSpeed(device):
     fanLevel = getSysfsValue(device, 'fan')
     fanMax = getSysfsValue(device, 'fanmax')
     if not fanLevel or not fanMax:
-        return 0
-    return round((float(fanLevel) / float(fanMax)) * 100, 2)
+        return (None, None)
+    return (int(fanLevel), round((float(fanLevel) / float(fanMax)) * 100, 2))
 
 
 def getCurrentClock(device, clock, clocktype):
@@ -676,12 +678,11 @@ def showCurrentFans(deviceList):
     """
     print(logSpacer)
     for device in deviceList:
-        fanlevel = getSysfsValue(device, 'fan')
-        fanspeed = getFanSpeed(device)
-        if not fanspeed or not fanlevel:
+        (fanLevel, fanSpeed) = getFanSpeed(device)
+        if not fanLevel or not fanSpeed:
             printLog(device, 'Unable to determine current fan speed')
             continue
-        printLog(device, 'Fan Level: ' + str(fanlevel) + ' (' + str(fanspeed) + ')%')
+        printLog(device, 'Fan Level: %d (%d%%)' % (fanLevel, fanSpeed))
     print(logSpacer)
 
 
@@ -930,7 +931,7 @@ def showAllConcise(deviceList):
         if not mclk:
             mclk = 'N/A'
 
-        fan = str(getFanSpeed(device))
+        fan = str(getFanSpeed(device)[1])
         if not fan:
             fan = 'N/A'
         else:
@@ -1250,7 +1251,7 @@ def setFanSpeed(deviceList, fan):
             printLog(device, 'Cannot get max fan speed')
             RETCODE = 1
             continue
-        if fan.endswith('%'):
+        if str(fan).endswith('%'):
             fanpct = int(fan[:-1])
             if fanpct > 100:
                 printLog(device, 'Invalid fan value ' + fan)
@@ -1416,7 +1417,7 @@ def save(deviceList, savefilepath):
             if clk is None:
                 continue
             clocks[device][clks] = clk
-        fanSpeeds[device] = getSysfsValue(device, 'fan')
+        fanSpeeds[device] = getFanSpeed(device)[0]
         overDriveGpu[device] = getSysfsValue(device, 'sclk_od')
         overDriveGpuMem[device] = getSysfsValue(device, 'mclk_od')
         profiles[device] = getProfile(device)
