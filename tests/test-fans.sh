@@ -13,7 +13,7 @@ testGetFan() {
     for line in $fans; do
         if [ "$(checkLogLine $line)" != "true" ]; then
             continue
-        elif [[ "$line" == *"Unable to determine"* ]]; then
+        elif [[ "$line" == *"Unable to"* ]]; then
             continue
         fi
         local rocmFan="$(extractRocmValue $line)"
