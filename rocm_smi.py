@@ -336,11 +336,13 @@ def getProfile(device):
     device -- Device to return the current profile
     """
     profiles = getSysfsValue(device, 'profile')
-    profile = ''
     custom = ''
     asic = ''
     level = ''
     numArgs = getNumProfileArgs(device)
+    if numArgs == 0:
+        printLog(device, 'Unable to get power profile')
+        return None
     for line in profiles.splitlines():
         if re.match(r'.*SCLK_UP_HYST./*', line):
             asic = 'SMU7'
