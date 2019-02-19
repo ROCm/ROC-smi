@@ -1413,17 +1413,22 @@ def load(savefilepath, autoRespond):
                 print('Unable to load legacy clock file - file v' + str(values['vJson']) +
                       ' != current v' + str(JSON_VERSION))
                 break
-            setFanSpeed([device], values['fan'])
-            setClockOverDrive([device], 'sclk', values['overdrivesclk'], autoRespond)
-            setClockOverDrive([device], 'mclk', values['overdrivemclk'], autoRespond)
+            if values['fan']:
+                setFanSpeed([device], values['fan'])
+            if values['overdrivesclk']:
+                setClockOverDrive([device], 'sclk', values['overdrivesclk'], autoRespond)
+            if values['overdrivemclk']:
+                setClockOverDrive([device], 'mclk', values['overdrivemclk'], autoRespond)
             for clk in validClockNames:
                 if clk in values['clocks']:
                     setClocks([device], clk, values['clocks'][clk])
-            setProfile([device], values['profile'])
+            if values['profile']:
+                setProfile([device], values['profile'])
 
             # Set Perf level last, since setting OverDrive sets the Performance level
             # it to manual, and Profiles only work when the Performance level is auto
-            setPerfLevel(device, values['perflevel'])
+            if values['perflevel']:
+                setPerfLevel(device, values['perflevel'])
 
             printLog(device, 'Successfully loaded values from ' + savefilepath)
 
