@@ -194,8 +194,11 @@ def printLog(device, log):
     device -- Device that the log will reference
     log -- String to print to the log
     """
+    devName = parseDeviceName(device)
     for line in log.split('\n'):
-        print('GPU[', parseDeviceName(device), '] \t\t: ', line, sep='')
+        logstr = 'GPU[%s] \t\t: %s' % (devName, line)
+        logging.debug(logstr)
+        print(logstr)
 
 
 def doesDeviceExist(device):
@@ -1586,7 +1589,7 @@ if __name__ == '__main__':
                 printLog(device, 'Skipping output for this device')
                 deviceList.remove(device)
 
-    if len(sys.argv) == 1 or len(sys.argv) == 2 and (args.loglevel or args.alldevices):
+    if len(sys.argv) == 1 or len(sys.argv) == 2 and args.alldevices:
         showAllConcise(deviceList)
     if args.showhw:
         showAllConciseHw(deviceList)
