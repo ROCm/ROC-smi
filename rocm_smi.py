@@ -551,8 +551,10 @@ def getMaxLevel(device, leveltype):
         return None
     # lstrip since there are leading spaces for this sysfs file, but no others
     if leveltype == 'profile':
-        levels = levels.splitlines()[-1].lstrip(' ')
-    return int(levels.splitlines()[-1][0])
+        for line in levels.splitlines():
+            if re.match(r'.*CUSTOM.*', line):
+                return line.lstrip().split()[0]
+    return None
 
 
 def isAmdDevice(device):
@@ -1316,17 +1318,22 @@ def setFanSpeed(deviceList, fan):
 
 
 def setProfile(deviceList, profile):
-    """ Set CUSTOM Power Profile values for a list of devices.
+    """ Set Power Profile, or set CUSTOM Power Profile values for a list of devices.
 
     Parameters:
-    deviceList -- List of devices to specify the CUSTOM Power Profile for (can be a single-item list)
+    deviceList -- List of devices to specify the Power Profile or the CUSTOM Power Profile
+                  for (can be a single-item list)
     profile -- The profile to set
     """
+    if len(profile) == 1:
+        execMsg = 'Power Profile to level ' + profile
+    else:
+        execMsg = 'CUSTOM Power Profile values'
     for device in deviceList:
         if writeProfileSysfs(device, profile):
-            printLog(device, 'Successfully set CUSTOM Power Profile values')
+            printLog(device, 'Successfully set ' + execMsg)
         else:
-            printLog(device, 'Unable to set CUSTOM Power Profile values')
+            printLog(device, 'Unable to set ' + execMsg)
 
 
 def resetProfile(deviceList):
