@@ -58,6 +58,7 @@ optional arguments:
   -S, --showclkvolt                 Show supported GPU and Memory Clocks and Voltages
   -a, --showallinfo                 Show Temperature, Fan and Clock values
   --showmeminfo TYPE [TYPE ...]     Show Memory usage information for given block(s) TYPE
+  --showrasinfo BLOCK [BLOCK ...]   Show RAS enablement information and error counts for the specified block(s)
   --alldevices                      Execute command on non-AMD devices as well as AMD devices
 
   -r, --resetclocks                 Reset sclk, mclk and pclk to default
@@ -76,6 +77,9 @@ optional arguments:
   --setprofile SETPROFILE           Specify Power Profile level (#) or a quoted string of CUSTOM Profile
                                     attributes "# # # #..." (requires manual Perf level)
   --resetprofile                    Reset Power Profile back to default
+  --rasenable BLOCK                 Enable RAS for specified block
+  --rasdisable BLOCK                Disable RAS for specified block
+  --rasinject BLOCK                 Inject RAS poison for specified block (ONLY WORKS ON UNSECURE BOARDS)
 
   --autorespond RESPONSE            Response to automatically provide for all prompts (NOT RECOMMENDED)
 
@@ -211,6 +215,12 @@ in real time, so the kernel estimates the bandwidth by taking the maximum payloa
 which is the max size that a PCIe packet can be. and multiplies it by the number of packets
 received and sent. This means that the SMI will report the maximum estimated bandwidth,
 the actual usage could (and likely will be) less
+
+--showrasinfo:
+This shows the RAS information for a given block. This includes enablement of the block
+(currently GFX, SDMA and UMC are the only supported blocks) and the number of errors
+ue - Uncorrectable errors
+ce - Correctable errors
 
 ### Clock Type Descriptions
 DCEFCLK - DCE (Display)

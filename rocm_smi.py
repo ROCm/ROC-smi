@@ -36,7 +36,7 @@ def relaunchAsSudo():
 
 drmprefix = '/sys/class/drm'
 hwmonprefix = '/sys/class/hwmon'
-powerprefix = '/sys/kernel/debug/dri/'
+debugprefix = '/sys/kernel/debug/dri/'
 
 headerString = 'ROCm System Management Interface'
 footerString = 'End of ROCm SMI Log'
@@ -66,6 +66,17 @@ validClockNames = ['dcefclk', 'fclk', 'mclk', 'pclk', 'sclk', 'socclk']
 # vis_vram (Visible VRAM)
 # gtt
 validMemTypes = ['vram', 'vis_vram', 'gtt']
+
+# These are the types of supported RAS blocks and their respective enums
+# gfx
+# sdma
+# umc
+validRasBlocks = {'gfx' : 1<<2, 'sdma' : 1<<1, 'umc': 1<<0}
+# These are the valid input types to a RAS file
+validRasActions = ['disable', 'enable', 'inject']
+# Right now, these are the only supported memory error types,
+# ue - Uncorrectable error; ce - Correctable error
+validRasTypes = ['ue', 'ce']
 
 valuePaths = {
     'id' : {'prefix' : drmprefix, 'filepath' : 'device', 'needsparse' : True},
@@ -98,7 +109,12 @@ valuePaths = {
     'vis_vram_used' : {'prefix' : drmprefix, 'filepath' : 'mem_info_vis_vram_used', 'needsparse' : False},
     'vis_vram_total' : {'prefix' : drmprefix, 'filepath' : 'mem_info_vis_vram_total', 'needsparse' : False},
     'gtt_used' : {'prefix' : drmprefix, 'filepath' : 'mem_info_gtt_used', 'needsparse' : False},
-    'gtt_total' : {'prefix' : drmprefix, 'filepath' : 'mem_info_gtt_total', 'needsparse' : False}
+    'gtt_total' : {'prefix' : drmprefix, 'filepath' : 'mem_info_gtt_total', 'needsparse' : False},
+    'ras_gfx' : {'prefix' : drmprefix, 'filepath' : 'ras/gfx_err_count', 'needsparse' : False},
+    'ras_sdma' : {'prefix' : drmprefix, 'filepath' : 'ras/sdma_err_count', 'needsparse' : False},
+    'ras_umc' : {'prefix' : drmprefix, 'filepath' : 'ras/umc_err_count', 'needsparse' : False},
+    'ras_features' : {'prefix' : drmprefix, 'filepath' : 'ras/features', 'needsparse' : True},
+    'ras_ctrl' : {'prefix' : debugprefix, 'filepath' : 'ras/ras_ctrl', 'needsparse' : False}
 }
 
 
@@ -118,6 +134,9 @@ def getFilePath(device, key):
             logging.warning('GPU[%s]\t: No corresponding HW Monitor found', parseDeviceName(device))
             return None
         filePath = os.path.join(getHwmonFromDevice(device), pathDict['filepath'])
+    elif pathDict['prefix'] == debugprefix:
+        # Kernel DebugFS values have a different path structure
+        filePath = os.path.join(pathDict['prefix'], parseDeviceName(device), pathDict['filepath'])
     else:
         filePath = os.path.join(pathDict['prefix'], device, 'device', pathDict['filepath'])
 
@@ -177,6 +196,9 @@ def parseSysfsValue(key, value):
         # available, it will return "Invalid Argument"
         if value.isdigit():
             return float(value) / 1000 / 1000
+    # ras_reatures has "feature mask: 0x%x" as the first line, so get the bitfield out
+    if key == 'ras_features':
+        return int((value.split('\n')[0]).split(' ')[-1], 16)
 
     return ''
 
@@ -267,6 +289,19 @@ def isDPMAvailable(device):
     """
     if not doesDeviceExist(device) or not os.path.isfile(getFilePath(device, 'dpm_state')):
         logging.warning('GPU[%s]\t: DPM is not available', parseDeviceName(device))
+        return False
+    return True
+
+
+def isRasControlAvailable(device):
+    """ Check if RAS control is available for a specified device.
+
+    Parameters:
+    device -- Device to check for RAS controlability
+    """
+    path = getFilePath(device, 'ras_ctrl')
+    if not doesDeviceExist(device) or not path or not os.path.isfile(path):
+        logging.warning('GPU[%s]\t: RAS control is not available', parseDeviceName(device))
         return False
     return True
 
@@ -586,6 +621,21 @@ def getMemInfo(device, memType):
     elif memTotal == None:
         logging.debug('Unable to get %s_total' % memType)
     return (memUsed, memTotal)
+
+
+def getRasEnablement(device, rasType):
+    """ Return RAS enablement information for the specified device
+
+    Parameters:
+    device -- Device to display RAS enablement for
+    rasType -- Which RAS counter to display
+    """
+    # The ras/features file is a bit field of supported blocks
+    rasBitfield = getSysfsValue(device, 'ras_features')
+    rasEnabled = {}
+    if not rasBitfield:
+        return None
+    return ('ENABLED' if rasBitfield & (1 << validRasBlocks[rasType]) else 'DISABLED')
 
 
 def isAmdDevice(device):
@@ -959,18 +1009,21 @@ def showAllConciseHw(deviceList):
     deviceList -- List of all devices
     """
     print(logSpacer)
-    header = ['GPU', 'DID', 'ECC', 'VBIOS']
+    header = ['GPU', 'DID', 'GFX RAS', 'SDMA RAS', 'UMC RAS', 'VBIOS']
     head_widths = [len(head)+2 for head in header]
     values = {}
     for device in deviceList:
         gpuid = getSysfsValue(device, 'id')
 
-        # To support later
-        ecc = 'N/A'
-
+        gfxRas = getRasEnablement(device, 'gfx')
+        sdmaRas = getRasEnablement(device, 'sdma')
+        umcRas = getRasEnablement(device, 'umc')
+        gfxRas = 'N/A' if not gfxRas else gfxRas
+        sdmaRas = 'N/A' if not sdmaRas else sdmaRas
+        umcRas = 'N/A' if not umcRas else umcRas
         vbios = getSysfsValue(device, 'vbios')
 
-        values[device] = [device[4:], gpuid, ecc, vbios]
+        values[device] = [device[4:], gpuid, gfxRas, sdmaRas, umcRas, vbios]
     val_widths = {}
     for device in deviceList:
         val_widths[device] = [len(val)+2 for val in values[device]]
@@ -1060,6 +1113,37 @@ def showAllConcise(deviceList):
     print("".join(word.ljust(max_widths[col]) for col,word in zip(range(len(max_widths)),header)))
     for device in deviceList:
         print("".join(word.ljust(max_widths[col]) for col,word in zip(range(len(max_widths)),values[device])))
+    print(logSpacer)
+
+
+def showRasInfo(deviceList, rasType):
+    """ Show the requested RAS information for s list of devices
+
+    Parameters:
+    deviceList -- List of devices to display RAS information for (can be a single-item list)
+    rasType -- Which RAS counter to display (all of left empty)
+    """
+    if 'all' in rasType:
+        returnTypes = validRasBlocks.keys()
+    else:
+        returnTypes = rasType
+
+    print(logSpacer)
+    for device in deviceList:
+        returnStr = ''
+        for ras in returnTypes:
+            if ras not in validRasBlocks.keys():
+                print('Unable to get %s RAS information' % rasType)
+                logging.debug('Invalid RAS block %s' % rasType)
+                continue
+            rasEnabled = getRasEnablement(device, ras)
+            if rasEnabled is None:
+                printLog(device, 'Unable to get information for block %s' % ras)
+                logging.debug('GPU[%s]\t: RAS not supported for block %s', parseDeviceName(device), rasType)
+            else:
+                printLog(device, 'Block %s is: %s' % (ras, rasEnabled))
+                # Now print the error count
+                printLog(device, getSysfsValue(device, 'ras_%s' % ras))
     print(logSpacer)
 
 
@@ -1463,6 +1547,38 @@ def resetClocks(deviceList):
             printLog(device, 'Successfully reset clocks')
 
 
+def setRas(deviceList, rasAction, rasBlock, rasType):
+    """ Perform a RAS action on the devices
+
+    Parameters:
+    deviceList -- List of devices to perform the RAS action on
+    rasAction -- [enable|disable|inject] RAS Action to perform
+    rasBlock -- Block to perform the action on
+    rasType -- Which error type to enable/disable
+    """
+    if rasAction not in validRasActions:
+        print('Unable to perform RAS command %s on block %s for type %s' % (rasAction, rasBlock, rasType))
+        logging.debug('Action %s is not a valid RAS command' % rasAction)
+        return
+    if rasBlock not in validRasBlocks.keys():
+        print('Unable to perform RAS command %s on block %s for type %s' % (rasAction, rasBlock, rasType))
+        logging.debug('Block %s is not a valid RAS block' % rasBlock)
+        return
+    if rasType not in validRasTypes:
+        print('Unable to perform RAS command %s on block %s for type %s' % (rasAction, rasBlock, rasType))
+        logging.debug('Memory error type %s is not a valid RAS memory type' % rasAction)
+        return
+    print(logSpacer)
+    #NOTE PSP FW doesn't support enabling disabled counters yet
+    for device in deviceList:
+        if isRasControlAvailable(device):
+            rasPath = getFilePath(device, 'ras_ctrl')
+            rasCmd = '%s %s %s' % (rasAction, rasBlock, rasType)
+            writeToSysfs(rasPath, rasCmd)
+    print(logSpacer)
+    return
+
+
 def load(savefilepath, autoRespond):
     """ Load clock frequencies and fan speeds from a specified file.
 
@@ -1567,6 +1683,7 @@ if __name__ == '__main__':
     groupDisplay.add_argument('-u', '--showuse', help='Show current GPU use', action='store_true')
     groupDisplay.add_argument('-b', '--showbw', help='Show estimated PCIe use', action='store_true')
     groupDisplay.add_argument('-S', '--showclkvolt', help='Show supported GPU and Memory Clocks and Voltages', action='store_true')
+    groupDisplay.add_argument('--showrasinfo', help='Show RAS enablement information and error counts for the specified block(s)', metavar='BLOCK', type=str, nargs='+')
     groupDisplay.add_argument('-a' ,'--showallinfo', help='Show Temperature, Fan and Clock values', action='store_true')
     groupDisplay.add_argument('--showmeminfo', help='Show Memory usage information for given block(s) TYPE', metavar='TYPE', type=str, nargs='+')
     groupDisplay.add_argument('--alldevices', help='Execute command on non-AMD devices as well as AMD devices', action='store_true')
@@ -1586,6 +1703,9 @@ if __name__ == '__main__':
     groupAction.add_argument('--resetpoweroverdrive', help='Set the maximum GPU power back to the device deafult state', action='store_true')
     groupAction.add_argument('--setprofile', help='Specify Power Profile level (#) or a quoted string of CUSTOM Profile attributes "# # # #..." (requires manual Perf level)')
     groupAction.add_argument('--resetprofile', help='Reset Power Profile back to default', action='store_true')
+    groupAction.add_argument('--rasenable', help='Enable RAS for specified block and error type', type=str, nargs=2)
+    groupAction.add_argument('--rasdisable', help='Disable RAS for specified block and error type', type=str, nargs=2)
+    groupAction.add_argument('--rasinject', help='Inject RAS poison for specified block (ONLY WORKS ON UNSECURE BOARDS)', type=str, metavar='BLOCK', nargs=1)
 
     groupFile.add_argument('--load', help='Load Clock, Fan, Performance and Profile settings from FILE', metavar='FILE')
     groupFile.add_argument('--save', help='Save Clock, Fan, Performance and Profile settings to FILE', metavar='FILE')
@@ -1635,6 +1755,7 @@ if __name__ == '__main__':
     if args.setsclk or args.setmclk or args.setpclk or args.resetfans or args.setfan or args.setperflevel or \
        args.load or args.resetclocks or args.setprofile or args.resetprofile or args.setoverdrive or \
        args.setmemoverdrive or args.setpoweroverdrive or args.resetpoweroverdrive or \
+       args.rasenable or args.rasdisable or args.rasinject or \
        args.setslevel or args.setmlevel or len(sys.argv) == 1:
         relaunchAsSudo()
 
@@ -1695,6 +1816,8 @@ if __name__ == '__main__':
         showPowerPlayTable(deviceList)
     if args.showmeminfo:
         showMemInfo(deviceList, args.showmeminfo)
+    if args.showrasinfo:
+        showRasInfo(deviceList, args.showrasinfo)
     if args.setsclk:
         setClocks(deviceList, 'sclk', args.setsclk)
     if args.setmclk:
@@ -1723,6 +1846,12 @@ if __name__ == '__main__':
         setProfile(deviceList, args.setprofile)
     if args.resetprofile:
         resetProfile(deviceList)
+    if args.rasenable:
+        setRas(deviceList, 'enable', args.rasenable[0], args.rasenable[1])
+    if args.rasdisable:
+        setRas(deviceList, 'disable', args.rasdisable[0], args.rasdisable[1])
+    if args.rasinject:
+        setRas(deviceList, 'inject', args.rasinject[0], args.rasinject[1])
     if args.load:
         load(args.load, args.autorespond)
     if args.save:
