@@ -61,6 +61,12 @@ logSpacer = '=' * 80
 # socclk (only supported on Vega10 and later)
 validClockNames = ['dcefclk', 'fclk', 'mclk', 'pclk', 'sclk', 'socclk']
 
+# These are the valid memory info types that are currently supported
+# vram
+# vis_vram (Visible VRAM)
+# gtt
+validMemTypes = ['vram', 'vis_vram', 'gtt']
+
 valuePaths = {
     'id' : {'prefix' : drmprefix, 'filepath' : 'device', 'needsparse' : True},
     'vbios' : {'prefix' : drmprefix, 'filepath' : 'vbios_version', 'needsparse' : False},
@@ -86,7 +92,13 @@ valuePaths = {
     'power_cap' : {'prefix' : hwmonprefix, 'filepath' : 'power1_cap', 'needsparse' : False},
     'power_cap_max' : {'prefix' : hwmonprefix, 'filepath' : 'power1_cap_max', 'needsparse' : False},
     'power_cap_min' : {'prefix' : hwmonprefix, 'filepath' : 'power1_cap_min', 'needsparse' : False},
-    'dpm_state' : {'prefix' : drmprefix, 'filepath' : 'power_dpm_state', 'needsparse' : False}
+    'dpm_state' : {'prefix' : drmprefix, 'filepath' : 'power_dpm_state', 'needsparse' : False},
+    'vram_used' : {'prefix' : drmprefix, 'filepath' : 'mem_info_vram_used', 'needsparse' : False},
+    'vram_total' : {'prefix' : drmprefix, 'filepath' : 'mem_info_vram_total', 'needsparse' : False},
+    'vis_vram_used' : {'prefix' : drmprefix, 'filepath' : 'mem_info_vis_vram_used', 'needsparse' : False},
+    'vis_vram_total' : {'prefix' : drmprefix, 'filepath' : 'mem_info_vis_vram_total', 'needsparse' : False},
+    'gtt_used' : {'prefix' : drmprefix, 'filepath' : 'mem_info_gtt_used', 'needsparse' : False},
+    'gtt_total' : {'prefix' : drmprefix, 'filepath' : 'mem_info_gtt_total', 'needsparse' : False}
 }
 
 
@@ -557,6 +569,25 @@ def getMaxLevel(device, leveltype):
     return None
 
 
+def getMemInfo(device, memType):
+    """ Return the specified memory usage for the specified device
+
+    Parameters:
+    device -- Device to return the memory usage for
+    type -- [vram|vis_vram|gtt] Which memory type to return
+    """
+    if memType not in validMemTypes:
+        logging.error('Invalid memory type %s', memType)
+        return (None, None)
+    memUsed = getSysfsValue(device, '%s_used' % memType)
+    memTotal = getSysfsValue(device, '%s_total' % memType)
+    if memUsed == None:
+        logging.debug('Unable to get %s_used' % memType)
+    elif memTotal == None:
+        logging.debug('Unable to get %s_total' % memType)
+    return (memUsed, memTotal)
+
+
 def isAmdDevice(device):
     """ Return whether the specified device is an AMD device or not
 
@@ -891,6 +922,33 @@ def showPcieBw(deviceList):
             bwstr = '%.3f' % bw
 
             printLog(device, 'Estimated maximum PCIe bandwidth over the last second: ' + bwstr + ' MB/s')
+    print(logSpacer)
+
+
+def showMemInfo(deviceList, memType):
+    """ Display Memory information for a list of devices
+
+    Parameters:
+    device -- List of all devices to display memory information for (can be a single-item list)
+    memType -- Type of memory information to display
+    """
+    # Python will pass in a list of values as a single-value list.
+    # If we get 'all' as the string, just set the list to all supported types
+    # Otherwise, split the single-item list by space, then split each element
+    # up to process it below
+    if 'all' in memType:
+        returnTypes = validMemTypes
+    else:
+        returnTypes = memType
+
+    print(logSpacer)
+    for device in deviceList:
+        for mem in returnTypes:
+            memInfo = getMemInfo(device, mem)
+            if memInfo[0]  == None or memInfo[1] == None:
+                printLog(device, 'Unable to get %s memory usage information' % mem)
+            else:
+                printLog(device, '%s ::\ttotal: %s   \tused: %s' % (mem, memInfo[0], memInfo[1]))
     print(logSpacer)
 
 
@@ -1510,6 +1568,7 @@ if __name__ == '__main__':
     groupDisplay.add_argument('-b', '--showbw', help='Show estimated PCIe use', action='store_true')
     groupDisplay.add_argument('-S', '--showclkvolt', help='Show supported GPU and Memory Clocks and Voltages', action='store_true')
     groupDisplay.add_argument('-a' ,'--showallinfo', help='Show Temperature, Fan and Clock values', action='store_true')
+    groupDisplay.add_argument('--showmeminfo', help='Show Memory usage information for given block(s) TYPE', metavar='TYPE', type=str, nargs='+')
     groupDisplay.add_argument('--alldevices', help='Execute command on non-AMD devices as well as AMD devices', action='store_true')
 
     groupAction.add_argument('-r', '--resetclocks', help='Reset sclk, mclk and pclk to default', action='store_true')
@@ -1634,6 +1693,8 @@ if __name__ == '__main__':
         showPcieBw(deviceList)
     if args.showclkvolt:
         showPowerPlayTable(deviceList)
+    if args.showmeminfo:
+        showMemInfo(deviceList, args.showmeminfo)
     if args.setsclk:
         setClocks(deviceList, 'sclk', args.setsclk)
     if args.setmclk:

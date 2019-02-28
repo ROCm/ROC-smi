@@ -57,6 +57,7 @@ optional arguments:
   -b, --showbw                      Show estimated PCIe use
   -S, --showclkvolt                 Show supported GPU and Memory Clocks and Voltages
   -a, --showallinfo                 Show Temperature, Fan and Clock values
+  --showmeminfo TYPE [TYPE ...]     Show Memory usage information for given block(s) TYPE
   --alldevices                      Execute command on non-AMD devices as well as AMD devices
 
   -r, --resetclocks                 Reset sclk, mclk and pclk to default
@@ -189,6 +190,15 @@ This limit is enforced by the hardware.
 This will allow the user to set a logging level for the SMI's actions. Currently this is
 only implemented for sysfs writes, but can easily be expanded upon in the future to log
 other things from the SMI
+
+--showmeminfo:
+This allows the user to see the amount of used and total memory for a given block (vram,
+vis_vram, gtt). It returns the number of bytes used and total number of bytes for each block
+'all' can be passed as a field to return all blocks, otherwise a quoted-string is used for
+multiple values (e.g. "vram vis_vram")
+vram refers to the Video RAM, or graphics memory, on the specified device
+vis_vram refers to Visible VRAM, which is the CPU-accessible video memory on the device
+gtt refers to the Graphics Translation Table
 
 -b, --showbw:
 This shows an approximation of the number of bytes received and sent by the GPU over
