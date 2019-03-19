@@ -487,7 +487,7 @@ def writeToSysfs(fsFile, fsValue):
             fs.write(fsValue + '\n') # Certain sysfs files require \n at the end
     except (IOError, OSError):
         print('Unable to write to to sysfs file ' + fsFile)
-        logging.warning('GPU[%s]\t: IO or OS error', parseDeviceName(device))
+        logging.warning('IO or OS error')
         RETCODE = 1
         return False
     return True
