@@ -324,6 +324,9 @@ def getNumProfileArgs(device):
     # SMU7 has 2 hidden fields for SclkProfileEnable and MclkProfileEnable
     if 'SCLK_UP_HYST' in fields:
         numHiddenFields = 2
+    # If there is a CLOCK_TYPE category, that requires a value as well
+    if 'CLOCK_TYPE(NAME)' in fields:
+        numHiddenFields = 1
     # Subtract 2 to remove NUM and MODE NAME, since they're not valid Profile fields
     return len(fields.split()) - 2 + numHiddenFields
 
