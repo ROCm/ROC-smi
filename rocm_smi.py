@@ -604,7 +604,7 @@ def getMaxLevel(device, leveltype):
         for line in levels.splitlines():
             if re.match(r'.*CUSTOM.*', line):
                 return line.lstrip().split()[0]
-    return None
+    return int(levels.splitlines()[-1][0])
 
 
 def getMemInfo(device, memType):
