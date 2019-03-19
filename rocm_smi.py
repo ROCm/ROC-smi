@@ -1297,6 +1297,7 @@ def setClockOverDrive(deviceList, clktype, value, autoRespond):
         logging.error('%s it is not an integer', value)
         RETCODE = 1
         return
+    logging.error('NOTE: GPU and MEM Overdrive have been deprecated in the kernel. Use --setslevel/--setmlevel instead')
     confirmOutOfSpecWarning(autoRespond)
 
     for device in deviceList:

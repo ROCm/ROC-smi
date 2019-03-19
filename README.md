@@ -123,6 +123,7 @@ optional arguments:
         manual (Only use values defined by --setsclk and --setmclk)
 
 --setoverdrive/--setmemoverdrive #:
+    ***DEPRECATED IN NEWER KERNEL VERSIONS (use --setslevel/--setmlevel instead)***
     This sets the percentage above maximum for the max Performance Level.
     For example, --setoverdrive 20 will increase the top sclk level by 20%, similarly
     --setmemoverdrive 20 will increase the top mclk level by 20%. Thus if the maximum
