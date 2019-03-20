@@ -91,6 +91,7 @@ valuePaths = {
     'sclk' : {'prefix' : drmprefix, 'filepath' : 'pp_dpm_sclk', 'needsparse' : False},
     'socclk' : {'prefix' : drmprefix, 'filepath' : 'pp_dpm_socclk', 'needsparse' : False},
     'clk_voltage' : {'prefix' : drmprefix, 'filepath' : 'pp_od_clk_voltage', 'needsparse' : False},
+    'voltage' : {'prefix' : hwmonprefix, 'filepath' : 'in0_input', 'needsparse' : False},
     'profile' : {'prefix' : drmprefix, 'filepath' : 'pp_power_profile_mode', 'needsparse' : False},
     'use' : {'prefix' : drmprefix, 'filepath' : 'gpu_busy_percent', 'needsparse' : False},
     'pcie_bw' : {'prefix' : drmprefix, 'filepath' : 'pcie_bw', 'needsparse' : False},
@@ -1005,6 +1006,23 @@ def showMemInfo(deviceList, memType):
     print(logSpacer)
 
 
+def showVoltage(deviceList):
+    """ Display the current voltage (in millivolts) for a list of devices.
+
+    Parameters:
+    deviceList -- List of devices to return the current voltage (can be a single-item list)
+    """
+
+    print(logSpacer)
+    for device in deviceList:
+        voltage = getSysfsValue(device, 'voltage')
+        if not voltage:
+            printLog(device, 'Unable to display voltage')
+            continue
+        printLog(device, 'Voltage: %s mV' % str(voltage))
+    print(logSpacer)
+
+
 def showAllConciseHw(deviceList):
     """ Display critical Hardware info for all devices in a concise format.
 
@@ -1687,6 +1705,7 @@ if __name__ == '__main__':
     groupDisplay.add_argument('-u', '--showuse', help='Show current GPU use', action='store_true')
     groupDisplay.add_argument('-b', '--showbw', help='Show estimated PCIe use', action='store_true')
     groupDisplay.add_argument('-S', '--showclkvolt', help='Show supported GPU and Memory Clocks and Voltages', action='store_true')
+    groupDisplay.add_argument('--showvoltage', help='Show current GPU voltage', action='store_true')
     groupDisplay.add_argument('--showrasinfo', help='Show RAS enablement information and error counts for the specified block(s)', metavar='BLOCK', type=str, nargs='+')
     groupDisplay.add_argument('-a' ,'--showallinfo', help='Show Temperature, Fan and Clock values', action='store_true')
     groupDisplay.add_argument('--showmeminfo', help='Show Memory usage information for given block(s) TYPE', metavar='TYPE', type=str, nargs='+')
@@ -1818,6 +1837,8 @@ if __name__ == '__main__':
         showPcieBw(deviceList)
     if args.showclkvolt:
         showPowerPlayTable(deviceList)
+    if args.showvoltage:
+        showVoltage(deviceList)
     if args.showmeminfo:
         showMemInfo(deviceList, args.showmeminfo)
     if args.showrasinfo:

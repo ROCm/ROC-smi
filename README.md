@@ -22,13 +22,14 @@ For detailed and up to date usage information, we recommend consulting the help:
 For convenience purposes, following is a quick excerpt:
 ```shell
 
-usage: rocm-smi [-h] [-d DEVICE] [-i] [-v] [--showhw] [-t] [-c] [-g] [-f] [-p] [-P] [-o] [-m] [-M] [-l] [-s]
-                [-u] [-S] [-a] [--alldevices] [-r] [--setsclk LEVEL [LEVEL ...]] [--setmclk LEVEL [LEVEL ...]]
-                [--setpclk LEVEL [LEVEL ...]] [--setslevel SCLKLEVEL SCLK SVOLT]
-                [--setmlevel MCLKLEVEL MCLK MVOLT] [--resetfans] [--setfan LEVEL] [--setperflevel LEVEL]
-                [--setoverdrive %] [--setmemoverdrive %] [--setpoweroverdrive WATTS] [--resetpoweroverdrive]
-                [--setprofile SETPROFILE] [--resetprofile] [--load FILE | --save FILE]
-                [--autorespond RESPONSE]
+usage: rocm-smi [-h] [-d DEVICE] [-i] [-v] [--showhw] [-t] [-c] [-g] [-f] [-p] [-P] [-o] [-m] [-M] [-l] [-s] [-u] [-b]
+                [-S] [--showvoltage] [--showrasinfo BLOCK [BLOCK ...]] [-a] [--showmeminfo TYPE [TYPE ...]]
+                [--alldevices] [-r] [--setsclk LEVEL [LEVEL ...]] [--setmclk LEVEL [LEVEL ...]]
+                [--setpclk LEVEL [LEVEL ...]] [--setslevel SCLKLEVEL SCLK SVOLT] [--setmlevel MCLKLEVEL MCLK MVOLT]
+                [--resetfans] [--setfan LEVEL] [--setperflevel LEVEL] [--setoverdrive %] [--setmemoverdrive %]
+                [--setpoweroverdrive WATTS] [--resetpoweroverdrive] [--setprofile SETPROFILE] [--resetprofile]
+                [--rasenable RASENABLE RASENABLE] [--rasdisable RASDISABLE RASDISABLE] [--rasinject BLOCK]
+                [--load FILE | --save FILE] [--autorespond RESPONSE] [--loglevel ILEVEL]
 
 AMD ROCm System Management Interface
 
@@ -56,6 +57,7 @@ optional arguments:
   -u, --showuse                     Show current GPU use
   -b, --showbw                      Show estimated PCIe use
   -S, --showclkvolt                 Show supported GPU and Memory Clocks and Voltages
+  --showvoltage                     Show current GPU voltage
   -a, --showallinfo                 Show Temperature, Fan and Clock values
   --showmeminfo TYPE [TYPE ...]     Show Memory usage information for given block(s) TYPE
   --showrasinfo BLOCK [BLOCK ...]   Show RAS enablement information and error counts for the specified block(s)
