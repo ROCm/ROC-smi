@@ -1779,7 +1779,7 @@ if __name__ == '__main__':
        args.load or args.resetclocks or args.setprofile or args.resetprofile or args.setoverdrive or \
        args.setmemoverdrive or args.setpoweroverdrive or args.resetpoweroverdrive or \
        args.rasenable or args.rasdisable or args.rasinject or \
-       args.setslevel or args.setmlevel or len(sys.argv) == 1:
+       args.setslevel or args.setmlevel:
         relaunchAsSudo()
 
     # Header for the SMI
