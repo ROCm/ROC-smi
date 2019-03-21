@@ -38,7 +38,7 @@ optional arguments:
   --load FILE                       Load Clock, Fan, Performance and Profile settings from FILE
   --save FILE                       Save Clock, Fan, Performance and Profile settings to FILE
 
-  -d DEVICE, --device DEVICE        Execute command on specified device
+  -d DEVICE, --device DEVICE [DEVICE ...] Execute command on specified device
 
   -i, --showid                      Show GPU ID
   -v, --showvbios                   Show VBIOS version

@@ -1687,7 +1687,7 @@ if __name__ == '__main__':
     groupResponse = parser.add_argument_group()
     groupOutput = parser.add_argument_group()
 
-    groupDev.add_argument('-d', '--device', help='Execute command on specified device', type=int)
+    groupDev.add_argument('-d', '--device', help='Execute command on specified device', type=int, nargs='+')
     groupDisplay.add_argument('-i', '--showid', help='Show GPU ID', action='store_true')
     groupDisplay.add_argument('-v', '--showvbios', help='Show VBIOS version', action='store_true')
     groupDisplay.add_argument('--showhw', help='Show Hardware details', action='store_true')
@@ -1744,18 +1744,20 @@ if __name__ == '__main__':
         numericLogLevel = getattr(logging, args.loglevel.upper(), logging.WARNING)
         logging.getLogger().setLevel(numericLogLevel)
 
-    # If there is a single device specified, use that for all commands, otherwise use a
+    # If there is one or more device specified, use that for all commands, otherwise use a
     # list of all available devices. Also use "is not None" as device 0 would
     # have args.device=0, and "if 0" returns false.
     if args.device is not None:
-        device = parseDeviceNumber(args.device)
-        if not doesDeviceExist(device):
-            print('No such device ' + device)
-            sys.exit()
-        if isAmdDevice(device) or args.alldevices:
-            deviceList = [device]
-        else:
-            print('No supported devices available to display')
+        deviceList = []
+        for dev in args.device:
+            device = parseDeviceNumber(dev)
+            if not doesDeviceExist(device):
+                print('No such device ' + device)
+                sys.exit()
+            if (isAmdDevice(device) or args.alldevices) and device not in deviceList:
+                deviceList.append(device)
+            else:
+                print('No supported devices available to display')
     else:
         deviceList = listDevices(args.alldevices)
 
