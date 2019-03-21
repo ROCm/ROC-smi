@@ -29,7 +29,7 @@ usage: rocm-smi [-h] [-d DEVICE [DEVICE ...]] [-i] [-v] [--showhw] [-t] [-c] [-g
                 [--setmlevel MCLKLEVEL MCLK MVOLT] [--resetfans] [--setfan LEVEL] [--setperflevel LEVEL]
                 [--setoverdrive %] [--setmemoverdrive %] [--setpoweroverdrive WATTS] [--resetpoweroverdrive]
                 [--setprofile SETPROFILE] [--resetprofile] [--rasenable RASENABLE RASENABLE]
-                [--rasdisable RASDISABLE RASDISABLE] [--rasinject BLOCK] [--load FILE | --save FILE]
+                [--rasdisable RASDISABLE RASDISABLE] [--rasinject BLOCK] [--gpureset] [--load FILE | --save FILE]
                 [--autorespond RESPONSE] [--loglevel ILEVEL]
 
 AMD ROCm System Management Interface
@@ -89,6 +89,7 @@ optional arguments:
   --rasdisable RASDISABLE RASDISABLE                    Disable RAS for specified block and error type
   --rasinject BLOCK                                     Inject RAS poison for specified block (ONLY WORKS ON UNSECURE
                                                         BOARDS)
+  --gpureset                                            Reset specified GPU (One GPU must be specified)
 
   --autorespond RESPONSE                                Response to automatically provide for all prompts (NOT
                                                         RECOMMENDED)
@@ -243,6 +244,10 @@ PCLK    - PCIe bus
 SOCCLK  - System clock (VG10 and later) - Data Fabric (DF), MM HUB, AT HUB, SYSTEM HUB, OSS, DFD
           Note - DF split from SOCCLK as of Vega20. Pre-Vega20 they were both controlled by SOCCLK
 
+--gpureset:
+This flag will attempt to reset the GPU for a specified device. This will invoke the GPU reset through
+the kernel debugfs file amdgpu_gpu_recover. Note that GPU reset will not always work, depending on the
+manner in which the GPU is hung.
 
 #### Testing changes
 

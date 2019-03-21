@@ -36,7 +36,7 @@ def relaunchAsSudo():
 
 drmprefix = '/sys/class/drm'
 hwmonprefix = '/sys/class/hwmon'
-debugprefix = '/sys/kernel/debug/dri/'
+debugprefix = '/sys/kernel/debug/dri'
 
 headerString = 'ROCm System Management Interface'
 footerString = 'End of ROCm SMI Log'
@@ -115,7 +115,8 @@ valuePaths = {
     'ras_sdma' : {'prefix' : drmprefix, 'filepath' : 'ras/sdma_err_count', 'needsparse' : False},
     'ras_umc' : {'prefix' : drmprefix, 'filepath' : 'ras/umc_err_count', 'needsparse' : False},
     'ras_features' : {'prefix' : drmprefix, 'filepath' : 'ras/features', 'needsparse' : True},
-    'ras_ctrl' : {'prefix' : debugprefix, 'filepath' : 'ras/ras_ctrl', 'needsparse' : False}
+    'ras_ctrl' : {'prefix' : debugprefix, 'filepath' : 'ras/ras_ctrl', 'needsparse' : False},
+    'gpu_reset' : {'prefix' : debugprefix, 'filepath' : 'amdgpu_gpu_recover', 'needsparse' : False}
 }
 
 
@@ -1569,6 +1570,27 @@ def resetClocks(deviceList):
             printLog(device, 'Successfully reset clocks')
 
 
+def resetGpu(device):
+    """ Perform a GPU reset on the specified device
+
+    Parameters:
+    device -- Device to reset
+    """
+    global RETCODE
+    if isinstance(device, list) and len(device) > 1:
+        # This is primarily to prevent people using the GPU reset on all
+        # GPUs by mistake, since it's rare that more than one GPU is hanging
+        # at the same time.
+        logging.error('GPU Reset can only be performed on one GPU per call')
+        RETCODE = 1
+        return
+    # We don't capture the value because 'cat gpu_reset' just resets the
+    # GPU without returning anything. Also pass device[0] since the device
+    # passed in by argparse is a single-item list: ['cardX']
+    getSysfsValue(device[0], 'gpu_reset')
+    printLog(device[0], 'GPU reset was successful')
+
+
 def setRas(deviceList, rasAction, rasBlock, rasType):
     """ Perform a RAS action on the devices
 
@@ -1729,6 +1751,7 @@ if __name__ == '__main__':
     groupAction.add_argument('--rasenable', help='Enable RAS for specified block and error type', type=str, nargs=2)
     groupAction.add_argument('--rasdisable', help='Disable RAS for specified block and error type', type=str, nargs=2)
     groupAction.add_argument('--rasinject', help='Inject RAS poison for specified block (ONLY WORKS ON UNSECURE BOARDS)', type=str, metavar='BLOCK', nargs=1)
+    groupAction.add_argument('--gpureset', help='Reset specified GPU (One GPU must be specified)', action='store_true')
 
     groupFile.add_argument('--load', help='Load Clock, Fan, Performance and Profile settings from FILE', metavar='FILE')
     groupFile.add_argument('--save', help='Save Clock, Fan, Performance and Profile settings to FILE', metavar='FILE')
@@ -1781,7 +1804,7 @@ if __name__ == '__main__':
        args.load or args.resetclocks or args.setprofile or args.resetprofile or args.setoverdrive or \
        args.setmemoverdrive or args.setpoweroverdrive or args.resetpoweroverdrive or \
        args.rasenable or args.rasdisable or args.rasinject or \
-       args.setslevel or args.setmlevel:
+       args.setslevel or args.setmlevel or args.gpureset:
         relaunchAsSudo()
 
     # Header for the SMI
@@ -1800,6 +1823,13 @@ if __name__ == '__main__':
             if not isDPMAvailable(device):
                 printLog(device, 'Skipping output for this device')
                 deviceList.remove(device)
+
+    # Don't do reset in combination with any other command
+    if args.gpureset:
+        logging.debug('Only executing GPU reset, no other commands will be executed')
+        resetGpu(deviceList)
+        print(footerSpacer + footerString + footerSpacer, sep='')
+        sys.exit(0)
 
     if len(sys.argv) == 1 or len(sys.argv) == 2 and args.alldevices:
         showAllConcise(deviceList)
