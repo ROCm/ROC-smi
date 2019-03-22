@@ -22,72 +22,79 @@ For detailed and up to date usage information, we recommend consulting the help:
 For convenience purposes, following is a quick excerpt:
 ```shell
 
-usage: rocm-smi [-h] [-d DEVICE] [-i] [-v] [--showhw] [-t] [-c] [-g] [-f] [-p] [-P] [-o] [-m] [-M] [-l] [-s] [-u] [-b]
-                [-S] [--showvoltage] [--showrasinfo BLOCK [BLOCK ...]] [-a] [--showmeminfo TYPE [TYPE ...]]
-                [--alldevices] [-r] [--setsclk LEVEL [LEVEL ...]] [--setmclk LEVEL [LEVEL ...]]
-                [--setpclk LEVEL [LEVEL ...]] [--setslevel SCLKLEVEL SCLK SVOLT] [--setmlevel MCLKLEVEL MCLK MVOLT]
-                [--resetfans] [--setfan LEVEL] [--setperflevel LEVEL] [--setoverdrive %] [--setmemoverdrive %]
-                [--setpoweroverdrive WATTS] [--resetpoweroverdrive] [--setprofile SETPROFILE] [--resetprofile]
-                [--rasenable RASENABLE RASENABLE] [--rasdisable RASDISABLE RASDISABLE] [--rasinject BLOCK]
-                [--load FILE | --save FILE] [--autorespond RESPONSE] [--loglevel ILEVEL]
+usage: rocm-smi [-h] [-d DEVICE [DEVICE ...]] [-i] [-v] [--showhw] [-t] [-c] [-g] [-f] [-p] [-P] [-o] [-m] [-M] [-l]
+                [-s] [-u] [-b] [-S] [--showvoltage] [--showrasinfo BLOCK [BLOCK ...]] [-a]
+                [--showmeminfo TYPE [TYPE ...]] [--alldevices] [-r] [--setsclk LEVEL [LEVEL ...]]
+                [--setmclk LEVEL [LEVEL ...]] [--setpclk LEVEL [LEVEL ...]] [--setslevel SCLKLEVEL SCLK SVOLT]
+                [--setmlevel MCLKLEVEL MCLK MVOLT] [--resetfans] [--setfan LEVEL] [--setperflevel LEVEL]
+                [--setoverdrive %] [--setmemoverdrive %] [--setpoweroverdrive WATTS] [--resetpoweroverdrive]
+                [--setprofile SETPROFILE] [--resetprofile] [--rasenable RASENABLE RASENABLE]
+                [--rasdisable RASDISABLE RASDISABLE] [--rasinject BLOCK] [--load FILE | --save FILE]
+                [--autorespond RESPONSE] [--loglevel ILEVEL]
 
 AMD ROCm System Management Interface
 
 optional arguments:
-  -h, --help                        show this help message and exit
-  --load FILE                       Load Clock, Fan, Performance and Profile settings from FILE
-  --save FILE                       Save Clock, Fan, Performance and Profile settings to FILE
+  -h, --help                                            show this help message and exit
+  --load FILE                                           Load Clock, Fan, Performance and Profile settings from FILE
+  --save FILE                                           Save Clock, Fan, Performance and Profile settings to FILE
 
-  -d DEVICE, --device DEVICE [DEVICE ...] Execute command on specified device
+  -d DEVICE [DEVICE ...], --device DEVICE [DEVICE ...]  Execute command on specified device
 
-  -i, --showid                      Show GPU ID
-  -v, --showvbios                   Show VBIOS version
-  --showhw                          Show Hardware details
-  -t, --showtemp                    Show current temperature
-  -c, --showclocks                  Show current clock frequencies
-  -g, --showgpuclocks               Show current GPU clock frequencies
-  -f, --showfan                     Show current fan speed
-  -p, --showperflevel               Show current DPM Performance Level
-  -P, --showpower                   Show current Average Graphics Package Power Consumption
-  -o, --showoverdrive               Show current GPU Clock OverDrive level
-  -m, --showmemoverdrive            Show current GPU Memory Clock OverDrive level
-  -M, --showmaxpower                Show maximum graphics package power this GPU will consume
-  -l, --showprofile                 Show Compute Profile attributes
-  -s, --showclkfrq                  Show supported GPU and Memory Clock
-  -u, --showuse                     Show current GPU use
-  -b, --showbw                      Show estimated PCIe use
-  -S, --showclkvolt                 Show supported GPU and Memory Clocks and Voltages
-  --showvoltage                     Show current GPU voltage
-  -a, --showallinfo                 Show Temperature, Fan and Clock values
-  --showmeminfo TYPE [TYPE ...]     Show Memory usage information for given block(s) TYPE
-  --showrasinfo BLOCK [BLOCK ...]   Show RAS enablement information and error counts for the specified block(s)
-  --alldevices                      Execute command on non-AMD devices as well as AMD devices
+  -i, --showid                                          Show GPU ID
+  -v, --showvbios                                       Show VBIOS version
+  --showhw                                              Show Hardware details
+  -t, --showtemp                                        Show current temperature
+  -c, --showclocks                                      Show current clock frequencies
+  -g, --showgpuclocks                                   Show current GPU clock frequencies
+  -f, --showfan                                         Show current fan speed
+  -p, --showperflevel                                   Show current DPM Performance Level
+  -P, --showpower                                       Show current Average Graphics Package Power Consumption
+  -o, --showoverdrive                                   Show current GPU Clock OverDrive level
+  -m, --showmemoverdrive                                Show current GPU Memory Clock OverDrive level
+  -M, --showmaxpower                                    Show maximum graphics package power this GPU will consume
+  -l, --showprofile                                     Show Compute Profile attributes
+  -s, --showclkfrq                                      Show supported GPU and Memory Clock
+  -u, --showuse                                         Show current GPU use
+  -b, --showbw                                          Show estimated PCIe use
+  -S, --showclkvolt                                     Show supported GPU and Memory Clocks and Voltages
+  --showvoltage                                         Show current GPU voltage
+  --showrasinfo BLOCK [BLOCK ...]                       Show RAS enablement information and error counts for the
+                                                        specified block(s)
+  -a, --showallinfo                                     Show Temperature, Fan and Clock values
+  --showmeminfo TYPE [TYPE ...]                         Show Memory usage information for given block(s) TYPE
+  --alldevices                                          Execute command on non-AMD devices as well as AMD devices
 
-  -r, --resetclocks                 Reset sclk, mclk and pclk to default
-  --setsclk LEVEL [LEVEL ...]       Set GPU Clock Frequency Level(s) (requires manual Perf level)
-  --setmclk LEVEL [LEVEL ...]       Set GPU Memory Clock Frequency Level(s) (requires manual Perf level)
-  --setpclk LEVEL [LEVEL ...]       Set PCIE Clock Frequency Level(s) (requires manual Perf level)
-  --setslevel SCLKLEVEL SCLK SVOLT  Change GPU Clock frequency (MHz) and Voltage (mV) for a specific Level
-  --setmlevel MCLKLEVEL MCLK MVOLT  Change GPU Memory clock frequency (MHz) and Voltage for (mV) a specific Level
-  --resetfans                       Reset fans to automatic (driver) control
-  --setfan LEVEL                    Set GPU Fan Speed (Level or %)
-  --setperflevel LEVEL              Set Performance Level
-  --setoverdrive %                  Set GPU OverDrive level (requires manual|high Perf level)
-  --setmemoverdrive %               Set GPU Memory Overclock OverDrive level (requires manual|high Perf level)
-  --setpoweroverdrive WATTS         Set the maximum GPU power using Power OverDrive in Watts
-  --resetpoweroverdrive             Set the maximum GPU power back to the device deafult state
-  --setprofile SETPROFILE           Specify Power Profile level (#) or a quoted string of CUSTOM Profile
-                                    attributes "# # # #..." (requires manual Perf level)
-  --resetprofile                    Reset Power Profile back to default
-  --rasenable BLOCK                 Enable RAS for specified block
-  --rasdisable BLOCK                Disable RAS for specified block
-  --rasinject BLOCK                 Inject RAS poison for specified block (ONLY WORKS ON UNSECURE BOARDS)
+  -r, --resetclocks                                     Reset sclk, mclk and pclk to default
+  --setsclk LEVEL [LEVEL ...]                           Set GPU Clock Frequency Level(s) (requires manual Perf level)
+  --setmclk LEVEL [LEVEL ...]                           Set GPU Memory Clock Frequency Level(s) (requires manual Perf
+                                                        level)
+  --setpclk LEVEL [LEVEL ...]                           Set PCIE Clock Frequency Level(s) (requires manual Perf level)
+  --setslevel SCLKLEVEL SCLK SVOLT                      Change GPU Clock frequency (MHz) and Voltage (mV) for a specific
+                                                        Level
+  --setmlevel MCLKLEVEL MCLK MVOLT                      Change GPU Memory clock frequency (MHz) and Voltage for (mV) a
+                                                        specific Level
+  --resetfans                                           Reset fans to automatic (driver) control
+  --setfan LEVEL                                        Set GPU Fan Speed (Level or %)
+  --setperflevel LEVEL                                  Set Performance Level
+  --setoverdrive %                                      Set GPU OverDrive level (requires manual|high Perf level)
+  --setmemoverdrive %                                   Set GPU Memory Overclock OverDrive level (requires manual|high
+                                                        Perf level)
+  --setpoweroverdrive WATTS                             Set the maximum GPU power using Power OverDrive in Watts
+  --resetpoweroverdrive                                 Set the maximum GPU power back to the device deafult state
+  --setprofile SETPROFILE                               Specify Power Profile level (#) or a quoted string of CUSTOM
+                                                        Profile attributes "# # # #..." (requires manual Perf level)
+  --resetprofile                                        Reset Power Profile back to default
+  --rasenable RASENABLE RASENABLE                       Enable RAS for specified block and error type
+  --rasdisable RASDISABLE RASDISABLE                    Disable RAS for specified block and error type
+  --rasinject BLOCK                                     Inject RAS poison for specified block (ONLY WORKS ON UNSECURE
+                                                        BOARDS)
 
-  --autorespond RESPONSE            Response to automatically provide for all prompts (NOT RECOMMENDED)
+  --autorespond RESPONSE                                Response to automatically provide for all prompts (NOT
+                                                        RECOMMENDED)
 
-  --loglevel ILEVEL                 How much output will be printed for what program is doing, one of
-                                    debug/info/warning/error/critical
-
+  --loglevel ILEVEL                                     How much output will be printed for what program is doing, one
+                                                        of debug/info/warning/error/critical
 ```
 
 
