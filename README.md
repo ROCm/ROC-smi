@@ -85,8 +85,8 @@ optional arguments:
   --setprofile SETPROFILE                               Specify Power Profile level (#) or a quoted string of CUSTOM
                                                         Profile attributes "# # # #..." (requires manual Perf level)
   --resetprofile                                        Reset Power Profile back to default
-  --rasenable RASENABLE RASENABLE                       Enable RAS for specified block and error type
-  --rasdisable RASDISABLE RASDISABLE                    Disable RAS for specified block and error type
+  --rasenable BLOCK ERRTYPE                             Enable RAS for specified block and error type
+  --rasdisable BLOCK ERRTYPE                            Disable RAS for specified block and error type
   --rasinject BLOCK                                     Inject RAS poison for specified block (ONLY WORKS ON UNSECURE
                                                         BOARDS)
   --gpureset                                            Reset specified GPU (One GPU must be specified)
