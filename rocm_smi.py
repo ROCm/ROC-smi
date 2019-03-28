@@ -56,10 +56,10 @@ logSpacer = '=' * 80
 # dcefclk (only supported on Vega10 and later)
 # fclk (only supported on Vega20 and later)
 # mclk
-# pclk
+# pcie (PCIe speed, sometimes referred to as lclk for Link clock
 # sclk
 # socclk (only supported on Vega10 and later)
-validClockNames = ['dcefclk', 'fclk', 'mclk', 'pclk', 'sclk', 'socclk']
+validClockNames = ['dcefclk', 'fclk', 'mclk', 'pcie', 'sclk', 'socclk']
 
 # These are the valid memory info types that are currently supported
 # vram
@@ -87,7 +87,7 @@ valuePaths = {
     'dcefclk' : {'prefix' : drmprefix, 'filepath' : 'pp_dpm_dcefclk', 'needsparse' : False},
     'fclk' : {'prefix' : drmprefix, 'filepath' : 'pp_dpm_fclk', 'needsparse' : False},
     'mclk' : {'prefix' : drmprefix, 'filepath' : 'pp_dpm_mclk', 'needsparse' : False},
-    'pclk' : {'prefix' : drmprefix, 'filepath' : 'pp_dpm_pcie', 'needsparse' : False},
+    'pcie' : {'prefix' : drmprefix, 'filepath' : 'pp_dpm_pcie', 'needsparse' : False},
     'sclk' : {'prefix' : drmprefix, 'filepath' : 'pp_dpm_sclk', 'needsparse' : False},
     'socclk' : {'prefix' : drmprefix, 'filepath' : 'pp_dpm_socclk', 'needsparse' : False},
     'clk_voltage' : {'prefix' : drmprefix, 'filepath' : 'pp_od_clk_voltage', 'needsparse' : False},
@@ -1550,7 +1550,7 @@ def resetOverDrive(deviceList):
 def resetClocks(deviceList):
     """ Reset clocks to default
 
-    Reset sclk, mclk amd pclk to default values by setting performance level to auto, as well
+    Reset clocks to default values by setting performance level to auto, as well
     as setting OverDrive back to 0
 
 
@@ -1733,10 +1733,10 @@ if __name__ == '__main__':
     groupDisplay.add_argument('--showmeminfo', help='Show Memory usage information for given block(s) TYPE', metavar='TYPE', type=str, nargs='+')
     groupDisplay.add_argument('--alldevices', help='Execute command on non-AMD devices as well as AMD devices', action='store_true')
 
-    groupAction.add_argument('-r', '--resetclocks', help='Reset sclk, mclk and pclk to default', action='store_true')
+    groupAction.add_argument('-r', '--resetclocks', help='Reset clocks and OverDrive to default', action='store_true')
     groupAction.add_argument('--setsclk', help='Set GPU Clock Frequency Level(s) (requires manual Perf level)', type=int, metavar='LEVEL', nargs='+')
     groupAction.add_argument('--setmclk', help='Set GPU Memory Clock Frequency Level(s) (requires manual Perf level)', type=int, metavar='LEVEL', nargs='+')
-    groupAction.add_argument('--setpclk', help='Set PCIE Clock Frequency Level(s) (requires manual Perf level)', type=int, metavar='LEVEL', nargs='+')
+    groupAction.add_argument('--setpcie', help='Set PCIE Clock Frequency Level(s) (requires manual Perf level)', type=int, metavar='LEVEL', nargs='+')
     groupAction.add_argument('--setslevel', help='Change GPU Clock frequency (MHz) and Voltage (mV) for a specific Level', metavar=('SCLKLEVEL', 'SCLK', 'SVOLT'), nargs=3)
     groupAction.add_argument('--setmlevel', help='Change GPU Memory clock frequency (MHz) and Voltage for (mV) a specific Level', metavar=('MCLKLEVEL', 'MCLK', 'MVOLT'), nargs=3)
     groupAction.add_argument('--resetfans', help='Reset fans to automatic (driver) control', action='store_true')
@@ -1800,7 +1800,7 @@ if __name__ == '__main__':
         args.showpower = True
         args.showclkvolt = True
 
-    if args.setsclk or args.setmclk or args.setpclk or args.resetfans or args.setfan or args.setperflevel or \
+    if args.setsclk or args.setmclk or args.setpcie or args.resetfans or args.setfan or args.setperflevel or \
        args.load or args.resetclocks or args.setprofile or args.resetprofile or args.setoverdrive or \
        args.setmemoverdrive or args.setpoweroverdrive or args.resetpoweroverdrive or \
        args.rasenable or args.rasdisable or args.rasinject or \
@@ -1879,8 +1879,8 @@ if __name__ == '__main__':
         setClocks(deviceList, 'sclk', args.setsclk)
     if args.setmclk:
         setClocks(deviceList, 'mclk', args.setmclk)
-    if args.setpclk:
-        setClocks(deviceList, 'pclk', args.setpclk)
+    if args.setpcie:
+        setClocks(deviceList, 'pcie', args.setpcie)
     if args.setslevel:
         setPowerPlayTableLevel(deviceList, 'sclk', args.setslevel, args.autorespond)
     if args.setmlevel:
