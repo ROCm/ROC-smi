@@ -333,6 +333,16 @@ def getNumProfileArgs(device):
     return len(fields.split()) - 2 + numHiddenFields
 
 
+def getBus(device):
+    """ Get the PCIe bus information for a specified device
+
+    Parameters:
+    device -- Device to return the bus information for
+    """
+    bus = os.readlink(os.path.join(drmprefix, device, 'device'))
+    return bus.split('/')[-1]
+
+
 def verifySetProfile(device, profile):
     """ Verify data from user to set as Power Profile.
 
@@ -1031,7 +1041,7 @@ def showAllConciseHw(deviceList):
     deviceList -- List of all devices
     """
     print(logSpacer)
-    header = ['GPU', 'DID', 'GFX RAS', 'SDMA RAS', 'UMC RAS', 'VBIOS']
+    header = ['GPU', 'DID', 'GFX RAS', 'SDMA RAS', 'UMC RAS', 'VBIOS', 'BUS']
     head_widths = [len(head)+2 for head in header]
     values = {}
     for device in deviceList:
@@ -1044,8 +1054,9 @@ def showAllConciseHw(deviceList):
         sdmaRas = 'N/A' if not sdmaRas else sdmaRas
         umcRas = 'N/A' if not umcRas else umcRas
         vbios = getSysfsValue(device, 'vbios')
+        bus = getBus(device)
 
-        values[device] = [device[4:], gpuid, gfxRas, sdmaRas, umcRas, vbios]
+        values[device] = [device[4:], gpuid, gfxRas, sdmaRas, umcRas, vbios, bus]
     val_widths = {}
     for device in deviceList:
         val_widths[device] = [len(val)+2 for val in values[device]]
