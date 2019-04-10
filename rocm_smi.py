@@ -1013,7 +1013,7 @@ def showMemInfo(deviceList, memType):
             if memInfo[0]  == None or memInfo[1] == None:
                 printLog(device, 'Unable to get %s memory usage information' % mem)
             else:
-                printLog(device, '%s ::\ttotal: %s   \tused: %s' % (mem, memInfo[0], memInfo[1]))
+                printLog(device, '%s ::\ttotal: %s B   \tused: %s B' % (mem, memInfo[1], memInfo[0]))
     print(logSpacer)
 
 
