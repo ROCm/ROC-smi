@@ -86,6 +86,13 @@ validRasTypes = ['ue', 'ce']
 # List of software components that we support printing versioning information
 validVersionComponents = ['driver']
 
+# Supported firmware blocks
+validFwBlocks = {'vce', 'uvd', 'mc', 'me', 'pfp',
+'ce', 'rlc', 'rlc_srlc', 'rlc_srlg', 'rlc_srls',
+'mec', 'mec2', 'sos', 'asd', 'ta_ras', 'ta_xgmi',
+'smc', 'sdma', 'sdma2', 'vcn', 'dmcu'}
+
+
 valuePaths = {
     'id' : {'prefix' : drmprefix, 'filepath' : 'device', 'needsparse' : True},
     'vbios' : {'prefix' : drmprefix, 'filepath' : 'vbios_version', 'needsparse' : False},
@@ -134,6 +141,10 @@ valuePaths = {
     'driver' : {'prefix' : moduleprefix, 'filepath' : 'amdgpu/version', 'needsparse' : False}
 }
 
+for block in validFwBlocks:
+    valuePaths['%s_fw_version' % block] = {'prefix' : drmprefix, 'filepath' : 'fw_version/%s_fw_version' % block, 'needsparse' : False}
+#SMC has different formatting for its version
+valuePaths['smc_fw_version']['needsparse'] = True
 
 def getFilePath(device, key):
     """ Return the filepath for a specific device and key
@@ -224,6 +235,11 @@ def parseSysfsValue(key, value):
     # ras_reatures has "feature mask: 0x%x" as the first line, so get the bitfield out
     if key == 'ras_features':
         return int((value.split('\n')[0]).split(' ')[-1], 16)
+    # The smc_fw_version sysfs file stores the version as a hex value like 0x12345678
+    # but is parsed as int(0x12).int(0x34).int(0x56).int(0x78)
+    if key == 'smc_fw_version':
+        return (str('%02d' % int((value[2:4]), 16)) + '.' + str('%02d' % int((value[4:6]), 16)) + '.' +
+                str('%02d' % int((value[6:8]), 16)) + '.' + str('%02d' % int((value[8:10]), 16)))
 
     return ''
 
@@ -1260,11 +1276,11 @@ def showAllConcise(deviceList):
 
 
 def showRasInfo(deviceList, rasType):
-    """ Show the requested RAS information for s list of devices
+    """ Show the requested RAS information for a list of devices
 
     Parameters:
     deviceList -- List of devices to display RAS information for (can be a single-item list)
-    rasType -- Which RAS counter to display (all of left empty)
+    rasType -- Which RAS counter to display (all if left empty)
     """
     if 'all' in rasType:
         returnTypes = validRasBlocks.keys()
@@ -1273,7 +1289,6 @@ def showRasInfo(deviceList, rasType):
 
     printLogSpacer()
     for device in deviceList:
-        returnStr = ''
         for ras in returnTypes:
             if ras not in validRasBlocks.keys():
                 print('Unable to get %s RAS information' % rasType)
@@ -1290,6 +1305,38 @@ def showRasInfo(deviceList, rasType):
                     printLog(device, getSysfsValue(device, 'ras_%s' % ras))
     printLogSpacer()
 
+def showFwInfo(deviceList, fwType):
+    """ Show the requested FW information for a list of devices
+
+    Parameters:
+    deviceList -- List of devices to display FW information for (can be a single-item list)
+    fwType -- Which FW block version to display (all if left empty)
+    """
+    if not fwType or 'all' in fwType:
+        returnTypes = sorted(validFwBlocks)
+    else:
+        returnTypes = fwType
+    printLogSpacer()
+    for device in deviceList:
+        for block in returnTypes:
+            fwLogName = block.replace('_', ' ').upper()
+            blockFile = '%s_fw_version' % block
+            version = getSysfsValue(device, blockFile)
+            if version:
+                if valuePaths[blockFile]['needsparse']:
+                    printLog(device, '%s firmware version:  \t%s' % (fwLogName,
+                             getSysfsValue(device, blockFile)))
+                else:
+                    # PSP, UVD, VCE and VCN report their FW in hex
+                    if block in ['ta_ras', 'ta_xgmi', 'uvd', 'vce', 'vcn']:
+                        printLog(device, '%s firmware version:  \t%s' % (fwLogName,
+                                 getSysfsValue(device, blockFile)))
+                    else:
+                        printLog(device, '%s firmware version:  \t%i' % (fwLogName,
+                                 int(getSysfsValue(device, blockFile), 16)))
+            else:
+                print('Unable to get %s_fw_version sysfs file.' % block)
+    printLogSpacer()
 
 def setPerformanceLevel(deviceList, level):
     """ Set the Performance Level for a list of devices.
@@ -1867,6 +1914,7 @@ if __name__ == '__main__':
     groupDisplay.add_argument('-S', '--showclkvolt', help='Show supported GPU and Memory Clocks and Voltages', action='store_true')
     groupDisplay.add_argument('--showvoltage', help='Show current GPU voltage', action='store_true')
     groupDisplay.add_argument('--showrasinfo', help='Show RAS enablement information and error counts for the specified block(s)', metavar='BLOCK', type=str, nargs='+')
+    groupDisplay.add_argument('--showfwinfo', help='Show FW information', metavar='BLOCK', type=str, nargs='*')
     groupDisplay.add_argument('-a' ,'--showallinfo', help='Show Temperature, Fan and Clock values', action='store_true')
     groupDisplay.add_argument('--showmeminfo', help='Show Memory usage information for given block(s) TYPE', metavar='TYPE', type=str, nargs='+')
     groupDisplay.add_argument('--showdriverversion', help='Show kernel driver version', action='store_true')
@@ -1993,13 +2041,13 @@ if __name__ == '__main__':
         len(sys.argv) == 3 and (args.alldevices and args.json):
         if PRINT_JSON:
             print("ERROR: Cannot print JSON output for concise output (no flags)")
-            print(logSpacer)
+            printLogSpacer()
             sys.exit(1)
         showAllConcise(deviceList)
     if args.showhw:
         if PRINT_JSON:
             print("ERROR: Cannot print JSON output for --showhw")
-            print(logSpacer)
+            printLogSpacer()
             sys.exit(1)
         showAllConciseHw(deviceList)
     if args.showid:
@@ -2029,7 +2077,7 @@ if __name__ == '__main__':
     if args.showprofile:
         if PRINT_JSON:
             print("ERROR: Cannot print JSON output for --showprofile")
-            print(logSpacer)
+            printLogSpacer()
             sys.exit(1)
         showProfile(deviceList)
     if args.showpower:
@@ -2037,7 +2085,7 @@ if __name__ == '__main__':
     if args.showclkfrq:
         if PRINT_JSON:
             print("ERROR: Cannot print JSON output for --showclkfrq")
-            print(logSpacer)
+            printLogSpacer()
             sys.exit(1)
         showClocks(deviceList)
     if args.showuse:
@@ -2049,7 +2097,7 @@ if __name__ == '__main__':
     if args.showclkvolt:
         if PRINT_JSON:
             print("ERROR: Cannot print JSON output for --showclkvolt")
-            print(logspacer)
+            printLogSpacer()
             sys.exit(1)
         showPowerPlayTable(deviceList)
     if args.showvoltage:
@@ -2058,6 +2106,11 @@ if __name__ == '__main__':
         showMemInfo(deviceList, args.showmeminfo)
     if args.showrasinfo:
         showRasInfo(deviceList, args.showrasinfo)
+    # The second condition in the below 'if' statement checks whether showfwinfo was given arguments.
+    # It compares itself to the string representation of the empty list and prints all firmwares.
+    # This allows the user to call --showfwinfo without the 'all' argument and still print all.
+    if args.showfwinfo or str(args.showfwinfo) == '[]':
+        showFwInfo(deviceList, args.showfwinfo)
     if args.setsclk:
         setClocks(deviceList, 'sclk', args.setsclk)
     if args.setmclk:

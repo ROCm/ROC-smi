@@ -22,14 +22,14 @@ For detailed and up to date usage information, we recommend consulting the help:
 For convenience purposes, following is a quick excerpt:
 ```shell
 usage: rocm-smi [-h] [-d DEVICE [DEVICE ...]] [-i] [-v] [--showhw] [-t] [-c] [-g] [-f] [-p] [-P] [-o] [-m] [-M] [-l]
-                [-s] [-u] [-b] [--showreplaycount] [-S] [--showvoltage] [--showrasinfo BLOCK [BLOCK ...]] [-a]
-                [--showmeminfo TYPE [TYPE ...]] [--showdriverversion] [--alldevices] [-r] [--setsclk LEVEL [LEVEL ...]]
-                [--setmclk LEVEL [LEVEL ...]] [--setpcie LEVEL [LEVEL ...]] [--setslevel SCLKLEVEL SCLK SVOLT]
-                [--setmlevel MCLKLEVEL MCLK MVOLT] [--resetfans] [--setfan LEVEL] [--setperflevel LEVEL]
-                [--setoverdrive %] [--setmemoverdrive %] [--setpoweroverdrive WATTS] [--resetpoweroverdrive]
-                [--setprofile SETPROFILE] [--resetprofile] [--rasenable BLOCK ERRTYPE] [--rasdisable BLOCK ERRTYPE]
-                [--rasinject BLOCK] [--gpureset] [--load FILE | --save FILE] [--autorespond RESPONSE]
-                [--loglevel ILEVEL] [--json]
+                [-s] [-u] [-b] [--showreplaycount] [-S] [--showvoltage] [--showrasinfo BLOCK [BLOCK ...]]
+                [--showfwinfo [BLOCK [BLOCK ...]]] [-a] [--showmeminfo TYPE [TYPE ...]] [--showdriverversion]
+                [--alldevices] [-r] [--setsclk LEVEL [LEVEL ...]] [--setmclk LEVEL [LEVEL ...]]
+                [--setpcie LEVEL [LEVEL ...]] [--setslevel SCLKLEVEL SCLK SVOLT] [--setmlevel MCLKLEVEL MCLK MVOLT]
+                [--resetfans] [--setfan LEVEL] [--setperflevel LEVEL] [--setoverdrive %] [--setmemoverdrive %]
+                [--setpoweroverdrive WATTS] [--resetpoweroverdrive] [--setprofile SETPROFILE] [--resetprofile]
+                [--rasenable BLOCK ERRTYPE] [--rasdisable BLOCK ERRTYPE] [--rasinject BLOCK] [--gpureset]
+                [--load FILE | --save FILE] [--autorespond RESPONSE] [--loglevel ILEVEL] [--json]
 
 AMD ROCm System Management Interface
 
@@ -61,6 +61,7 @@ optional arguments:
   --showvoltage                                         Show current GPU voltage
   --showrasinfo BLOCK [BLOCK ...]                       Show RAS enablement information and error counts for the
                                                         specified block(s)
+  --showfwinfo [BLOCK [BLOCK ...]]                      Show FW information
   -a, --showallinfo                                     Show Temperature, Fan and Clock values
   --showmeminfo TYPE [TYPE ...]                         Show Memory usage information for given block(s) TYPE
   --showdriverversion                                   Show kernel driver version
