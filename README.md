@@ -249,6 +249,16 @@ This flag will attempt to reset the GPU for a specified device. This will invoke
 the kernel debugfs file amdgpu_gpu_recover. Note that GPU reset will not always work, depending on the
 manner in which the GPU is hung.
 
+### OverDrive settings ####
+
+For OverDrive functionality, the OverDrive bit (bit 14) must be enabled (by default, the
+OverDrive bit is disabled on the ROCK and upstream kernels). This can be done by setting
+amdgpu.ppfeaturemask accordingly in the kernel parameters, or by changing the default value
+inside amdgpu_drv.c (if building your own kernel).
+
+As an example, if the ppfeaturemask is set to 0xffffbfff (11111111111111111011111111111111),
+then enabling the OverDrive bit would make it 0xffffffff (11111111111111111111111111111111).
+
 #### Testing changes
 
 After making changes to the SMI, run the test script to ensure that all functionality
