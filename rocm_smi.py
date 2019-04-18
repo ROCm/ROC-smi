@@ -237,6 +237,20 @@ def printLog(device, log):
         print(logstr)
 
 
+def printLogSpacer():
+    """ A helper function to print out the log spacer
+
+    We use this to prevent unnecessary output when printing out
+    JSON data. If we want JSON, do nothing, otherwise print out
+    the spacer. To keep Python2 compatibility, we don't just use
+    the print(end='') option, so instead we made this helper
+    """
+    global PRINT_JSON
+    if PRINT_JSON:
+        return
+    print(logSpacer)
+
+
 def doesDeviceExist(device):
     """ Check whether the specified device exists in sysfs.
 
@@ -693,10 +707,10 @@ def showId(deviceList):
     Parameters:
     deviceList -- List of devices to return the device ID (can be a single-item list)
     """
-    print(logSpacer)
+    printLogSpacer()
     for device in deviceList:
         printLog(device, 'GPU ID: 0x' + getSysfsValue(device, 'id'))
-    print(logSpacer)
+    printLogSpacer()
 
 
 def showVbiosVersion(deviceList):
@@ -705,14 +719,14 @@ def showVbiosVersion(deviceList):
     Parameters:
     deviceList -- List of devices to return the VBIOS version (can be a single-item list)
     """
-    print(logSpacer)
+    printLogSpacer()
     for device in deviceList:
         vbios = getSysfsValue(device, 'vbios')
         if vbios:
             printLog(device, 'VBIOS version: ' + vbios)
         else:
             printLog(device, 'Unable to get VBIOS version')
-    print(logSpacer)
+    printLogSpacer()
 
 
 def showCurrentClock(deviceList, clocktype):
@@ -757,14 +771,14 @@ def showCurrentClocks(deviceList):
     deviceList -- List of devices to return the current clock frequencies (can be a single-item list)
     """
     global RETCODE
-    print(logSpacer)
+    printLogSpacer()
     for device in deviceList:
         if not isDPMAvailable(device):
             printLog(device, 'Unable to display clocks')
             continue
         for clk in validClockNames:
             showCurrentClock([device], clk)
-        print(logSpacer)
+        printLogSpacer()
 
 
 def showCurrentTemps(deviceList):
@@ -774,14 +788,14 @@ def showCurrentTemps(deviceList):
     deviceList -- List of devices to return the current temperature (can be a single-item list)
     """
 
-    print(logSpacer)
+    printLogSpacer()
     for device in deviceList:
         temp = getSysfsValue(device, 'temp')
         if not temp:
             printLog(device, 'Unable to display temperature')
             continue
         printLog(device, 'Temperature: ' + str(temp) + 'c')
-    print(logSpacer)
+    printLogSpacer()
 
 
 def showCurrentFans(deviceList):
@@ -790,14 +804,14 @@ def showCurrentFans(deviceList):
     Parameters:
     deviceList -- List of devices to return the current fan speed (can be a single-item list)
     """
-    print(logSpacer)
+    printLogSpacer()
     for device in deviceList:
         (fanLevel, fanSpeed) = getFanSpeed(device)
         if not fanLevel or not fanSpeed:
             printLog(device, 'Unable to display current fan speed')
             continue
         printLog(device, 'Fan Level: %d (%d%%)' % (fanLevel, fanSpeed))
-    print(logSpacer)
+    printLogSpacer()
 
 
 def showClocks(deviceList):
@@ -806,7 +820,7 @@ def showClocks(deviceList):
     Parameters:
     deviceList -- List of devices to display current clock frequencies (can be a single-item list)
     """
-    print(logSpacer)
+    printLogSpacer()
     for device in deviceList:
         if not isDPMAvailable(device):
             printLog(device, 'Unable to display clocks')
@@ -818,7 +832,7 @@ def showClocks(deviceList):
             with open(clkPath, 'r') as clkFile:
                 clkLog = 'Supported ' + clk + ' frequencies on GPU' + parseDeviceName(device) + '\n' + clkFile.read()
             printLog(device, clkLog)
-    print(logSpacer)
+    printLogSpacer()
 
 
 def showPowerPlayTable(deviceList):
@@ -827,7 +841,7 @@ def showPowerPlayTable(deviceList):
     Parameters:
     deviceList -- List of devices to display current clock frequencies and voltages (can be a single-item list)
     """
-    print(logSpacer)
+    printLogSpacer()
     for device in deviceList:
         if not isDPMAvailable(device):
             printLog(device, 'Unable to display voltages')
@@ -838,7 +852,7 @@ def showPowerPlayTable(deviceList):
             logging.debug('GPU[%s]\t: clk_voltage is empty', parseDeviceName(device))
             continue
         printLog(device, table)
-    print(logSpacer)
+    printLogSpacer()
 
 
 def showPerformanceLevel(deviceList):
@@ -847,7 +861,7 @@ def showPerformanceLevel(deviceList):
     Parameters:
     deviceList -- List of devices to display current Performance Level (can be a single-item list)
     """
-    print(logSpacer)
+    printLogSpacer()
     for device in deviceList:
         level = getSysfsValue(device, 'perf')
         if not level:
@@ -855,7 +869,7 @@ def showPerformanceLevel(deviceList):
             logging.debug('GPU[%s]\t: Performance Level not supported (file is empty)', parseDeviceName(device))
         else:
             printLog(device, 'Current Performance Level: ' + level)
-    print(logSpacer)
+    printLogSpacer()
 
 
 def showOverDrive(deviceList, odtype):
@@ -866,7 +880,7 @@ def showOverDrive(deviceList, odtype):
     odtype -- Which OverDrive to display (sclk|mclk)
     """
 
-    print(logSpacer)
+    printLogSpacer()
     for device in deviceList:
         if odtype == 'sclk':
             od = getSysfsValue(device, 'sclk_od')
@@ -879,7 +893,7 @@ def showOverDrive(deviceList, odtype):
             logging.debug('GPU[%s]\t: %s OverDrive not supported', odStr)
         else:
             printLog(device, 'Current ' + odStr + ' OverDrive value: ' + str(od) + '%')
-    print(logSpacer)
+    printLogSpacer()
 
 
 def showProfile(deviceList):
@@ -888,7 +902,7 @@ def showProfile(deviceList):
     Parameters:
     deviceList -- List of devices to display available Power Profile attributes (can be a single-item list)
     """
-    print(logSpacer)
+    printLogSpacer()
     for device in deviceList:
         if not isDPMAvailable(device):
             printLog(device, 'Power Profiles not supported')
@@ -903,7 +917,7 @@ def showProfile(deviceList):
         else:
             printLog(device, 'Unable to get Power Profile')
             logging.debug('GPU[%s]\t: Invalid return value from Power Profile SysFS file', parseDeviceName(device))
-    print(logSpacer)
+    printLogSpacer()
 
 
 def showPower(deviceList):
@@ -912,7 +926,7 @@ def showPower(deviceList):
     Parameters:
     deviceList -- List of devices to display current Average Graphics Package Power Consumption (can be a single-item list)
     """
-    print(logSpacer)
+    printLogSpacer()
     try:
         getPid("atitool")
         logging.error('Please terminate ATItool to use this functionality')
@@ -924,7 +938,7 @@ def showPower(deviceList):
                 logging.debug('GPU[%s]\t: Average GPU Power not supported', parseDeviceName(device))
             else:
                 printLog(device, 'Average Graphics Package Power: ' + str(power) + 'W')
-    print(logSpacer)
+    printLogSpacer()
 
 
 def showMaxPower(deviceList):
@@ -934,7 +948,7 @@ def showMaxPower(deviceList):
     Parameters:
     deviceList -- List of devices to display maximum Graphics Package Power Consumption (can be a single-item list)
     """
-    print(logSpacer)
+    printLogSpacer()
     for device in deviceList:
         power_cap = getSysfsValue(device, 'power_cap')
         if not power_cap:
@@ -942,7 +956,7 @@ def showMaxPower(deviceList):
         else:
             power_cap = str(int(getSysfsValue(device, 'power_cap')) / 1000000)
             printLog(device, 'Max Graphics Package Power: ' + power_cap + 'W')
-    print(logSpacer)
+    printLogSpacer()
 
 
 def showGpuUse(deviceList):
@@ -951,7 +965,7 @@ def showGpuUse(deviceList):
     Parameters:
     deviceList -- List of all devices
     """
-    print(logSpacer)
+    printLogSpacer()
     for device in deviceList:
         use = getSysfsValue(device, 'use')
         if use == None:
@@ -959,7 +973,7 @@ def showGpuUse(deviceList):
             logging.debug('GPU[%s]\t: GPU usage not supported (file is empty)', parseDeviceName(device))
         else:
             printLog(device, 'Current GPU use: ' + use + '%')
-    print(logSpacer)
+    printLogSpacer()
 
 
 def showPcieBw(deviceList):
@@ -968,7 +982,7 @@ def showPcieBw(deviceList):
     Parameters:
     deviceList -- List of all devices
     """
-    print(logSpacer)
+    printLogSpacer()
     for device in deviceList:
         fsvals = getSysfsValue(device, 'pcie_bw')
         if fsvals == None:
@@ -987,7 +1001,7 @@ def showPcieBw(deviceList):
             bwstr = '%.3f' % bw
 
             printLog(device, 'Estimated maximum PCIe bandwidth over the last second: ' + bwstr + ' MB/s')
-    print(logSpacer)
+    printLogSpacer()
 
 
 def showMemInfo(deviceList, memType):
@@ -1006,7 +1020,7 @@ def showMemInfo(deviceList, memType):
     else:
         returnTypes = memType
 
-    print(logSpacer)
+    printLogSpacer()
     for device in deviceList:
         for mem in returnTypes:
             memInfo = getMemInfo(device, mem)
@@ -1014,7 +1028,7 @@ def showMemInfo(deviceList, memType):
                 printLog(device, 'Unable to get %s memory usage information' % mem)
             else:
                 printLog(device, '%s ::\ttotal: %s B   \tused: %s B' % (mem, memInfo[1], memInfo[0]))
-    print(logSpacer)
+    printLogSpacer()
 
 
 def showVoltage(deviceList):
@@ -1024,14 +1038,14 @@ def showVoltage(deviceList):
     deviceList -- List of devices to return the current voltage (can be a single-item list)
     """
 
-    print(logSpacer)
+    printLogSpacer()
     for device in deviceList:
         voltage = getSysfsValue(device, 'voltage')
         if not voltage:
             printLog(device, 'Unable to display voltage')
             continue
         printLog(device, 'Voltage: %s mV' % str(voltage))
-    print(logSpacer)
+    printLogSpacer()
 
 
 def showAllConciseHw(deviceList):
@@ -1040,7 +1054,7 @@ def showAllConciseHw(deviceList):
     Parameters:
     deviceList -- List of all devices
     """
-    print(logSpacer)
+    printLogSpacer()
     header = ['GPU', 'DID', 'GFX RAS', 'SDMA RAS', 'UMC RAS', 'VBIOS', 'BUS']
     head_widths = [len(head)+2 for head in header]
     values = {}
@@ -1075,7 +1089,7 @@ def showAllConcise(deviceList):
     Parameters:
     deviceList -- List of all devices
     """
-    print(logSpacer)
+    printLogSpacer()
     header = ['GPU', 'Temp', 'AvgPwr', 'SCLK', 'MCLK', 'Fan', 'Perf', 'PwrCap', 'VRAM%', 'GPU%']
     head_widths = [len(head)+2 for head in header]
     values = {}
@@ -1140,7 +1154,7 @@ def showAllConcise(deviceList):
     print("".join(word.ljust(max_widths[col]) for col,word in zip(range(len(max_widths)),header)))
     for device in deviceList:
         print("".join(word.ljust(max_widths[col]) for col,word in zip(range(len(max_widths)),values[device])))
-    print(logSpacer)
+    printLogSpacer()
 
 
 def showRasInfo(deviceList, rasType):
@@ -1155,7 +1169,7 @@ def showRasInfo(deviceList, rasType):
     else:
         returnTypes = rasType
 
-    print(logSpacer)
+    printLogSpacer()
     for device in deviceList:
         returnStr = ''
         for ras in returnTypes:
@@ -1171,7 +1185,7 @@ def showRasInfo(deviceList, rasType):
                 printLog(device, 'Block %s is: %s' % (ras, rasEnabled))
                 # Now print the error count
                 printLog(device, getSysfsValue(device, 'ras_%s' % ras))
-    print(logSpacer)
+    printLogSpacer()
 
 
 def setPerformanceLevel(deviceList, level):
@@ -1181,13 +1195,13 @@ def setPerformanceLevel(deviceList, level):
     deviceList -- List of devices to set the current Performance Level (can be a single-item list)
     level -- Specific Performance Level to set
     """
-    print(logSpacer)
+    printLogSpacer()
     for device in deviceList:
         if setPerfLevel(device, level):
             printLog(device, 'Successfully set current Performance Level to ' + level)
         else:
             printLog(device, 'Unable to set current Performance Level to ' + level)
-    print(logSpacer)
+    printLogSpacer()
 
 
 def setClocks(deviceList, clktype, clk):
@@ -1617,14 +1631,14 @@ def setRas(deviceList, rasAction, rasBlock, rasType):
         print('Unable to perform RAS command %s on block %s for type %s' % (rasAction, rasBlock, rasType))
         logging.debug('Memory error type %s is not a valid RAS memory type' % rasAction)
         return
-    print(logSpacer)
+    printLogSpacer()
     #NOTE PSP FW doesn't support enabling disabled counters yet
     for device in deviceList:
         if isRasControlAvailable(device):
             rasPath = getFilePath(device, 'ras_ctrl')
             rasCmd = '%s %s %s' % (rasAction, rasBlock, rasType)
             writeToSysfs(rasPath, rasCmd)
-    print(logSpacer)
+    printLogSpacer()
     return
 
 
