@@ -20,10 +20,14 @@ if hasattr(__builtins__, 'raw_input'):
     input = raw_input
 
 # Version of the JSON output used to save clocks
-JSON_VERSION = 1
+CLOCK_JSON_VERSION = 1
 
 # Set to 1 if an error occurs
 RETCODE = 0
+
+# If we want JSON format output instead
+PRINT_JSON = False
+JSON_DATA = {}
 
 def relaunchAsSudo():
     """ Relaunch the SMI as sudo
@@ -237,6 +241,21 @@ def printErr(device, err):
         print(errstr)
 
 
+def formatJson(device, log):
+    """ Print out in JSON format
+
+    Parameters:
+    log -- String to parse and output into JSON format
+    """
+    global JSON_DATA
+    for line in log.splitlines():
+        # If we got some bad input somehow, quietly ignore it
+        if ':' not in line:
+            return
+        logTuple = line.split(': ')
+        JSON_DATA[device][logTuple[0]] = logTuple[1]
+
+
 def printLog(device, log):
     """ Print out to the SMI log.
 
@@ -244,6 +263,11 @@ def printLog(device, log):
     device -- Device that the log will reference
     log -- String to print to the log
     """
+    global PRINT_JSON
+    if PRINT_JSON is True:
+        formatJson(device, log)
+        return
+
     devName = parseDeviceName(device)
     for line in log.split('\n'):
         logstr = 'GPU[%s] \t\t: %s' % (devName, line)
@@ -1670,9 +1694,9 @@ def load(savefilepath, autoRespond):
     with open(savefilepath, 'r') as savefile:
         jsonData = json.loads(savefile.read())
         for (device, values) in jsonData.items():
-            if values['vJson'] != JSON_VERSION:
+            if values['vJson'] != CLOCK_JSON_VERSION:
                 print('Unable to load legacy clock file - file v' + str(values['vJson']) +
-                      ' != current v' + str(JSON_VERSION))
+                      ' != current v' + str(CLOCK_JSON_VERSION))
                 break
             if values['fan']:
                 setFanSpeed([device], values['fan'])
@@ -1727,7 +1751,7 @@ def save(deviceList, savefilepath):
         overDriveGpu[device] = getSysfsValue(device, 'sclk_od')
         overDriveGpuMem[device] = getSysfsValue(device, 'mclk_od')
         profiles[device] = getProfile(device)
-        jsonData[device] = {'vJson': JSON_VERSION, 'clocks': clocks[device], 'fan': fanSpeeds[device], 'overdrivesclk': overDriveGpu[device], 'overdrivemclk': overDriveGpuMem[device], 'profile': profiles[device], 'perflevel': perfLevels[device]}
+        jsonData[device] = {'vJson': CLOCK_JSON_VERSION, 'clocks': clocks[device], 'fan': fanSpeeds[device], 'overdrivesclk': overDriveGpu[device], 'overdrivemclk': overDriveGpuMem[device], 'profile': profiles[device], 'perflevel': perfLevels[device]}
     printLog(device, 'Current settings successfully saved to ' + savefilepath)
     with open(savefilepath, 'w') as savefile:
         json.dump(jsonData, savefile, ensure_ascii=True)
@@ -1792,6 +1816,7 @@ if __name__ == '__main__':
     groupResponse.add_argument('--autorespond', help='Response to automatically provide for all prompts (NOT RECOMMENDED)', metavar='RESPONSE')
 
     groupOutput.add_argument('--loglevel', help='How much output will be printed for what program is doing, one of debug/info/warning/error/critical', metavar='ILEVEL')
+    groupOutput.add_argument('--json', help='Print output in JSON format', action='store_true')
 
     args = parser.parse_args()
 
@@ -1817,22 +1842,29 @@ if __name__ == '__main__':
     else:
         deviceList = listDevices(args.alldevices)
 
+    # If we want JSON output, initialize the keys (devices)
+    if args.json:
+        PRINT_JSON = True
+        for device in deviceList:
+            JSON_DATA[device] = {}
+
     if args.showallinfo:
         args.showid = True
         args.showtemp = True
         args.showclocks = True
         args.showfan = True
         args.list = True
-        args.showclkfrq = True
         args.showuse = True
         args.showperflevel = True
         args.showoverdrive = True
         args.showmemoverdrive = True
         args.showmaxpower = True
-        args.showprofile = True
         args.showpower = True
-        args.showclkvolt = True
         args.showvoltage = True
+        if not PRINT_JSON:
+            args.showprofile = True
+            args.showclkfrq = True
+            args.showclkvolt = True
 
     if args.setsclk or args.setmclk or args.setpcie or args.resetfans or args.setfan or args.setperflevel or \
        args.load or args.resetclocks or args.setprofile or args.resetprofile or args.setoverdrive or \
@@ -1865,9 +1897,19 @@ if __name__ == '__main__':
         print(footerSpacer + footerString + footerSpacer, sep='')
         sys.exit(0)
 
-    if len(sys.argv) == 1 or len(sys.argv) == 2 and args.alldevices:
+    if len(sys.argv) == 1 or \
+        len(sys.argv) == 2 and (args.alldevices or args.json) or \
+        len(sys.argv) == 3 and (args.alldevices and args.json):
+        if PRINT_JSON:
+            print("ERROR: Cannot print JSON output for concise output (no flags)")
+            print(logSpacer)
+            sys.exit(1)
         showAllConcise(deviceList)
     if args.showhw:
+        if PRINT_JSON:
+            print("ERROR: Cannot print JSON output for --showhw")
+            print(logSpacer)
+            sys.exit(1)
         showAllConciseHw(deviceList)
     if args.showid:
         showId(deviceList)
@@ -1892,16 +1934,28 @@ if __name__ == '__main__':
     if args.showmaxpower:
         showMaxPower(deviceList)
     if args.showprofile:
+        if PRINT_JSON:
+            print("ERROR: Cannot print JSON output for --showprofile")
+            print(logSpacer)
+            sys.exit(1)
         showProfile(deviceList)
     if args.showpower:
         showPower(deviceList)
     if args.showclkfrq:
+        if PRINT_JSON:
+            print("ERROR: Cannot print JSON output for --showclkfrq")
+            print(logSpacer)
+            sys.exit(1)
         showClocks(deviceList)
     if args.showuse:
         showGpuUse(deviceList)
     if args.showbw:
         showPcieBw(deviceList)
     if args.showclkvolt:
+        if PRINT_JSON:
+            print("ERROR: Cannot print JSON output for --showclkvolt")
+            print(logspacer)
+            sys.exit(1)
         showPowerPlayTable(deviceList)
     if args.showvoltage:
         showVoltage(deviceList)
@@ -1947,6 +2001,9 @@ if __name__ == '__main__':
         load(args.load, args.autorespond)
     if args.save:
         save(deviceList, args.save)
+
+    if PRINT_JSON:
+        print(json.dumps(JSON_DATA))
 
     # If RETCODE isn't 0, inform the user
     if RETCODE:
