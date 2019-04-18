@@ -1818,6 +1818,7 @@ if __name__ == '__main__':
         args.showprofile = True
         args.showpower = True
         args.showclkvolt = True
+        args.showvoltage = True
 
     if args.setsclk or args.setmclk or args.setpcie or args.resetfans or args.setfan or args.setperflevel or \
        args.load or args.resetclocks or args.setprofile or args.resetprofile or args.setoverdrive or \
