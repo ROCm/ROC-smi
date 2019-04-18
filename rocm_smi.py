@@ -1076,7 +1076,7 @@ def showAllConcise(deviceList):
     deviceList -- List of all devices
     """
     print(logSpacer)
-    header = ['GPU', 'Temp', 'AvgPwr', 'SCLK', 'MCLK', 'Fan', 'Perf', 'PwrCap', 'SCLK OD', 'MCLK OD', 'GPU%']
+    header = ['GPU', 'Temp', 'AvgPwr', 'SCLK', 'MCLK', 'Fan', 'Perf', 'PwrCap', 'VRAM%', 'GPU%']
     head_widths = [len(head)+2 for head in header]
     values = {}
     for device in deviceList:
@@ -1117,25 +1117,19 @@ def showAllConcise(deviceList):
         else:
             power_cap = str(int(power_cap)/1000000) + 'W'
 
-        sclk_od = getSysfsValue(device, 'sclk_od')
-        if not sclk_od or sclk_od == '-1':
-            sclk_od = 'N/A'
+        memInfo = getMemInfo(device, 'vram')
+        if not memInfo:
+            mem_use = 'N/A'
         else:
-            sclk_od = sclk_od + '%'
+            mem_use = '% 3.0f%%' % (100*(float(memInfo[0])/float(memInfo[1])))
 
-        mclk_od = getSysfsValue(device, 'mclk_od')
-        if not mclk_od or mclk_od == '-1':
-            mclk_od = 'N/A'
+        gpu_use = getSysfsValue(device, 'use')
+        if gpu_use == None:
+            gpu_use = 'N/A'
         else:
-            mclk_od = mclk_od + '%'
+            gpu_use = gpu_use + '%'
 
-        use = getSysfsValue(device, 'use')
-        if use == None:
-            use = 'N/A'
-        else:
-            use = use + '%'
-
-        values[device] = [device[4:], temp, power, sclk, mclk, fan, perf, power_cap, sclk_od, mclk_od, use]
+        values[device] = [device[4:], temp, power, sclk, mclk, fan, perf, power_cap, mem_use, gpu_use]
     val_widths = {}
     for device in deviceList:
         val_widths[device] = [len(val)+2 for val in values[device]]
