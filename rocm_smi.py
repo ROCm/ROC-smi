@@ -41,6 +41,7 @@ def relaunchAsSudo():
 drmprefix = '/sys/class/drm'
 hwmonprefix = '/sys/class/hwmon'
 debugprefix = '/sys/kernel/debug/dri'
+moduleprefix = '/sys/module'
 
 headerString = 'ROCm System Management Interface'
 footerString = 'End of ROCm SMI Log'
@@ -82,6 +83,9 @@ validRasActions = ['disable', 'enable', 'inject']
 # ue - Uncorrectable error; ce - Correctable error
 validRasTypes = ['ue', 'ce']
 
+# List of software components that we support printing versioning information
+validVersionComponents = ['driver']
+
 valuePaths = {
     'id' : {'prefix' : drmprefix, 'filepath' : 'device', 'needsparse' : True},
     'vbios' : {'prefix' : drmprefix, 'filepath' : 'vbios_version', 'needsparse' : False},
@@ -120,7 +124,8 @@ valuePaths = {
     'ras_umc' : {'prefix' : drmprefix, 'filepath' : 'ras/umc_err_count', 'needsparse' : False},
     'ras_features' : {'prefix' : drmprefix, 'filepath' : 'ras/features', 'needsparse' : True},
     'ras_ctrl' : {'prefix' : debugprefix, 'filepath' : 'ras/ras_ctrl', 'needsparse' : False},
-    'gpu_reset' : {'prefix' : debugprefix, 'filepath' : 'amdgpu_gpu_recover', 'needsparse' : False}
+    'gpu_reset' : {'prefix' : debugprefix, 'filepath' : 'amdgpu_gpu_recover', 'needsparse' : False},
+    'driver' : {'prefix' : moduleprefix, 'filepath' : 'amdgpu/version', 'needsparse' : False}
 }
 
 
@@ -143,8 +148,11 @@ def getFilePath(device, key):
     elif pathDict['prefix'] == debugprefix:
         # Kernel DebugFS values have a different path structure
         filePath = os.path.join(pathDict['prefix'], parseDeviceName(device), pathDict['filepath'])
-    else:
+    elif pathDict['prefix'] == drmprefix:
         filePath = os.path.join(pathDict['prefix'], device, 'device', pathDict['filepath'])
+    else:
+        # Otherwise, just join the 2 fields without any parsing
+        filePath = os.path.join(pathDict['prefix'], pathDict['filepath'])
 
     if not os.path.isfile(filePath):
         return None
@@ -1086,6 +1094,24 @@ def showVoltage(deviceList):
     printLogSpacer()
 
 
+def showVersion(deviceList, component):
+    """ Show the software version for the specified component
+
+    Parameters:
+    deviceList - List of devices to return the version for
+    component - Component to display version for (currently only driver)
+    """
+    if component not in validVersionComponents:
+        printLog(device, 'Unable to display version information for unsupported component %s' % component)
+        return
+    if component is 'driver':
+        # Only 1 version, so report it for GPU 0
+        driver = getSysfsValue(None, 'driver')
+        if driver is None:
+            driver = os.uname()[2]
+        print('%s version: %s' % (component.capitalize(), driver))
+
+
 def showAllConciseHw(deviceList):
     """ Display critical Hardware info for all devices in a concise format.
 
@@ -1788,6 +1814,7 @@ if __name__ == '__main__':
     groupDisplay.add_argument('--showrasinfo', help='Show RAS enablement information and error counts for the specified block(s)', metavar='BLOCK', type=str, nargs='+')
     groupDisplay.add_argument('-a' ,'--showallinfo', help='Show Temperature, Fan and Clock values', action='store_true')
     groupDisplay.add_argument('--showmeminfo', help='Show Memory usage information for given block(s) TYPE', metavar='TYPE', type=str, nargs='+')
+    groupDisplay.add_argument('--showdriverversion', help='Show ROCK version', action='store_true')
     groupDisplay.add_argument('--alldevices', help='Execute command on non-AMD devices as well as AMD devices', action='store_true')
 
     groupAction.add_argument('-r', '--resetclocks', help='Reset clocks and OverDrive to default', action='store_true')
@@ -1861,6 +1888,7 @@ if __name__ == '__main__':
         args.showmaxpower = True
         args.showpower = True
         args.showvoltage = True
+        args.showdriverversion = True
         if not PRINT_JSON:
             args.showprofile = True
             args.showclkfrq = True
@@ -1931,6 +1959,8 @@ if __name__ == '__main__':
         showOverDrive(deviceList, 'sclk')
     if args.showmemoverdrive:
         showOverDrive(deviceList, 'mclk')
+    if args.showdriverversion:
+        showVersion(deviceList, 'driver')
     if args.showmaxpower:
         showMaxPower(deviceList)
     if args.showprofile:
