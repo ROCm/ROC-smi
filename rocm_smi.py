@@ -1393,7 +1393,7 @@ def setPowerOverDrive(deviceList, value, autoRespond):
         if not isDPMAvailable(device):
             printLog(device, 'Unable to set Power OverDrive')
             continue
-        power_cap_path = getFilePath(device, 'power1_cap')
+        power_cap_path = getFilePath(device, 'power_cap')
 
         # Avoid early unnecessary conversions
         max_power_cap = int(getSysfsValue(device, 'power_cap_max'))
