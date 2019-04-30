@@ -1782,6 +1782,21 @@ def save(deviceList, savefilepath):
     with open(savefilepath, 'w') as savefile:
         json.dump(jsonData, savefile, ensure_ascii=True)
 
+
+def checkAmdGpus(deviceList):
+    """ Check if there are any AMD GPUs being queried,
+    print a warning if there are none
+
+    Parameters:
+    deviceList -- List of devices that will be queried
+    """
+
+    for device in deviceList:
+        if isAmdDevice(device):
+            return True
+    return False
+
+
 # Below is for when called as a script instead of when imported as a module
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='AMD ROCm System Management Interface', formatter_class=lambda prog: argparse.HelpFormatter(prog, max_help_position=90, width=120))
@@ -1924,6 +1939,9 @@ if __name__ == '__main__':
         resetGpu(deviceList)
         print(footerSpacer + footerString + footerSpacer, sep='')
         sys.exit(0)
+
+    if not checkAmdGpus(deviceList):
+        logging.warning('No AMD GPUs specified')
 
     if len(sys.argv) == 1 or \
         len(sys.argv) == 2 and (args.alldevices or args.json) or \
