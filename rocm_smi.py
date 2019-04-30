@@ -223,6 +223,20 @@ def parseDeviceName(deviceName):
     return deviceName[4:]
 
 
+def printErr(device, err):
+    """ Print out an error to the SMI log
+
+    Parameters:
+    device --  Device that the error will reference
+    err -- Error string to print
+    """
+    devName = parseDeviceName(device)
+    for line in err.split('\n'):
+        errstr = 'GPU[%s] \t\t: %s' % (devName, line)
+        logging.error(errstr)
+        print(errstr)
+
+
 def printLog(device, log):
     """ Print out to the SMI log.
 
@@ -368,7 +382,7 @@ def verifySetProfile(device, profile):
     """
     global RETCODE
     if not isDPMAvailable(device):
-        printLog(device, 'Unable to specify profile')
+        printErr(device, 'Unable to specify profile')
         RETCODE = 1
         return False
 
@@ -376,32 +390,32 @@ def verifySetProfile(device, profile):
     if profile.isdigit():
         maxProfileLevel = getMaxLevel(device, 'profile')
         if maxProfileLevel is None:
-            printLog(device, 'Unable to set profile')
+            printErr(device, 'Unable to set profile')
             logging.debug('GPU[%s]\t: Unable to get max level when trying to set profile', parseDeviceName(device))
             return False
         if int(profile) > maxProfileLevel:
-            printLog(device, 'Unable to set profile to level' + str(profile))
+            printErr(device, 'Unable to set profile to level' + str(profile))
             logging.debug('GPU[%s]\t: %d is an invalid level, maximum level is %d', parseDeviceName(device), profile, maxProfileLevel)
             return False
         return True
     # If we get a string, split it into elements to make it a list
     elif isinstance(profile, str):
         if profile == 'reset':
-            printLog(device, 'Reset no longer accepted as a Power Profile')
+            printErr(device, 'Reset no longer accepted as a Power Profile')
             return False
         else:
             profileList = profile.strip().split(' ')
     elif isinstance(profile, collections.Iterable):
         profileList = profile
     else:
-        printLog(device, 'Unsupported profile argument : ' + str(profile))
+        printErr(device, 'Unsupported profile argument : ' + str(profile))
         return False
     numProfileArgs = getNumProfileArgs(device)
     if numProfileArgs == 0:
-        printLog(device, 'Power Profiles not supported')
+        printErr(device, 'Power Profiles not supported')
         return False
     if len(profileList) != numProfileArgs:
-        printLog(device, 'Unable to set profile')
+        printErr(device, 'Unable to set profile')
         logging.error('GPU[%s]\t: Profile must contain 1 or %d values', parseDeviceName(device), numProfileArgs)
         RETCODE = 1
         return False
@@ -424,7 +438,7 @@ def getProfile(device):
     level = ''
     numArgs = getNumProfileArgs(device)
     if numArgs == 0:
-        printLog(device, 'Unable to get power profile')
+        printErr(device, 'Unable to get power profile')
         logging.debug('GPU[%s]\t: Power Profile not supported (file is empty)', parseDeviceName(device))
         return None
     for line in profiles.splitlines():
@@ -477,7 +491,7 @@ def writeProfileSysfs(device, value):
     profilePath = getFilePath(device, 'profile')
     maxLevel = getMaxLevel(device, 'profile')
     if maxLevel is None:
-        printLog(device, 'Unable to set profile')
+        printErr(device, 'Unable to set profile')
         logging.debug('GPU[%s]\t: Max profile level could not be obtained', parseDeviceName(device))
         return False
     # If it's a single number, then we're choosing the Power Profile, not setting CUSTOM
@@ -491,7 +505,7 @@ def writeProfileSysfs(device, value):
             # Prepend the Max Level of Profiles since that will always be the CUSTOM profile
             profileString = str(maxLevel) + value
     else:
-        printLog(device, 'Invalid input argument ' + value)
+        printErr(device, 'Invalid input argument ' + value)
         return False
     if writeToSysfs(profilePath, profileString):
         return True
@@ -617,7 +631,7 @@ def getMaxLevel(device, leveltype):
     """
     global RETCODE
     if not leveltype in validClockNames and leveltype != 'profile':
-        printLog(device, 'Unable to get max level')
+        printErr(device, 'Unable to get max level')
         logging.error('Invalid level type %s', leveltype)
         RETCODE = 1
         return None
@@ -691,7 +705,7 @@ def setPerfLevel(device, level):
     perfPath = getFilePath(device, 'perf')
 
     if level not in validLevels:
-        printLog(device, 'Unable to set Performance Level')
+        printErr(device, 'Unable to set Performance Level')
         logging.error('Invalid Performance level: %s', level)
         RETCODE = 1
         return False
@@ -725,7 +739,7 @@ def showVbiosVersion(deviceList):
         if vbios:
             printLog(device, 'VBIOS version: ' + vbios)
         else:
-            printLog(device, 'Unable to get VBIOS version')
+            printErr(device, 'Unable to get VBIOS version')
     printLogSpacer()
 
 
@@ -744,7 +758,7 @@ def showCurrentClock(deviceList, clocktype):
         return
     for device in deviceList:
         if not isDPMAvailable(device):
-            printLog(device, 'Unable to display ' + clocktype)
+            printErr(device, 'Unable to display ' + clocktype)
             continue
         if not getFilePath(device, clocktype):
             # If the clock file doesn't exist, don't print it out.
@@ -757,7 +771,7 @@ def showCurrentClock(deviceList, clocktype):
             level = getCurrentClock(device, clocktype, 'level')
 
         if not clk or not level:
-            printLog(device, 'Unable to display ' + clocktype)
+            printErr(device, 'Unable to display ' + clocktype)
             logging.debug('GPU[%s]\t: Clock file %s is empty. ASIC may not support it', parseDeviceName(device), clocktype)
             return
 
@@ -774,7 +788,7 @@ def showCurrentClocks(deviceList):
     printLogSpacer()
     for device in deviceList:
         if not isDPMAvailable(device):
-            printLog(device, 'Unable to display clocks')
+            printErr(device, 'Unable to display clocks')
             continue
         for clk in validClockNames:
             showCurrentClock([device], clk)
@@ -792,7 +806,7 @@ def showCurrentTemps(deviceList):
     for device in deviceList:
         temp = getSysfsValue(device, 'temp')
         if not temp:
-            printLog(device, 'Unable to display temperature')
+            printErr(device, 'Unable to display temperature')
             continue
         printLog(device, 'Temperature: ' + str(temp) + 'c')
     printLogSpacer()
@@ -808,7 +822,7 @@ def showCurrentFans(deviceList):
     for device in deviceList:
         (fanLevel, fanSpeed) = getFanSpeed(device)
         if not fanLevel or not fanSpeed:
-            printLog(device, 'Unable to display current fan speed')
+            printErr(device, 'Unable to display current fan speed')
             continue
         printLog(device, 'Fan Level: %d (%d%%)' % (fanLevel, fanSpeed))
     printLogSpacer()
@@ -823,7 +837,7 @@ def showClocks(deviceList):
     printLogSpacer()
     for device in deviceList:
         if not isDPMAvailable(device):
-            printLog(device, 'Unable to display clocks')
+            printErr(device, 'Unable to display clocks')
             continue
         for clk in validClockNames:
             clkPath = getFilePath(device, clk)
@@ -844,11 +858,11 @@ def showPowerPlayTable(deviceList):
     printLogSpacer()
     for device in deviceList:
         if not isDPMAvailable(device):
-            printLog(device, 'Unable to display voltages')
+            printErr(device, 'Unable to display voltages')
             continue
         table = getSysfsValue(device, 'clk_voltage')
         if not table:
-            printLog(device, 'Unable to display voltage')
+            printErr(device, 'Unable to display voltage')
             logging.debug('GPU[%s]\t: clk_voltage is empty', parseDeviceName(device))
             continue
         printLog(device, table)
@@ -865,7 +879,7 @@ def showPerformanceLevel(deviceList):
     for device in deviceList:
         level = getSysfsValue(device, 'perf')
         if not level:
-            printLog(device, 'Unable to get Performance Level')
+            printErr(device, 'Unable to get Performance Level')
             logging.debug('GPU[%s]\t: Performance Level not supported (file is empty)', parseDeviceName(device))
         else:
             printLog(device, 'Current Performance Level: ' + level)
@@ -889,7 +903,7 @@ def showOverDrive(deviceList, odtype):
             od = getSysfsValue(device, 'mclk_od')
             odStr = 'GPU Memory'
         if not od or int(od) < 0:
-            printLog(device, 'Unable to get ' + odStr + ' OverDrive value')
+            printErr(device, 'Unable to get ' + odStr + ' OverDrive value')
             logging.debug('GPU[%s]\t: %s OverDrive not supported', odStr)
         else:
             printLog(device, 'Current ' + odStr + ' OverDrive value: ' + str(od) + '%')
@@ -905,17 +919,17 @@ def showProfile(deviceList):
     printLogSpacer()
     for device in deviceList:
         if not isDPMAvailable(device):
-            printLog(device, 'Power Profiles not supported')
+            printErr(device, 'Power Profiles not supported')
             continue
         profile = getSysfsValue(device, 'profile')
         if not profile:
-            printLog(device, 'Unable to get Power Profile')
+            printErr(device, 'Unable to get Power Profile')
             logging.debug('GPU[%s]\t: Power Profile not supported (file is empty)', parseDeviceName(device))
             continue
         if len(profile) > 1:
             printLog(device, '\n' + profile)
         else:
-            printLog(device, 'Unable to get Power Profile')
+            printErr(device, 'Unable to get Power Profile')
             logging.debug('GPU[%s]\t: Invalid return value from Power Profile SysFS file', parseDeviceName(device))
     printLogSpacer()
 
@@ -934,7 +948,7 @@ def showPower(deviceList):
         for device in deviceList:
             power = getSysfsValue(device, 'power')
             if not power:
-                printLog(device, 'Unable to get Average Graphics Package Power Consumption')
+                printErr(device, 'Unable to get Average Graphics Package Power Consumption')
                 logging.debug('GPU[%s]\t: Average GPU Power not supported', parseDeviceName(device))
             else:
                 printLog(device, 'Average Graphics Package Power: ' + str(power) + 'W')
@@ -952,7 +966,7 @@ def showMaxPower(deviceList):
     for device in deviceList:
         power_cap = getSysfsValue(device, 'power_cap')
         if not power_cap:
-            printLog(device, 'Unable to get maximum Graphics Package Power')
+            printErr(device, 'Unable to get maximum Graphics Package Power')
         else:
             power_cap = str(int(getSysfsValue(device, 'power_cap')) / 1000000)
             printLog(device, 'Max Graphics Package Power: ' + power_cap + 'W')
@@ -969,7 +983,7 @@ def showGpuUse(deviceList):
     for device in deviceList:
         use = getSysfsValue(device, 'use')
         if use == None:
-            printLog(device, 'Unable to get GPU use.')
+            printErr(device, 'Unable to get GPU use.')
             logging.debug('GPU[%s]\t: GPU usage not supported (file is empty)', parseDeviceName(device))
         else:
             printLog(device, 'Current GPU use: ' + use + '%')
@@ -986,7 +1000,7 @@ def showPcieBw(deviceList):
     for device in deviceList:
         fsvals = getSysfsValue(device, 'pcie_bw')
         if fsvals == None:
-            printLog(device, 'Unable to get PCIe bandwidth')
+            printErr(device, 'Unable to get PCIe bandwidth')
             logging.debug('GPU[%s]\t: PCIe bandwidth not supported (file is empty)', parseDeviceName(device))
         else:
             # The sysfs file returns 3 integers: bytes-received, bytes-sent, maxsize
@@ -1025,7 +1039,7 @@ def showMemInfo(deviceList, memType):
         for mem in returnTypes:
             memInfo = getMemInfo(device, mem)
             if memInfo[0]  == None or memInfo[1] == None:
-                printLog(device, 'Unable to get %s memory usage information' % mem)
+                printErr(device, 'Unable to get %s memory usage information' % mem)
             else:
                 printLog(device, '%s ::\ttotal: %s B   \tused: %s B' % (mem, memInfo[1], memInfo[0]))
     printLogSpacer()
@@ -1042,7 +1056,7 @@ def showVoltage(deviceList):
     for device in deviceList:
         voltage = getSysfsValue(device, 'voltage')
         if not voltage:
-            printLog(device, 'Unable to display voltage')
+            printErr(device, 'Unable to display voltage')
             continue
         printLog(device, 'Voltage: %s mV' % str(voltage))
     printLogSpacer()
@@ -1179,7 +1193,7 @@ def showRasInfo(deviceList, rasType):
                 continue
             rasEnabled = getRasEnablement(device, ras)
             if rasEnabled is None:
-                printLog(device, 'Unable to get information for block %s' % ras)
+                printErr(device, 'Unable to get information for block %s' % ras)
                 logging.debug('GPU[%s]\t: RAS not supported for block %s', parseDeviceName(device), rasType)
             else:
                 printLog(device, 'Block %s is: %s' % (ras, rasEnabled))
@@ -1200,7 +1214,7 @@ def setPerformanceLevel(deviceList, level):
         if setPerfLevel(device, level):
             printLog(device, 'Successfully set current Performance Level to ' + level)
         else:
-            printLog(device, 'Unable to set current Performance Level to ' + level)
+            printErr(device, 'Unable to set current Performance Level to ' + level)
     printLogSpacer()
 
 
@@ -1228,11 +1242,11 @@ def setClocks(deviceList, clktype, clk):
         return
     for device in deviceList:
         if not isDPMAvailable(device):
-            printLog(device, 'Unable to set clock level')
+            printErr(device, 'Unable to set clock level')
             RETCODE = 1
             continue
         if clktype not in validClockNames:
-            printLog(device, 'Unable to set clock level')
+            printErr(device, 'Unable to set clock level')
             logging.error('Invalid clock type %s', clktype)
             RETCODE = 1
             return
@@ -1241,7 +1255,7 @@ def setClocks(deviceList, clktype, clk):
         # But 0 is a max level option, so use "is None" instead of "not maxLevel"
         maxLevel = getMaxLevel(device, clktype)
         if maxLevel is None:
-            printLog(device, 'Unable to set clock level')
+            printErr(device, 'Unable to set clock level')
             logging.warning('GPU[%s]\t: Unable to get max level for clock type %s', parseDeviceName(device), clktype)
             RETCODE = 1
             continue
@@ -1249,7 +1263,7 @@ def setClocks(deviceList, clktype, clk):
         # 4 5 6 for levels 4, 5 and 6). Don't compare against the max level for gpu
         # clocks in this case
         if any(int(item) > getMaxLevel(device, clktype) for item in clk):
-            printLog(device, 'Unable to set clock level')
+            printErr(device, 'Unable to set clock level')
             logging.error('GPU[%s]\t: Max clock level is %d', parseDeviceName(device), getMaxLevel(device, clktype))
             RETCODE = 1
             continue
@@ -1257,7 +1271,7 @@ def setClocks(deviceList, clktype, clk):
         if writeToSysfs(getFilePath(device, clktype), value):
             printLog(device, 'Successfully set ' + clktype + ' frequency mask to Level ' + value)
         else:
-            printLog(device, 'Unable to set ' + clktype + ' clock to Level ' + value)
+            printErr(device, 'Unable to set ' + clktype + ' clock to Level ' + value)
             RETCODE = 1
 
 
@@ -1289,7 +1303,7 @@ def setPowerPlayTableLevel(deviceList, clktype, levelList, autoRespond):
         value = 'm ' + value
     for device in deviceList:
         if not isDPMAvailable(device):
-            printLog(device, 'Unable to set voltages')
+            printErr(device, 'Unable to set voltages')
             RETCODE = 1
             continue
         clkFile = getFilePath(device, 'clk_voltage')
@@ -1298,12 +1312,12 @@ def setPowerPlayTableLevel(deviceList, clktype, levelList, autoRespond):
 
         maxLevel = getMaxLevel(device, clktype)
         if maxLevel is None:
-            printLog(device, 'Unable to set clock level')
+            printErr(device, 'Unable to set clock level')
             logging.warning('GPU[%s]\t: Unable to get maximum %s level', parseDeviceName(device), clktype)
             RETCODE = 1
             continue
         if int(levelList[0]) > maxLevel:
-            printLog(device, 'Unable to set clock level')
+            printErr(device, 'Unable to set clock level')
             logging.error('GPU[%s]\t: %s is greater than maximum level %s ', parseDeviceName(device), levelList[0], getMaxLevel(device, clktype))
             RETCODE = 1
             continue
@@ -1314,7 +1328,7 @@ def setPowerPlayTableLevel(deviceList, clktype, levelList, autoRespond):
             else:
                 printLog(device, 'Successfully set GPU Memory Clock frequency mask to Level ' + value)
         else:
-            printLog(device, 'Unable to set ' + clktype + ' clock to Level ' + value)
+            printErr(device, 'Unable to set ' + clktype + ' clock to Level ' + value)
             RETCODE = 1
 
 
@@ -1340,7 +1354,7 @@ def setClockOverDrive(deviceList, clktype, value, autoRespond):
 
     for device in deviceList:
         if not isDPMAvailable(device):
-            printLog(device, 'Unable to set OverDrive')
+            printErr(device, 'Unable to set OverDrive')
             continue
         if clktype == 'sclk':
             odPath = getFilePath(device, 'sclk_od')
@@ -1349,13 +1363,13 @@ def setClockOverDrive(deviceList, clktype, value, autoRespond):
             odPath = getFilePath(device, 'mclk_od')
             odStr = 'GPU Memory'
         else:
-            printLog(device, 'Unable to set OverDrive')
+            printErr(device, 'Unable to set OverDrive')
             logging.error('Unsupported clock type %s', clktype)
             RETCODE = 1
             continue
 
         if int(value) < 0:
-            printLog(device, 'Unable to set OverDrive')
+            printErr(device, 'Unable to set OverDrive')
             logging.debug('Overdrive cannot be less than 0%')
             RETCODE = 1
             return
@@ -1369,7 +1383,7 @@ def setClockOverDrive(deviceList, clktype, value, autoRespond):
             printLog(device, 'Successfully set ' + odStr + ' OverDrive to ' + value + '%')
             setClocks([device], clktype, [getMaxLevel(device, clktype)])
         else:
-            printLog(device, 'Unable to set OverDrive to ' + value + '%')
+            printErr(device, 'Unable to set OverDrive to ' + value + '%')
 
 def setPowerOverDrive(deviceList, value, autoRespond):
     """ Use Power OverDrive to change the the maximum power available power
@@ -1399,7 +1413,7 @@ def setPowerOverDrive(deviceList, value, autoRespond):
 
     for device in deviceList:
         if not isDPMAvailable(device):
-            printLog(device, 'Unable to set Power OverDrive')
+            printErr(device, 'Unable to set Power OverDrive')
             continue
         power_cap_path = getFilePath(device, 'power1_cap')
 
@@ -1408,13 +1422,13 @@ def setPowerOverDrive(deviceList, value, autoRespond):
         min_power_cap = int(getSysfsValue(device, 'power_cap_min'))
 
         if value < min_power_cap:
-            printLog(device, 'Unable to set Power OverDrive')
+            printErr(device, 'Unable to set Power OverDrive')
             logging.error('GPU[%s]\t: Value cannot be less than %dW ', parseDeviceName(device), min_power_cap / 1000000)
             RETCODE = 1
             return
 
         if value > max_power_cap:
-            printLog(device, 'Unable to set Power OverDrive')
+            printErr(device, 'Unable to set Power OverDrive')
             logging.error('GPU[%s]\t: Value cannot be greater than %dW ', parseDeviceName(name), max_power_cap / 1000000)
             RETCODE = 1
             return;
@@ -1426,9 +1440,9 @@ def setPowerOverDrive(deviceList, value, autoRespond):
                 printLog(device, 'Successfully reset Power OverDrive')
         else:
             if value != 0:
-                printLog(device, 'Unable to set Power OverDrive to ' + strValue + 'W')
+                printErr(device, 'Unable to set Power OverDrive to ' + strValue + 'W')
             else:
-                printLog(device, 'Unable to reset Power OverDrive to default')
+                printErr(device, 'Unable to reset Power OverDrive to default')
 
 def resetPowerOverDrive(deviceList, autoRespond):
     """ Reset Power OverDrive to the default power limit that comes with the GPU
@@ -1446,13 +1460,13 @@ def resetFans(deviceList):
     """
     for device in deviceList:
         if not isDPMAvailable(device):
-            printLog(device, 'Unable to reset fan speed')
+            printErr(device, 'Unable to reset fan speed')
             continue
         fanpath = getFilePath(device, 'fanmode')
         if writeToSysfs(fanpath, '2'):
             printLog(device, 'Successfully reset fan speed to driver control')
         else:
-            printLog(device, 'Unable to reset fan speed to driver control')
+            printErr(device, 'Unable to reset fan speed to driver control')
 
 
 def setFanSpeed(deviceList, fan):
@@ -1465,27 +1479,27 @@ def setFanSpeed(deviceList, fan):
     global RETCODE
     for device in deviceList:
         if not isDPMAvailable(device):
-            printLog(device, 'Unable to set fan speed')
+            printErr(device, 'Unable to set fan speed')
             RETCODE = 1
             continue
         fanpath = getFilePath(device, 'fan')
         modepath = getFilePath(device, 'fanmode')
         maxfan = getSysfsValue(device, 'fanmax')
         if not maxfan:
-            printLog(device, 'Unable to set fan speed')
+            printErr(device, 'Unable to set fan speed')
             logging.warning('GPU[%s]\t: Unable to get max fan level (file is empty)')
             RETCODE = 1
             continue
         if str(fan).endswith('%'):
             fanpct = int(fan[:-1])
             if fanpct > 100 or fanpct < 0:
-                printLog(device, 'Unable to set fan speed')
+                printErr(device, 'Unable to set fan speed')
                 logging.error('GPU[%s]\t: Invalid fan percentage, %d is not between 0 and 100', parseDeviceName(device), fan)
                 RETCODE = 1
                 continue
             fan = str(int((fanpct * int(maxfan)) / 100))
         if int(fan) > int(maxfan):
-            printLog(device, 'Unable to set fan speed')
+            printErr(device, 'Unable to set fan speed')
             logging.error('GPU[%s]\t: Fan value %s is greater than maximum level %s', parseDeviceName(device), fan, maxfan)
             RETCODE = 1
             continue
@@ -1493,12 +1507,12 @@ def setFanSpeed(deviceList, fan):
             if writeToSysfs(modepath, '1'):
                 printLog(device, 'Successfully set fan control to \'manual\'')
             else:
-                printLog(device, 'Unable to set fan control to \'manual\'')
+                printErr(device, 'Unable to set fan control to \'manual\'')
                 continue
         if writeToSysfs(fanpath, str(fan)):
             printLog(device, 'Successfully set fan speed to Level ' + str(fan))
         else:
-            printLog(device, 'Unable to set fan speed to Level ' + str(fan))
+            printErr(device, 'Unable to set fan speed to Level ' + str(fan))
 
 
 def setProfile(deviceList, profile):
@@ -1517,7 +1531,7 @@ def setProfile(deviceList, profile):
         if writeProfileSysfs(device, profile):
             printLog(device, 'Successfully set ' + execMsg)
         else:
-            printLog(device, 'Unable to set ' + execMsg)
+            printErr(device, 'Unable to set ' + execMsg)
 
 
 def resetProfile(deviceList):
@@ -1528,17 +1542,17 @@ def resetProfile(deviceList):
     """
     for device in deviceList:
         if not getSysfsValue(device, 'profile'):
-            printLog(device, 'Unable to reset Power Profile')
+            printErr(device, 'Unable to reset Power Profile')
             logging.debug('GPU[%s]\t: Unable to get current Power Profile', parseDeviceName(device))
             continue
         # Performance level must be set to manual for a reset of the profile to work
         setPerfLevel(device, 'manual')
         if not writeProfileSysfs(device, '0 ' * getNumProfileArgs(device)):
-            printLog(device, 'Unable to reset CUSTOM Power Profile values')
+            printErr(device, 'Unable to reset CUSTOM Power Profile values')
         if writeProfileSysfs(device, '0'):
             printLog(device, 'Successfully reset Power Profile')
         else:
-            printLog(device, 'Unable to reset Power Profile')
+            printErr(device, 'Unable to reset Power Profile')
         setPerfLevel(device, 'auto')
 
 
@@ -1552,13 +1566,13 @@ def resetOverDrive(deviceList):
         odpath = getFilePath(device, 'sclk_od')
         odclkpath = getFilePath(device, 'clk_voltage')
         if not odpath or not os.path.isfile(odpath):
-            printLog(device, 'Unable to reset OverDrive')
+            printErr(device, 'Unable to reset OverDrive')
             logging.debug('GPU[%s]\t: OverDrive not available', parseDeviceName(device))
             continue
         od = getSysfsValue(device, 'sclk_od')
         if not od or int(od) != 0:
             if not writeToSysfs(odpath, '0'):
-                printLog(device, 'Unable to reset OverDrive')
+                printErr(device, 'Unable to reset OverDrive')
                 continue
         printLog(device, 'OverDrive set to 0')
         if odclkpath and os.path.isfile(odclkpath):
@@ -1584,7 +1598,7 @@ def resetClocks(deviceList):
         perf = getSysfsValue(device, 'perf')
 
         if not perf or not od or perf != 'auto' or od != '0':
-            printLog(device, 'Unable to reset clocks')
+            printErr(device, 'Unable to reset clocks')
         else:
             printLog(device, 'Successfully reset clocks')
 
@@ -1700,7 +1714,7 @@ def save(deviceList, savefilepath):
         sys.exit()
     for device in deviceList:
         if not isDPMAvailable(device):
-            printLog(device, 'Unable to save clocks')
+            printErr(device, 'Unable to save clocks')
             continue
         perfLevels[device] = getSysfsValue(device, 'perf')
         for clks in validClockNames:
@@ -1841,7 +1855,7 @@ if __name__ == '__main__':
     if args.showallinfo:
         for device in deviceList:
             if not isDPMAvailable(device):
-                printLog(device, 'Skipping output for this device')
+                printErr(device, 'Skipping output for this device')
                 deviceList.remove(device)
 
     # Don't do reset in combination with any other command
