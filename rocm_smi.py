@@ -103,6 +103,7 @@ valuePaths = {
     'profile' : {'prefix' : drmprefix, 'filepath' : 'pp_power_profile_mode', 'needsparse' : False},
     'use' : {'prefix' : drmprefix, 'filepath' : 'gpu_busy_percent', 'needsparse' : False},
     'pcie_bw' : {'prefix' : drmprefix, 'filepath' : 'pcie_bw', 'needsparse' : False},
+    'replay_count' : {'prefix' : drmprefix, 'filepath' : 'pcie_replay_count', 'needsparse' : False},
     'vendor' : {'prefix' : drmprefix, 'filepath' : 'vendor', 'needsparse' : False},
     'fan' : {'prefix' : hwmonprefix, 'filepath' : 'pwm1', 'needsparse' : False},
     'fanmax' : {'prefix' : hwmonprefix, 'filepath' : 'pwm1_max', 'needsparse' : False},
@@ -1050,6 +1051,23 @@ def showPcieBw(deviceList):
     printLogSpacer()
 
 
+def showPcieReplayCount(deviceList):
+    """ Display number of PCIe replays for a list of devices.
+
+    Parameters:
+    deviceList -- List of all devices
+    """
+    printLogSpacer()
+    for device in deviceList:
+        count = getSysfsValue(device, 'replay_count')
+        if count == None:
+            printErr(device, 'Unable to get PCIe replay count')
+            logging.debug('GPU[%s]\t: File is empty. Likely a kernel bug', parseDeviceName(device))
+        else:
+            printLog(device, 'PCIe Replay Count: %s' % count)
+    printLogSpacer()
+
+
 def showMemInfo(deviceList, memType):
     """ Display Memory information for a list of devices
 
@@ -1824,6 +1842,7 @@ if __name__ == '__main__':
     groupDisplay.add_argument('-s', '--showclkfrq', help='Show supported GPU and Memory Clock', action='store_true')
     groupDisplay.add_argument('-u', '--showuse', help='Show current GPU use', action='store_true')
     groupDisplay.add_argument('-b', '--showbw', help='Show estimated PCIe use', action='store_true')
+    groupDisplay.add_argument('--showreplaycount', help='Show PCIe Replay Count', action='store_true')
     groupDisplay.add_argument('-S', '--showclkvolt', help='Show supported GPU and Memory Clocks and Voltages', action='store_true')
     groupDisplay.add_argument('--showvoltage', help='Show current GPU voltage', action='store_true')
     groupDisplay.add_argument('--showrasinfo', help='Show RAS enablement information and error counts for the specified block(s)', metavar='BLOCK', type=str, nargs='+')
@@ -1904,6 +1923,7 @@ if __name__ == '__main__':
         args.showpower = True
         args.showvoltage = True
         args.showdriverversion = True
+        args.showreplaycount = True
         if not PRINT_JSON:
             args.showprofile = True
             args.showclkfrq = True
@@ -1999,6 +2019,8 @@ if __name__ == '__main__':
         showGpuUse(deviceList)
     if args.showbw:
         showPcieBw(deviceList)
+    if args.showreplaycount:
+        showPcieReplayCount(deviceList)
     if args.showclkvolt:
         if PRINT_JSON:
             print("ERROR: Cannot print JSON output for --showclkvolt")
