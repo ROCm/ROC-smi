@@ -21,16 +21,15 @@ For detailed and up to date usage information, we recommend consulting the help:
 
 For convenience purposes, following is a quick excerpt:
 ```shell
-
 usage: rocm-smi [-h] [-d DEVICE [DEVICE ...]] [-i] [-v] [--showhw] [-t] [-c] [-g] [-f] [-p] [-P] [-o] [-m] [-M] [-l]
-                [-s] [-u] [-b] [-S] [--showvoltage] [--showrasinfo BLOCK [BLOCK ...]] [-a]
-                [--showmeminfo TYPE [TYPE ...]] [--alldevices] [-r] [--setsclk LEVEL [LEVEL ...]]
-                [--setmclk LEVEL [LEVEL ...]] [--setpclk LEVEL [LEVEL ...]] [--setslevel SCLKLEVEL SCLK SVOLT]
+                [-s] [-u] [-b] [--showreplaycount] [-S] [--showvoltage] [--showrasinfo BLOCK [BLOCK ...]] [-a]
+                [--showmeminfo TYPE [TYPE ...]] [--showdriverversion] [--alldevices] [-r] [--setsclk LEVEL [LEVEL ...]]
+                [--setmclk LEVEL [LEVEL ...]] [--setpcie LEVEL [LEVEL ...]] [--setslevel SCLKLEVEL SCLK SVOLT]
                 [--setmlevel MCLKLEVEL MCLK MVOLT] [--resetfans] [--setfan LEVEL] [--setperflevel LEVEL]
                 [--setoverdrive %] [--setmemoverdrive %] [--setpoweroverdrive WATTS] [--resetpoweroverdrive]
-                [--setprofile SETPROFILE] [--resetprofile] [--rasenable RASENABLE RASENABLE]
-                [--rasdisable RASDISABLE RASDISABLE] [--rasinject BLOCK] [--gpureset] [--load FILE | --save FILE]
-                [--autorespond RESPONSE] [--loglevel ILEVEL]
+                [--setprofile SETPROFILE] [--resetprofile] [--rasenable BLOCK ERRTYPE] [--rasdisable BLOCK ERRTYPE]
+                [--rasinject BLOCK] [--gpureset] [--load FILE | --save FILE] [--autorespond RESPONSE]
+                [--loglevel ILEVEL] [--json]
 
 AMD ROCm System Management Interface
 
@@ -57,19 +56,21 @@ optional arguments:
   -s, --showclkfrq                                      Show supported GPU and Memory Clock
   -u, --showuse                                         Show current GPU use
   -b, --showbw                                          Show estimated PCIe use
+  --showreplaycount                                     Show PCIe Replay Count
   -S, --showclkvolt                                     Show supported GPU and Memory Clocks and Voltages
   --showvoltage                                         Show current GPU voltage
   --showrasinfo BLOCK [BLOCK ...]                       Show RAS enablement information and error counts for the
                                                         specified block(s)
   -a, --showallinfo                                     Show Temperature, Fan and Clock values
   --showmeminfo TYPE [TYPE ...]                         Show Memory usage information for given block(s) TYPE
+  --showdriverversion                                   Show kernel driver version
   --alldevices                                          Execute command on non-AMD devices as well as AMD devices
 
-  -r, --resetclocks                                     Reset sclk, mclk and pclk to default
+  -r, --resetclocks                                     Reset clocks and OverDrive to default
   --setsclk LEVEL [LEVEL ...]                           Set GPU Clock Frequency Level(s) (requires manual Perf level)
   --setmclk LEVEL [LEVEL ...]                           Set GPU Memory Clock Frequency Level(s) (requires manual Perf
                                                         level)
-  --setpclk LEVEL [LEVEL ...]                           Set PCIE Clock Frequency Level(s) (requires manual Perf level)
+  --setpcie LEVEL [LEVEL ...]                           Set PCIE Clock Frequency Level(s) (requires manual Perf level)
   --setslevel SCLKLEVEL SCLK SVOLT                      Change GPU Clock frequency (MHz) and Voltage (mV) for a specific
                                                         Level
   --setmlevel MCLKLEVEL MCLK MVOLT                      Change GPU Memory clock frequency (MHz) and Voltage for (mV) a
@@ -96,6 +97,7 @@ optional arguments:
 
   --loglevel ILEVEL                                     How much output will be printed for what program is doing, one
                                                         of debug/info/warning/error/critical
+  --json                                                Print output in JSON format
 ```
 
 
@@ -248,6 +250,10 @@ SOCCLK  - System clock (VG10 and later) - Data Fabric (DF), MM HUB, AT HUB, SYST
 This flag will attempt to reset the GPU for a specified device. This will invoke the GPU reset through
 the kernel debugfs file amdgpu_gpu_recover. Note that GPU reset will not always work, depending on the
 manner in which the GPU is hung.
+
+---showdriverversion:
+This flag will print out the AMDGPU module version for amdgpu-pro or ROCK kernels. For other kernels,
+it will simply print out the name of the kernel (uname)
 
 ### OverDrive settings ####
 
