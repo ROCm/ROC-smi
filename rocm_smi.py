@@ -708,8 +708,7 @@ def getRasEnablement(device, rasType):
     """
     # The ras/features file is a bit field of supported blocks
     rasBitfield = getSysfsValue(device, 'ras_features')
-    rasEnabled = {}
-    if not rasBitfield:
+    if rasBitfield is None:
         return None
     return ('ENABLED' if rasBitfield & (1 << validRasBlocks[rasType]) else 'DISABLED')
 
@@ -1146,9 +1145,9 @@ def showAllConciseHw(deviceList):
         gfxRas = getRasEnablement(device, 'gfx')
         sdmaRas = getRasEnablement(device, 'sdma')
         umcRas = getRasEnablement(device, 'umc')
-        gfxRas = 'N/A' if not gfxRas else gfxRas
-        sdmaRas = 'N/A' if not sdmaRas else sdmaRas
-        umcRas = 'N/A' if not umcRas else umcRas
+        gfxRas = 'N/A' if gfxRas is None else gfxRas
+        sdmaRas = 'N/A' if sdmaRas is None else sdmaRas
+        umcRas = 'N/A' if umcRas is None else umcRas
         vbios = getSysfsValue(device, 'vbios')
         bus = getBus(device)
 
@@ -1265,8 +1264,9 @@ def showRasInfo(deviceList, rasType):
                 logging.debug('GPU[%s]\t: RAS not supported for block %s', parseDeviceName(device), rasType)
             else:
                 printLog(device, 'Block %s is: %s' % (ras, rasEnabled))
-                # Now print the error count
-                printLog(device, getSysfsValue(device, 'ras_%s' % ras))
+                if rasEnabled == 'ENABLED':
+                    # Now print the error count
+                    printLog(device, getSysfsValue(device, 'ras_%s' % ras))
     printLogSpacer()
 
 
