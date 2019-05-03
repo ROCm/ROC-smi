@@ -108,7 +108,12 @@ valuePaths = {
     'fan' : {'prefix' : hwmonprefix, 'filepath' : 'pwm1', 'needsparse' : False},
     'fanmax' : {'prefix' : hwmonprefix, 'filepath' : 'pwm1_max', 'needsparse' : False},
     'fanmode' : {'prefix' : hwmonprefix, 'filepath' : 'pwm1_enable', 'needsparse' : False},
-    'temp' : {'prefix' : hwmonprefix, 'filepath' : 'temp1_input', 'needsparse' : True},
+    'temp1' : {'prefix' : hwmonprefix, 'filepath' : 'temp1_input', 'needsparse' : True},
+    'temp1_label' : {'prefix' : hwmonprefix, 'filepath' : 'temp1_label', 'needsparse' : False},
+    'temp2' : {'prefix' : hwmonprefix, 'filepath' : 'temp2_input', 'needsparse' : True},
+    'temp2_label' : {'prefix' : hwmonprefix, 'filepath' : 'temp2_label', 'needsparse' : False},
+    'temp3' : {'prefix' : hwmonprefix, 'filepath' : 'temp3_input', 'needsparse' : True},
+    'temp3_label' : {'prefix' : hwmonprefix, 'filepath' : 'temp3_label', 'needsparse' : False},
     'power' : {'prefix' : hwmonprefix, 'filepath' : 'power1_average', 'needsparse' : True},
     'power_cap' : {'prefix' : hwmonprefix, 'filepath' : 'power1_cap', 'needsparse' : False},
     'power_cap_max' : {'prefix' : hwmonprefix, 'filepath' : 'power1_cap_max', 'needsparse' : False},
@@ -203,7 +208,7 @@ def parseSysfsValue(key, value):
     if key == 'id':
         # Strip the 0x prefix
         return value[2:]
-    if key == 'temp':
+    if re.match(r'temp[0-9]+', key):
         # Convert from millidegrees
         return int(value) / 1000
     if key == 'power':
@@ -835,12 +840,17 @@ def showCurrentTemps(deviceList):
     """
 
     printLogSpacer()
+    tempList = []
+    tempLabelList = []
     for device in deviceList:
-        temp = getSysfsValue(device, 'temp')
-        if not temp:
-            printErr(device, 'Unable to display temperature')
-            continue
-        printLog(device, 'Temperature: ' + str(temp) + 'c')
+        # We currently have temp1/2/3, so use range(1,4)
+        for x in range(1, 4):
+            temp = getSysfsValue(device, 'temp%d' % x)
+            tempLabel = getSysfsValue(device, 'temp%d_label' % x)
+            if temp and tempLabel:
+                printLog(device, 'Temperature (%s): %s c' % (tempLabel, temp))
+            elif temp:
+                printLog(device, 'Temperature (Sensor #%d): %s c' % (x, temp))
     printLogSpacer()
 
 
@@ -1175,8 +1185,14 @@ def showAllConcise(deviceList):
     head_widths = [len(head)+2 for head in header]
     values = {}
     for device in deviceList:
-
-        temp = getSysfsValue(device, 'temp')
+        # Default to temp1, it's always there
+        temp = getSysfsValue(device, 'temp1')
+        for x in range(1, 4):
+            # But report 'edge' if the ASIC supports it
+            tempLabel = getSysfsValue(device, 'temp%d_label' % x)
+            if tempLabel == 'edge':
+                temp = getSysfsValue(device, 'temp%d' % x)
+                break
         if not temp:
             temp = 'N/A'
         else:
