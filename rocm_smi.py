@@ -1971,6 +1971,10 @@ if __name__ == '__main__':
 
     # Don't do reset in combination with any other command
     if args.gpureset:
+        if not args.device:
+            logging.error('No device specified. One device must be specified for GPU reset')
+            print(footerSpacer + footerString + footerSpacer, sep='')
+            sys.exit(1)
         logging.debug('Only executing GPU reset, no other commands will be executed')
         resetGpu(deviceList)
         print(footerSpacer + footerString + footerSpacer, sep='')
