@@ -1229,7 +1229,7 @@ def showAllConcise(deviceList):
             power_cap = str(int(power_cap)/1000000) + 'W'
 
         memInfo = getMemInfo(device, 'vram')
-        if not memInfo:
+        if memInfo[0]  == None or memInfo[1] == None:
             mem_use = 'N/A'
         else:
             mem_use = '% 3.0f%%' % (100*(float(memInfo[0])/float(memInfo[1])))
