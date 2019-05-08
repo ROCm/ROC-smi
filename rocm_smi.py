@@ -142,6 +142,11 @@ def getFilePath(device, key):
     device -- Device to return the filepath
     key -- The sysfs path to return
     """
+    if key not in valuePaths.keys():
+        print('Cannot get file path for key %s' % key)
+        logging.debug('Key %s not present in valuePaths map' % key)
+        return None
+
     pathDict = valuePaths[key]
     fileValue = ''
 
