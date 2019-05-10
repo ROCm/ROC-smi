@@ -95,6 +95,7 @@ validFwBlocks = {'vce', 'uvd', 'mc', 'me', 'pfp',
 
 valuePaths = {
     'id' : {'prefix' : drmprefix, 'filepath' : 'device', 'needsparse' : True},
+    'sub_id' : {'prefix' : drmprefix, 'filepath' : 'subsystem_device', 'needsparse' : False},
     'vbios' : {'prefix' : drmprefix, 'filepath' : 'vbios_version', 'needsparse' : False},
     'perf' : {'prefix' : drmprefix, 'filepath' : 'power_dpm_force_performance_level', 'needsparse' : False},
     'sclk_od' : {'prefix' : drmprefix, 'filepath' : 'pp_sclk_od', 'needsparse' : False},
@@ -112,6 +113,7 @@ valuePaths = {
     'pcie_bw' : {'prefix' : drmprefix, 'filepath' : 'pcie_bw', 'needsparse' : False},
     'replay_count' : {'prefix' : drmprefix, 'filepath' : 'pcie_replay_count', 'needsparse' : False},
     'vendor' : {'prefix' : drmprefix, 'filepath' : 'vendor', 'needsparse' : False},
+    'sub_vendor' : {'prefix' : drmprefix, 'filepath' : 'subsystem_vendor', 'needsparse' : False},
     'fan' : {'prefix' : hwmonprefix, 'filepath' : 'pwm1', 'needsparse' : False},
     'fanmax' : {'prefix' : hwmonprefix, 'filepath' : 'pwm1_max', 'needsparse' : False},
     'fanmode' : {'prefix' : hwmonprefix, 'filepath' : 'pwm1_enable', 'needsparse' : False},
@@ -1340,6 +1342,68 @@ def showFwInfo(deviceList, fwType):
                 print('Unable to get %s_fw_version sysfs file.' % block)
     printLogSpacer()
 
+
+def showProductName(deviceList):
+    """ Show the requested product name for a list of devices
+
+    Parameters:
+    deviceList -- List of DRM devices (can be a single-item list)
+    """
+    printLogSpacer()
+    # Fetch required sysfs files for product name and store them
+    for device in deviceList:
+        vbios = getSysfsValue(device, 'vbios')
+        if not vbios:
+            printErr(device, 'Unable to get the SKU')
+            return None
+        device_id = getSysfsValue(device, 'id')
+        if not device_id:
+            printErr(device, 'Unable to get device id')
+            return None
+        sub_id = getSysfsValue(device, 'sub_id')
+        if sub_id:
+            sub_id = sub_id[2:]
+        else:
+            printErr(device, 'Unable to get subsystem_device')
+        sub_vendor = getSysfsValue(device, 'sub_vendor')
+        if sub_vendor:
+            sub_vendor = sub_vendor[2:]
+        else:
+            printErr(device, 'Unable to get subsystem_vendor')
+    try:
+        with open ('/usr/share/misc/pci.ids', 'rt') as pciFile:
+            fileString = pciFile.read()
+        # pciLines stores all AMD GPU names (from 1002 to 1003 in pci.ids file)
+        pciLines = fileString.split('\n1002')[1].split('\n1003')[0]
+        # Check if the device ID exists in pciLines before attempting to print
+        if pciLines.find('\n\t%s' % device_id) != -1:
+            # variants gets a sublist of all devices in a specific series
+            variants = re.split(r'\n\t[a-z0-9]', pciLines.split('\n\t%s' % device_id)[1])[0]
+            series = variants.split('\n', 1)[0].strip()
+            printLog(device, 'Card series:\t\t%s' % series)
+            if variants.find('%s %s' % (sub_vendor, sub_id)) != -1:
+                model = variants.split(sub_id, 1)[1].split('\n', 1)[0].strip()
+                printLog(device, 'Card model:\t\t%s' % model)
+            else:
+                logging.debug('Subsystem device information not found. \
+                              Run update-pciids and try again')
+        else:
+            printErr(device, 'Unable to find device ID in PCI IDs file')
+        # Check if sub_vendor ID exists in the file before attempting to print
+        if fileString.find('\n' + sub_vendor + '  ') != -1:
+            vendorName = re.split(r'\n\t[a-z0-9]', \
+                                  fileString.split('\n%s' % sub_vendor)[1])[0].strip()
+            printLog(device, 'Card vendor:\t\t%s' % vendorName)
+        else:
+            printErr(device, 'Unable to find device vendor in PCI IDs file')
+    except IOError:
+        printErr(device, 'Unable to find PCI IDs file')
+    # sku is just 6 characters after the first occurance of '-' in vbios_version
+    sku = vbios.split('-')[1][:6]
+    printLog(device, 'Card SKU:\t\t%s' % sku)
+    printLogSpacer()
+
+
 def setPerformanceLevel(deviceList, level):
     """ Set the Performance Level for a list of devices.
 
@@ -1916,6 +1980,7 @@ if __name__ == '__main__':
     groupDisplay.add_argument('--showvoltage', help='Show current GPU voltage', action='store_true')
     groupDisplay.add_argument('--showrasinfo', help='Show RAS enablement information and error counts for the specified block(s)', metavar='BLOCK', type=str, nargs='+')
     groupDisplay.add_argument('--showfwinfo', help='Show FW information', metavar='BLOCK', type=str, nargs='*')
+    groupDisplay.add_argument('--showproductname', help='Show SKU/Vendor name', action='store_true')
     groupDisplay.add_argument('-a' ,'--showallinfo', help='Show Temperature, Fan and Clock values', action='store_true')
     groupDisplay.add_argument('--showmeminfo', help='Show Memory usage information for given block(s) TYPE', metavar='TYPE', type=str, nargs='+')
     groupDisplay.add_argument('--showdriverversion', help='Show kernel driver version', action='store_true')
@@ -2112,6 +2177,8 @@ if __name__ == '__main__':
     # This allows the user to call --showfwinfo without the 'all' argument and still print all.
     if args.showfwinfo or str(args.showfwinfo) == '[]':
         showFwInfo(deviceList, args.showfwinfo)
+    if args.showproductname:
+        showProductName(deviceList)
     if args.setsclk:
         setClocks(deviceList, 'sclk', args.setsclk)
     if args.setmclk:
