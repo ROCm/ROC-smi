@@ -686,7 +686,7 @@ def getMaxLevel(device, leveltype):
     if leveltype == 'profile':
         for line in levels.splitlines():
             if re.match(r'.*CUSTOM.*', line):
-                return line.lstrip().split()[0]
+                return int(line.lstrip().split()[0])
     return int(levels.splitlines()[-1][0])
 
 
