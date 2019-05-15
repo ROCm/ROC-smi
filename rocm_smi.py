@@ -150,8 +150,8 @@ def getFilePath(device, key):
     """ Return the filepath for a specific device and key
 
     Parameters:
-    device -- Device to return the filepath
-    key -- The sysfs path to return
+    device -- Device whose filepath will be returned
+    key -- [$valuePaths.keys()] The sysfs path to return
     """
     if key not in valuePaths.keys():
         print('Cannot get file path for key %s' % key)
@@ -185,8 +185,8 @@ def getSysfsValue(device, key):
     """ Return the desired SysFS value for a specified device
 
     Parameters:
-    device -- Device to return the desired value
-    value -- SysFS value to return (defined in dict above)
+    device -- DRM device identifier
+    key -- [$valuePaths.keys()] Key referencing desired SysFS file
     """
     filePath = getFilePath(device, key)
     pathDict = valuePaths[key]
@@ -216,6 +216,7 @@ def parseSysfsValue(key, value):
     """ Parse the sysfs value string
 
     Parameters:
+    key -- [$valuePaths.keys()] Key referencing desired SysFS file
     value -- SysFS value to parse
 
     Some SysFS files aren't a single line/string, so we need to parse it
@@ -248,7 +249,7 @@ def parseDeviceNumber(deviceNum):
     """ Parse the device number, returning the format of card#
 
     Parameters:
-    deviceNum -- Device number to parse
+    deviceNum -- DRM device number to parse
     """
     return 'card' + str(deviceNum)
 
@@ -257,7 +258,7 @@ def parseDeviceName(deviceName):
     """ Parse the device name, which is of the format card#.
 
     Parameters:
-    deviceName -- Device name to parse
+    deviceName -- DRM device name to parse
     """
     return deviceName[4:]
 
@@ -266,7 +267,7 @@ def printErr(device, err):
     """ Print out an error to the SMI log
 
     Parameters:
-    device --  Device that the error will reference
+    device -- DRM device identifier
     err -- Error string to print
     """
     devName = parseDeviceName(device)
@@ -280,6 +281,7 @@ def formatJson(device, log):
     """ Print out in JSON format
 
     Parameters:
+    device -- DRM device identifier
     log -- String to parse and output into JSON format
     """
     global JSON_DATA
@@ -295,7 +297,7 @@ def printLog(device, log):
     """ Print out to the SMI log.
 
     Parameters:
-    device -- Device that the log will reference
+    device -- DRM device identifier
     log -- String to print to the log
     """
     global PRINT_JSON
@@ -328,7 +330,7 @@ def doesDeviceExist(device):
     """ Check whether the specified device exists in sysfs.
 
     Parameters:
-    device -- Device to check for existence
+    device -- DRM device identifier
     """
     if os.path.exists(os.path.join(drmprefix, device)) == 0:
         return False
@@ -374,7 +376,7 @@ def isDPMAvailable(device):
     """ Check if DPM is available for a specified device.
 
     Parameters:
-    device -- Device to check for DPM availability
+    device -- DRM device identifier
     """
     if not doesDeviceExist(device) or not os.path.isfile(getFilePath(device, 'dpm_state')):
         logging.warning('GPU[%s]\t: DPM is not available', parseDeviceName(device))
@@ -386,7 +388,7 @@ def isRasControlAvailable(device):
     """ Check if RAS control is available for a specified device.
 
     Parameters:
-    device -- Device to check for RAS controlability
+    device -- DRM device identifier
     """
     path = getFilePath(device, 'ras_ctrl')
     if not doesDeviceExist(device) or not path or not os.path.isfile(path):
@@ -398,10 +400,10 @@ def isRasControlAvailable(device):
 def getNumProfileArgs(device):
     """ Get the number of Power Profile fields for a specific device
 
-    This varies per ASIC, so ensure that we get the right number of arguments
-
     Parameters:
-    device -- Device to get the number of Power Profile fields
+    device -- DRM device identifier
+
+    This varies per ASIC, so ensure that we get the right number of arguments
     """
 
     profile = getSysfsValue(device, 'profile')
@@ -424,7 +426,7 @@ def getBus(device):
     """ Get the PCIe bus information for a specified device
 
     Parameters:
-    device -- Device to return the bus information for
+    device -- DRM device identifier
     """
     bus = os.readlink(os.path.join(drmprefix, device, 'device'))
     return bus.split('/')[-1]
@@ -437,7 +439,7 @@ def verifySetProfile(device, profile):
     the profile being passed in being valid
 
     Parameters:
-    device -- Device to verify Profile variables
+    device -- DRM device identifier
     """
     global RETCODE
     if not isDPMAvailable(device):
@@ -489,7 +491,7 @@ def getProfile(device):
     Return either a single digit for a non-CUSTOM profile, or return the CUSTOM profile
 
     Parameters:
-    device -- Device to return the current profile
+    device -- DRM device identifier
     """
     profiles = getSysfsValue(device, 'profile')
     custom = ''
@@ -538,8 +540,8 @@ def writeProfileSysfs(device, value):
     parsing of the data first.
 
     Parameters:
-    device -- Device to write the Power Profile info
-    value -- Value to write to the sysfs file
+    device -- DRM device identifier
+    value -- Value to write to the Profile sysfs file
     """
     if not verifySetProfile(device, value):
         return
@@ -599,7 +601,7 @@ def listDevices(showall):
     """ Return a list of GPU devices.
 
     Parameters:
-    showall -- Boolean whether we should show all devices, or just AMD devices
+    showall -- [True|False] Show all devices, not just AMD devices
     """
 
     devicelist = [device for device in os.listdir(drmprefix) if re.match(r'^card\d+$', device) and (isAmdDevice(device) or showall)]
@@ -625,7 +627,7 @@ def getHwmonFromDevice(device):
     """ Return the corresponding HW Monitor for a specified GPU device.
 
     Parameters:
-    device -- Device to return the corresponding HW Monitor
+    device -- DRM device identifier
     """
     drmdev = os.path.realpath(os.path.join(drmprefix, device, 'device'))
     for hwmon in listAmdHwMons():
@@ -640,7 +642,7 @@ def getFanSpeed(device):
     obtained.
 
     Parameters:
-    device -- Device to return the current fan speed
+    device -- DRM device identifier
     """
 
     fanLevel = getSysfsValue(device, 'fan')
@@ -654,8 +656,8 @@ def getCurrentClock(device, clock, clocktype):
     """ Return the current clock frequency for a specified device.
 
     Parameters:
-    device -- Device to return the clock frequency
-    clock -- [$validClockNames] Return the desired clock frequency
+    device -- DRM device identifier
+    clock -- [$validClockNames] Clock to return
     clocktype -- [freq|level] Return either the clock frequency (freq) or clock level (level)
     """
     currClk = ''
@@ -684,7 +686,7 @@ def getMaxLevel(device, leveltype):
     """ Return the maximum level for a specified device.
 
     Parameters:
-    device -- Device to return the maximum level
+    device -- DRM device identifier
     leveltype -- [$validClockNames] Return the maximum desired clock,
                  or the highest numbered Power Profiles
     """
@@ -710,8 +712,8 @@ def getMemInfo(device, memType):
     """ Return the specified memory usage for the specified device
 
     Parameters:
-    device -- Device to return the memory usage for
-    type -- [vram|vis_vram|gtt] Which memory type to return
+    device -- DRM device identifier
+    type -- [vram|vis_vram|gtt] Memory type to return
     """
     if memType not in validMemTypes:
         logging.error('Invalid memory type %s', memType)
@@ -729,8 +731,8 @@ def getRasEnablement(device, rasType):
     """ Return RAS enablement information for the specified device
 
     Parameters:
-    device -- Device to display RAS enablement for
-    rasType -- Which RAS counter to display
+    device -- DRM device identifier
+    rasType -- [$validRasBlocks] RAS counter to display
     """
     # The ras/features file is a bit field of supported blocks
     rasBitfield = getSysfsValue(device, 'ras_features')
@@ -743,7 +745,7 @@ def isAmdDevice(device):
     """ Return whether the specified device is an AMD device or not
 
     Parameters:
-    device -- Device to return whether or not it's an AMD device
+    device -- DRM device identifier
     """
     vid = getSysfsValue(device, 'vendor')
     if vid == '0x1002':
@@ -755,7 +757,7 @@ def setPerfLevel(device, level):
     """ Set the Performance Level for a specified device.
 
     Parameters:
-    device -- Device to modify the current Performance Level
+    device -- DRM device identifier
     level -- Performance Level to set
     """
     global RETCODE
@@ -777,7 +779,7 @@ def showId(deviceList):
     """ Display the device ID for a list of devices.
 
     Parameters:
-    deviceList -- List of devices to return the device ID (can be a single-item list)
+    deviceList -- List of DRM devices (can be a single-item list)
     """
     printLogSpacer()
     for device in deviceList:
@@ -789,7 +791,7 @@ def showVbiosVersion(deviceList):
     """ Display the VBIOS version for a list of devices.
 
     Parameters:
-    deviceList -- List of devices to return the VBIOS version (can be a single-item list)
+    deviceList -- List of DRM devices (can be a single-item list)
     """
     printLogSpacer()
     for device in deviceList:
@@ -805,7 +807,7 @@ def showCurrentClock(deviceList, clocktype):
     """ Display the current clocktype frequency for a list of devices.
 
     Parameters:
-    deviceList -- List of devices to return the current clock frequencies (can be a single-item list)
+    deviceList -- List of DRM devices (can be a single-item list)
     clocktype -- Specific type of clock to return
     """
     global RETCODE
@@ -840,7 +842,7 @@ def showCurrentClocks(deviceList):
     """ Display all clocks for a list of devices.
 
     Parameters:
-    deviceList -- List of devices to return the current clock frequencies (can be a single-item list)
+    deviceList -- List of DRM devices (can be a single-item list)
     """
     global RETCODE
     printLogSpacer()
@@ -857,7 +859,7 @@ def showCurrentTemps(deviceList):
     """ Display the current temperature for a list of devices.
 
     Parameters:
-    deviceList -- List of devices to return the current temperature (can be a single-item list)
+    deviceList -- List of DRM devices (can be a single-item list)
     """
 
     printLogSpacer()
@@ -879,7 +881,7 @@ def showCurrentFans(deviceList):
     """ Display the current fan speed for a list of devices.
 
     Parameters:
-    deviceList -- List of devices to return the current fan speed (can be a single-item list)
+    deviceList -- List of DRM devices (can be a single-item list)
     """
     printLogSpacer()
     for device in deviceList:
@@ -895,7 +897,7 @@ def showClocks(deviceList):
     """ Display current GPU and GPU Memory clock frequencies for a list of devices.
 
     Parameters:
-    deviceList -- List of devices to display current clock frequencies (can be a single-item list)
+    deviceList -- List of DRM devices (can be a single-item list)
     """
     printLogSpacer()
     for device in deviceList:
@@ -916,7 +918,7 @@ def showPowerPlayTable(deviceList):
     """ Display current GPU and GPU Memory clock frequencies and voltages for a list of devices.
 
     Parameters:
-    deviceList -- List of devices to display current clock frequencies and voltages (can be a single-item list)
+    deviceList -- List of DRM devices (can be a single-item list)
     """
     printLogSpacer()
     for device in deviceList:
@@ -936,7 +938,7 @@ def showPerformanceLevel(deviceList):
     """ Display current Performance Level for a list of devices.
 
     Parameters:
-    deviceList -- List of devices to display current Performance Level (can be a single-item list)
+    deviceList -- List of DRM devices (can be a single-item list)
     """
     printLogSpacer()
     for device in deviceList:
@@ -953,8 +955,8 @@ def showOverDrive(deviceList, odtype):
     """ Display current OverDrive level for a list of devices.
 
     Parameters:
-    deviceList -- List of devices to display current OverDrive values (can be a single-item list)
-    odtype -- Which OverDrive to display (sclk|mclk)
+    deviceList -- List of DRM devices (can be a single-item list)
+    odtype -- [sclk|mclk] OverDrive type
     """
 
     printLogSpacer()
@@ -977,7 +979,7 @@ def showProfile(deviceList):
     """ Display available Power Profiles for a list of devices.
 
     Parameters:
-    deviceList -- List of devices to display available Power Profile attributes (can be a single-item list)
+    deviceList -- List of DRM devices (can be a single-item list)
     """
     printLogSpacer()
     for device in deviceList:
@@ -1001,7 +1003,7 @@ def showPower(deviceList):
     """ Display current Average Graphics Package Power Consumption for a list of devices.
 
     Parameters:
-    deviceList -- List of devices to display current Average Graphics Package Power Consumption (can be a single-item list)
+    deviceList -- List of DRM devices (can be a single-item list)
     """
     printLogSpacer()
     try:
@@ -1023,7 +1025,7 @@ def showMaxPower(deviceList):
     before it begins throttling performance.
 
     Parameters:
-    deviceList -- List of devices to display maximum Graphics Package Power Consumption (can be a single-item list)
+    deviceList -- List of DRM devices (can be a single-item list)
     """
     printLogSpacer()
     for device in deviceList:
@@ -1040,7 +1042,7 @@ def showGpuUse(deviceList):
     """ Display GPU use for a list of devices.
 
     Parameters:
-    deviceList -- List of all devices
+    deviceList -- List of DRM devices (can be a single-item list)
     """
     printLogSpacer()
     for device in deviceList:
@@ -1057,7 +1059,7 @@ def showPcieBw(deviceList):
     """ Display estimated PCIe bandwidth usage for a list of devices.
 
     Parameters:
-    deviceList -- List of all devices
+    deviceList -- List of DRM devices (can be a single-item list)
     """
     printLogSpacer()
     for device in deviceList:
@@ -1085,7 +1087,7 @@ def showPcieReplayCount(deviceList):
     """ Display number of PCIe replays for a list of devices.
 
     Parameters:
-    deviceList -- List of all devices
+    deviceList -- List of DRM devices (can be a single-item list)
     """
     printLogSpacer()
     for device in deviceList:
@@ -1102,8 +1104,8 @@ def showMemInfo(deviceList, memType):
     """ Display Memory information for a list of devices
 
     Parameters:
-    device -- List of all devices to display memory information for (can be a single-item list)
-    memType -- Type of memory information to display
+    deviceList -- List of DRM devices (can be a single-item list)
+    memType -- [$validMemTypes] Type of memory information to display
     """
     # Python will pass in a list of values as a single-value list.
     # If we get 'all' as the string, just set the list to all supported types
@@ -1129,7 +1131,7 @@ def showVoltage(deviceList):
     """ Display the current voltage (in millivolts) for a list of devices.
 
     Parameters:
-    deviceList -- List of devices to return the current voltage (can be a single-item list)
+    deviceList -- List of DRM devices (can be a single-item list)
     """
 
     printLogSpacer()
@@ -1146,8 +1148,8 @@ def showVersion(deviceList, component):
     """ Show the software version for the specified component
 
     Parameters:
-    deviceList - List of devices to return the version for
-    component - Component to display version for (currently only driver)
+    deviceList -- List of DRM devices (can be a single-item list)
+    component - Component (currently only driver)
     """
     if component not in validVersionComponents:
         printLog(device, 'Unable to display version information for unsupported component %s' % component)
@@ -1164,7 +1166,7 @@ def showAllConciseHw(deviceList):
     """ Display critical Hardware info for all devices in a concise format.
 
     Parameters:
-    deviceList -- List of all devices
+    deviceList -- List of DRM devices (can be a single-item list)
     """
     printLogSpacer()
     header = ['GPU', 'DID', 'GFX RAS', 'SDMA RAS', 'UMC RAS', 'VBIOS', 'BUS']
@@ -1199,7 +1201,7 @@ def showAllConcise(deviceList):
     """ Display critical info for all devices in a concise format.
 
     Parameters:
-    deviceList -- List of all devices
+    deviceList -- List of DRM devices (can be a single-item list)
     """
     printLogSpacer()
     header = ['GPU', 'Temp', 'AvgPwr', 'SCLK', 'MCLK', 'Fan', 'Perf', 'PwrCap', 'VRAM%', 'GPU%']
@@ -1279,8 +1281,8 @@ def showRasInfo(deviceList, rasType):
     """ Show the requested RAS information for a list of devices
 
     Parameters:
-    deviceList -- List of devices to display RAS information for (can be a single-item list)
-    rasType -- Which RAS counter to display (all if left empty)
+    deviceList -- List of DRM devices (can be a single-item list)
+    rasType -- [$validRasBlocks] RAS counter to display (all if left empty)
     """
     if 'all' in rasType:
         returnTypes = validRasBlocks.keys()
@@ -1309,8 +1311,8 @@ def showFwInfo(deviceList, fwType):
     """ Show the requested FW information for a list of devices
 
     Parameters:
-    deviceList -- List of devices to display FW information for (can be a single-item list)
-    fwType -- Which FW block version to display (all if left empty)
+    deviceList -- List of DRM devices (can be a single-item list)
+    fwType -- [$validFwBlocks] FW block version to display (all if left empty)
     """
     if not fwType or 'all' in fwType:
         returnTypes = sorted(validFwBlocks)
@@ -1342,7 +1344,7 @@ def setPerformanceLevel(deviceList, level):
     """ Set the Performance Level for a list of devices.
 
     Parameters:
-    deviceList -- List of devices to set the current Performance Level (can be a single-item list)
+    deviceList -- List of DRM devices (can be a single-item list)
     level -- Specific Performance Level to set
     """
     printLogSpacer()
@@ -1358,8 +1360,8 @@ def setClocks(deviceList, clktype, clk):
     """ Set clock frequency level for a list of devices.
 
     Parameters:
-    deviceList -- List of devices to set the clock frequency (can be a single-item list)
-    clktype -- [validClockNames] Set the frequency level for the desired clock type
+    deviceList -- List of DRM devices (can be a single-item list)
+    clktype -- [validClockNames] Clock type to set
     clk -- Clock frequency level to set
     """
     global RETCODE
@@ -1415,8 +1417,8 @@ def setPowerPlayTableLevel(deviceList, clktype, levelList, autoRespond):
     """ Set clock frequency and voltage for a level in the PowerPlay table for a list of devices.
 
     Parameters:
-    deviceList -- List of devices to set the clock frequency (can be a single-item list)
-    clktype -- [sclk|mclk] Set the GPU (sclk) or GPU Memory (mclk) clock frequency level
+    deviceList -- List of DRM devices (can be a single-item list)
+    clktype -- [sclk|mclk] Clock type to set
     levelList -- Clock frequency level to set
     autoRespond -- Response to automatically provide for all prompts
     """
@@ -1472,9 +1474,9 @@ def setClockOverDrive(deviceList, clktype, value, autoRespond):
     """ Set clock speed to OverDrive for a list of devices
 
     Parameters:
-    deviceList -- List of devices to set to OverDrive
-    type -- Clock type to set to OverDrive (currently only GPU and GPU Memory supported)
-    value -- Percentage amount to set for OverDrive (0-20)
+    deviceList -- List of DRM devices (can be a single-item list)
+    type -- [sclk|mclk] Clock type to set
+    value -- [0-20] OverDrive percentage
     autoRespond -- Response to automatically provide for all prompts
     """
     global RETCODE
@@ -1527,7 +1529,7 @@ def setPowerOverDrive(deviceList, value, autoRespond):
     VBIOS is configured to allow this card to use in OverDrive mode.
 
     Parameters:
-    deviceList -- List of devices to set to OverDrive
+    deviceList -- List of DRM devices (can be a single-item list)
     value -- New maximum power to assign to the target device, in Watts
     autoRespond -- Response to automatically provide for all prompts
     """
@@ -1584,7 +1586,7 @@ def resetPowerOverDrive(deviceList, autoRespond):
     """ Reset Power OverDrive to the default power limit that comes with the GPU
 
     Parameters:
-    deviceList -- List of devices on which to reset the power cap
+    deviceList -- List of DRM devices (can be a single-item list)
     """
     setPowerOverDrive(deviceList, 0, autoRespond)
 
@@ -1592,7 +1594,7 @@ def resetFans(deviceList):
     """ Reset fans to driver control for a list of devices.
 
     Parameters:
-    deviceList -- List of devices to set the fan speed (can be a single-item list)
+    deviceList -- List of DRM devices (can be a single-item list)
     """
     for device in deviceList:
         if not isDPMAvailable(device):
@@ -1609,8 +1611,8 @@ def setFanSpeed(deviceList, fan):
     """ Set fan speed for a list of devices.
 
     Parameters:
-    deviceList -- List of devices to set the fan speed (can be a single-item list)
-    level -- Fan speed level to set (0-255)
+    deviceList -- List of DRM devices (can be a single-item list)
+    level -- [0-255] Fan speed level
     """
     global RETCODE
     for device in deviceList:
@@ -1655,9 +1657,8 @@ def setProfile(deviceList, profile):
     """ Set Power Profile, or set CUSTOM Power Profile values for a list of devices.
 
     Parameters:
-    deviceList -- List of devices to specify the Power Profile or the CUSTOM Power Profile
-                  for (can be a single-item list)
-    profile -- The profile to set
+    deviceList -- List of DRM devices (can be a single-item list)
+    profile -- Profile to set
     """
     if len(profile) == 1:
         execMsg = 'Power Profile to level ' + profile
@@ -1674,7 +1675,7 @@ def resetProfile(deviceList):
     """ Reset profile for a list of a devices.
 
     Parameters:
-    deviceList -- List of devices to reset the CUSTOM Power Profile for (can be a single-item list)
+    deviceList -- List of DRM devices (can be a single-item list)
     """
     for device in deviceList:
         if not getSysfsValue(device, 'profile'):
@@ -1696,7 +1697,7 @@ def resetOverDrive(deviceList):
     """ Reset OverDrive to 0 if needed. We check first as setting OD requires sudo
 
     Parameters:
-    deviceList -- List of devices to reset OverDrive (can be a single-item list)
+    deviceList -- List of DRM devices (can be a single-item list)
     """
     for device in deviceList:
         odpath = getFilePath(device, 'sclk_od')
@@ -1724,7 +1725,7 @@ def resetClocks(deviceList):
 
 
     Parameters:
-    deviceList -- List of devices to reset clocks (can be a single-item list)
+    deviceList -- List of DRM devices (can be a single-item list)
     """
     for device in deviceList:
         resetOverDrive([device])
@@ -1743,7 +1744,7 @@ def resetGpu(device):
     """ Perform a GPU reset on the specified device
 
     Parameters:
-    device -- Device to reset
+    device -- DRM Device identifier
     """
     global RETCODE
     if isinstance(device, list) and len(device) > 1:
@@ -1764,10 +1765,10 @@ def setRas(deviceList, rasAction, rasBlock, rasType):
     """ Perform a RAS action on the devices
 
     Parameters:
-    deviceList -- List of devices to perform the RAS action on
+    deviceList -- List of DRM devices (can be a single-item list)
     rasAction -- [enable|disable|inject] RAS Action to perform
-    rasBlock -- Block to perform the action on
-    rasType -- Which error type to enable/disable
+    rasBlock -- [$validRasBlocks] RAS block
+    rasType -- [ce|ue] Error type to enable/disable
     """
     if rasAction not in validRasActions:
         print('Unable to perform RAS command %s on block %s for type %s' % (rasAction, rasBlock, rasType))
@@ -1796,7 +1797,7 @@ def load(savefilepath, autoRespond):
     """ Load clock frequencies and fan speeds from a specified file.
 
     Parameters:
-    savefilepath -- Path to a file with saved clock frequencies and fan speeds
+    savefilepath -- Path to the save file
     autoRespond -- Response to automatically provide for all prompts
     """
 
@@ -1834,8 +1835,8 @@ def save(deviceList, savefilepath):
     """ Save clock frequencies and fan speeds for a list of devices to a specified file path.
 
     Parameters:
-    deviceList -- List of devices to save the clock frequencies and fan speeds
-    savefilepath -- Location to save the clock frequencies and fan speeds
+    deviceList -- List of DRM devices (can be a single-item list)
+    savefilepath -- Path to use to create the save file
     """
     perfLevels = {}
     clocks = {}
@@ -1874,7 +1875,7 @@ def checkAmdGpus(deviceList):
     print a warning if there are none
 
     Parameters:
-    deviceList -- List of devices that will be queried
+    deviceList -- List of DRM devices (can be a single-item list)
     """
 
     for device in deviceList:
