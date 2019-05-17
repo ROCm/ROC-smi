@@ -1382,13 +1382,17 @@ def showProductName(deviceList):
     printLogSpacer()
     fileString = ''
     pciLines = ''
+    pciFilePath = '/usr/share/misc/pci.ids'
+    # If the pci.ids file is found in hwdata, switch to that path
+    if os.path.isfile('/usr/share/hwdata/pci.ids'):
+        pciFilePath = '/usr/share/hwdata/pci.ids'
     try:
-        with open ('/usr/share/misc/pci.ids', 'rt') as pciFile:
+        with open (pciFilePath, 'rt') as pciFile:
             fileString = pciFile.read()
         # pciLines stores all AMD GPU names (from 1002 to 1003 in pci.ids file)
         pciLines = fileString.split('\n1002')[1].split('\n1003')[0]
     except:
-        print('Unable to find PCI IDs file')
+        print('Unable to locate pci.ids file')
     # Fetch required sysfs files for product name and store them
     for device in deviceList:
         vendor = getSysfsValue(device, 'vendor')
