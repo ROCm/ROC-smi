@@ -1350,57 +1350,71 @@ def showProductName(deviceList):
     deviceList -- List of DRM devices (can be a single-item list)
     """
     printLogSpacer()
-    # Fetch required sysfs files for product name and store them
-    for device in deviceList:
-        vbios = getSysfsValue(device, 'vbios')
-        if not vbios:
-            printErr(device, 'Unable to get the SKU')
-            return None
-        device_id = getSysfsValue(device, 'id')
-        if not device_id:
-            printErr(device, 'Unable to get device id')
-            return None
-        sub_id = getSysfsValue(device, 'sub_id')
-        if sub_id:
-            sub_id = sub_id[2:]
-        else:
-            printErr(device, 'Unable to get subsystem_device')
-        sub_vendor = getSysfsValue(device, 'sub_vendor')
-        if sub_vendor:
-            sub_vendor = sub_vendor[2:]
-        else:
-            printErr(device, 'Unable to get subsystem_vendor')
+    fileString = ''
+    pciLines = ''
     try:
         with open ('/usr/share/misc/pci.ids', 'rt') as pciFile:
             fileString = pciFile.read()
         # pciLines stores all AMD GPU names (from 1002 to 1003 in pci.ids file)
         pciLines = fileString.split('\n1002')[1].split('\n1003')[0]
-        # Check if the device ID exists in pciLines before attempting to print
-        if pciLines.find('\n\t%s' % device_id) != -1:
-            # variants gets a sublist of all devices in a specific series
-            variants = re.split(r'\n\t[a-z0-9]', pciLines.split('\n\t%s' % device_id)[1])[0]
-            series = variants.split('\n', 1)[0].strip()
-            printLog(device, 'Card series:\t\t%s' % series)
-            if variants.find('%s %s' % (sub_vendor, sub_id)) != -1:
-                model = variants.split(sub_id, 1)[1].split('\n', 1)[0].strip()
-                printLog(device, 'Card model:\t\t%s' % model)
+    except:
+        print('Unable to find PCI IDs file')
+    # Fetch required sysfs files for product name and store them
+    for device in deviceList:
+        vendor = getSysfsValue(device, 'vendor')
+        if vendor and len(vendor) > 2:
+            vendor = vendor[2:]
+            # Check if the device vendor is 1002, which is AMD's number in pci.ids
+            if vendor == '1002':
+                vbios = getSysfsValue(device, 'vbios')
+                if not vbios:
+                    printErr(device, 'Unable to get the SKU')
+                    continue
+                device_id = getSysfsValue(device, 'id')
+                if not device_id:
+                    printErr(device, 'Unable to get device id')
+                    continue
+                sub_id = getSysfsValue(device, 'sub_id')
+                if sub_id:
+                    sub_id = sub_id[2:]
+                else:
+                    printErr(device, 'Unable to get subsystem_device')
+                sub_vendor = getSysfsValue(device, 'sub_vendor')
+                if sub_vendor:
+                    sub_vendor = sub_vendor[2:]
+                else:
+                    printErr(device, 'Unable to get subsystem_vendor')
+                if len(pciLines) > 0 and len(fileString) > 0:
+                    # Check if the device ID exists in pciLines before attempting to print
+                    if pciLines.find('\n\t%s' % device_id) != -1:
+                        # variants gets a sublist of all devices in a specific GPU series
+                        variants = re.split(r'\n\t[a-z0-9]',\
+                                            pciLines.split('\n\t%s' % device_id)[1])[0]
+                        series = variants.split('\n', 1)[0].strip()
+                        printLog(device, 'Card series:\t\t%s' % series)
+                        if variants.find('%s %s' % (sub_vendor, sub_id)) != -1:
+                            model = variants.split(sub_id, 1)[1].split('\n', 1)[0].strip()
+                            printLog(device, 'Card model:\t\t%s' % model)
+                        else:
+                            logging.debug('Subsystem device information not found. \
+                                          Run update-pciids and try again')
+                    else:
+                        printErr(device, 'Unable to find device ID in PCI IDs file')
+                    # Check if sub_vendor ID exists in the file before attempting to print
+                    if fileString.find('\n' + sub_vendor + '  ') != -1:
+                        vendorName = re.split(r'\n\t[a-z0-9]', \
+                                              fileString.split('\n%s' % sub_vendor)[1])[0].strip()
+                        printLog(device, 'Card vendor:\t\t%s' % vendorName)
+                    else:
+                        printErr(device, 'Unable to find device vendor in PCI IDs file')
+                # sku is just 6 characters after the first occurance of '-' in vbios_version
+                sku = vbios.split('-')[1][:6]
+                printLog(device, 'Card SKU:\t\t%s' % sku)
             else:
-                logging.debug('Subsystem device information not found. \
-                              Run update-pciids and try again')
+                printErr(device, 'PCI device is not an AMD device (%s instead of 1002)' % vendor)
         else:
-            printErr(device, 'Unable to find device ID in PCI IDs file')
-        # Check if sub_vendor ID exists in the file before attempting to print
-        if fileString.find('\n' + sub_vendor + '  ') != -1:
-            vendorName = re.split(r'\n\t[a-z0-9]', \
-                                  fileString.split('\n%s' % sub_vendor)[1])[0].strip()
-            printLog(device, 'Card vendor:\t\t%s' % vendorName)
-        else:
-            printErr(device, 'Unable to find device vendor in PCI IDs file')
-    except IOError:
-        printErr(device, 'Unable to find PCI IDs file')
-    # sku is just 6 characters after the first occurance of '-' in vbios_version
-    sku = vbios.split('-')[1][:6]
-    printLog(device, 'Card SKU:\t\t%s' % sku)
+            printErr(device, 'Unable to get device vendor')
+
     printLogSpacer()
 
 
