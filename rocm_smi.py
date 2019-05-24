@@ -112,6 +112,7 @@ valuePaths = {
     'use' : {'prefix' : drmprefix, 'filepath' : 'gpu_busy_percent', 'needsparse' : False},
     'pcie_bw' : {'prefix' : drmprefix, 'filepath' : 'pcie_bw', 'needsparse' : False},
     'replay_count' : {'prefix' : drmprefix, 'filepath' : 'pcie_replay_count', 'needsparse' : False},
+    'unique_id' : {'prefix' : drmprefix, 'filepath' : 'unique_id', 'needsparse' : False},
     'vendor' : {'prefix' : drmprefix, 'filepath' : 'vendor', 'needsparse' : False},
     'sub_vendor' : {'prefix' : drmprefix, 'filepath' : 'subsystem_vendor', 'needsparse' : False},
     'fan' : {'prefix' : hwmonprefix, 'filepath' : 'pwm1', 'needsparse' : False},
@@ -1113,6 +1114,24 @@ def showPcieReplayCount(deviceList):
     printLogSpacer()
 
 
+def showUniqueId(deviceList):
+    """ Display Unique ID for a list of devices.
+
+    Parameters:
+    deviceList -- List of DRM devices (can be a single-item list)
+    """
+    printLogSpacer()
+    for device in deviceList:
+        uid = getSysfsValue(device, 'unique_id')
+        if uid:
+            printLog(device, 'Unique ID: %s' % uid)
+        else:
+            printLog(device, 'Unique ID: N/A')
+            # Not supported on GFX8-or-older, so debug-log if we don't find a UID, just in case
+            logging.debug('GPU[%s]\t: NOTE: Unique ID is only supported on GFX9 and later', parseDeviceName(device))
+    printLogSpacer()
+
+
 def showMemInfo(deviceList, memType):
     """ Display Memory information for a list of devices
 
@@ -2009,6 +2028,7 @@ if __name__ == '__main__':
     groupDisplay.add_argument('-a' ,'--showallinfo', help='Show Temperature, Fan and Clock values', action='store_true')
     groupDisplay.add_argument('--showmeminfo', help='Show Memory usage information for given block(s) TYPE', metavar='TYPE', type=str, nargs='+')
     groupDisplay.add_argument('--showdriverversion', help='Show kernel driver version', action='store_true')
+    groupDisplay.add_argument('--showuniqueid', help='Show GPU\'s Unique ID', action='store_true')
     groupDisplay.add_argument('--alldevices', help='Execute command on non-AMD devices as well as AMD devices', action='store_true')
 
     groupAction.add_argument('-r', '--resetclocks', help='Reset clocks and OverDrive to default', action='store_true')
@@ -2084,6 +2104,7 @@ if __name__ == '__main__':
         args.showvoltage = True
         args.showdriverversion = True
         args.showreplaycount = True
+        args.showuniqueid = True
         if not PRINT_JSON:
             args.showprofile = True
             args.showclkfrq = True
@@ -2185,6 +2206,8 @@ if __name__ == '__main__':
         showPcieBw(deviceList)
     if args.showreplaycount:
         showPcieReplayCount(deviceList)
+    if args.showuniqueid:
+        showUniqueId(deviceList)
     if args.showclkvolt:
         if PRINT_JSON:
             print("ERROR: Cannot print JSON output for --showclkvolt")

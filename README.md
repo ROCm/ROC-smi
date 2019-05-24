@@ -24,12 +24,13 @@ For convenience purposes, following is a quick excerpt:
 usage: rocm-smi [-h] [-d DEVICE [DEVICE ...]] [-i] [-v] [--showhw] [-t] [-c] [-g] [-f] [-p] [-P] [-o] [-m] [-M] [-l]
                 [-s] [-u] [-b] [--showreplaycount] [-S] [--showvoltage] [--showrasinfo BLOCK [BLOCK ...]]
                 [--showfwinfo [BLOCK [BLOCK ...]]] [--showproductname] [-a] [--showmeminfo TYPE [TYPE ...]]
-                [--showdriverversion] [--alldevices] [-r] [--setsclk LEVEL [LEVEL ...]] [--setmclk LEVEL [LEVEL ...]]
-                [--setpcie LEVEL [LEVEL ...]] [--setslevel SCLKLEVEL SCLK SVOLT] [--setmlevel MCLKLEVEL MCLK MVOLT]
-                [--resetfans] [--setfan LEVEL] [--setperflevel LEVEL] [--setoverdrive %] [--setmemoverdrive %]
-                [--setpoweroverdrive WATTS] [--resetpoweroverdrive] [--setprofile SETPROFILE] [--resetprofile]
-                [--rasenable BLOCK ERRTYPE] [--rasdisable BLOCK ERRTYPE] [--rasinject BLOCK] [--gpureset]
-                [--load FILE | --save FILE] [--autorespond RESPONSE] [--loglevel ILEVEL] [--json]
+                [--showdriverversion] [--showuniqueid] [--alldevices] [-r] [--setsclk LEVEL [LEVEL ...]]
+                [--setmclk LEVEL [LEVEL ...]] [--setpcie LEVEL [LEVEL ...]] [--setslevel SCLKLEVEL SCLK SVOLT]
+                [--setmlevel MCLKLEVEL MCLK MVOLT] [--resetfans] [--setfan LEVEL] [--setperflevel LEVEL]
+                [--setoverdrive %] [--setmemoverdrive %] [--setpoweroverdrive WATTS] [--resetpoweroverdrive]
+                [--setprofile SETPROFILE] [--resetprofile] [--rasenable BLOCK ERRTYPE] [--rasdisable BLOCK ERRTYPE]
+                [--rasinject BLOCK] [--gpureset] [--load FILE | --save FILE] [--autorespond RESPONSE]
+                [--loglevel ILEVEL] [--json]
 
 AMD ROCm System Management Interface
 
@@ -66,6 +67,7 @@ optional arguments:
   -a, --showallinfo                                     Show Temperature, Fan and Clock values
   --showmeminfo TYPE [TYPE ...]                         Show Memory usage information for given block(s) TYPE
   --showdriverversion                                   Show kernel driver version
+  --showuniqueid                                        Show GPU's Unique ID
   --alldevices                                          Execute command on non-AMD devices as well as AMD devices
 
   -r, --resetclocks                                     Reset clocks and OverDrive to default
