@@ -672,6 +672,17 @@ def getCurrentClock(device, clock, clocktype):
 
     if not currClocks:
         return None
+
+    # Hack: In the kernel, FCLK doesn't have an * at all if DPM is disabled.
+    # If there is only 1 speed (1 line total, meaning 0 levels), just print it
+    if len(currClocks.splitlines()) == 1 and len(currClocks) > 1:
+        if clocktype is 'freq':
+            if currClocks.find('DPM disabled'):
+                logging.debug('Only 1 level for clock %s; DPM is disabled for this specific clock' % clock)
+            return currClocks.split(' *')[0][3:]
+        else:
+            return '0'
+
     # Since the current clock line is of the format 'X: #Mhz *', we either want the
     # first character for level, or the 3rd-to-2nd-last characters for speed
     for line in currClocks.splitlines():
