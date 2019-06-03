@@ -937,11 +937,11 @@ def showPowerPlayTable(deviceList):
     printLogSpacer()
     for device in deviceList:
         if not isDPMAvailable(device):
-            printErr(device, 'Unable to display voltages')
+            printErr(device, 'Unable to display PowerPlay table')
             continue
         table = getSysfsValue(device, 'clk_voltage')
         if not table:
-            printErr(device, 'Unable to display voltage')
+            printErr(device, 'Unable to display PowerPlay table')
             logging.debug('GPU[%s]\t: clk_voltage is empty', parseDeviceName(device))
             continue
         printLog(device, table)
