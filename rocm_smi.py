@@ -110,6 +110,7 @@ valuePaths = {
     'voltage' : {'prefix' : hwmonprefix, 'filepath' : 'in0_input', 'needsparse' : False},
     'profile' : {'prefix' : drmprefix, 'filepath' : 'pp_power_profile_mode', 'needsparse' : False},
     'use' : {'prefix' : drmprefix, 'filepath' : 'gpu_busy_percent', 'needsparse' : False},
+    'use_mem' : {'prefix' : drmprefix, 'filepath' : 'mem_busy_percent', 'needsparse' : False},
     'pcie_bw' : {'prefix' : drmprefix, 'filepath' : 'pcie_bw', 'needsparse' : False},
     'replay_count' : {'prefix' : drmprefix, 'filepath' : 'pcie_replay_count', 'needsparse' : False},
     'unique_id' : {'prefix' : drmprefix, 'filepath' : 'unique_id', 'needsparse' : False},
@@ -1069,6 +1070,23 @@ def showGpuUse(deviceList):
     printLogSpacer()
 
 
+def showMemUse(deviceList):
+    """ Display GPU memory usage for a list of devices.
+
+    Parameters:
+    deviceList -- List of DRM devices (can be a single-item list)
+    """
+    printLogSpacer()
+    for device in deviceList:
+        memoryUse = getSysfsValue(device, 'use_mem')
+        if memoryUse == None:
+            printErr(device, 'Unable to get GPU memory use.')
+            logging.debug('GPU[%s]\t: GPU memory usage not supported (file is empty)', parseDeviceName(device))
+        else:
+            printLog(device, 'Current GPU memory use: ' + memoryUse + '%')
+    printLogSpacer()
+
+
 def showPcieBw(deviceList):
     """ Display estimated PCIe bandwidth usage for a list of devices.
 
@@ -2022,6 +2040,7 @@ if __name__ == '__main__':
     groupDisplay.add_argument('-l', '--showprofile', help='Show Compute Profile attributes', action='store_true')
     groupDisplay.add_argument('-s', '--showclkfrq', help='Show supported GPU and Memory Clock', action='store_true')
     groupDisplay.add_argument('-u', '--showuse', help='Show current GPU use', action='store_true')
+    groupDisplay.add_argument('--showmemuse', help='Show current GPU memory used', action='store_true')
     groupDisplay.add_argument('-b', '--showbw', help='Show estimated PCIe use', action='store_true')
     groupDisplay.add_argument('--showreplaycount', help='Show PCIe Replay Count', action='store_true')
     groupDisplay.add_argument('-S', '--showclkvolt', help='Show supported GPU and Memory Clocks and Voltages', action='store_true')
@@ -2100,6 +2119,7 @@ if __name__ == '__main__':
         args.showfan = True
         args.list = True
         args.showuse = True
+        args.showmemuse = True
         args.showperflevel = True
         args.showoverdrive = True
         args.showmemoverdrive = True
@@ -2206,6 +2226,8 @@ if __name__ == '__main__':
         showClocks(deviceList)
     if args.showuse:
         showGpuUse(deviceList)
+    if args.showmemuse:
+        showMemUse(deviceList)
     if args.showbw:
         showPcieBw(deviceList)
     if args.showreplaycount:
