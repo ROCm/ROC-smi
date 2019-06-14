@@ -22,9 +22,9 @@ For detailed and up to date usage information, we recommend consulting the help:
 For convenience purposes, following is a quick excerpt:
 ```shell
 usage: rocm-smi [-h] [-d DEVICE [DEVICE ...]] [-i] [-v] [--showhw] [-t] [-c] [-g] [-f] [-p] [-P] [-o] [-m] [-M] [-l]
-                [-s] [-u] [-b] [--showreplaycount] [-S] [--showvoltage] [--showrasinfo BLOCK [BLOCK ...]]
+                [-s] [-u] [--showmemuse] [-b] [--showreplaycount] [-S] [--showvoltage] [--showrasinfo BLOCK [BLOCK ...]]
                 [--showfwinfo [BLOCK [BLOCK ...]]] [--showproductname] [-a] [--showmeminfo TYPE [TYPE ...]]
-                [--showdriverversion] [--showuniqueid] [--alldevices] [-r] [--setsclk LEVEL [LEVEL ...]]
+                [--showdriverversion] [--showuniqueid] [--showpids] [--alldevices] [-r] [--setsclk LEVEL [LEVEL ...]]
                 [--setmclk LEVEL [LEVEL ...]] [--setpcie LEVEL [LEVEL ...]] [--setslevel SCLKLEVEL SCLK SVOLT]
                 [--setmlevel MCLKLEVEL MCLK MVOLT] [--resetfans] [--setfan LEVEL] [--setperflevel LEVEL]
                 [--setoverdrive %] [--setmemoverdrive %] [--setpoweroverdrive WATTS] [--resetpoweroverdrive]
@@ -56,6 +56,7 @@ optional arguments:
   -l, --showprofile                                     Show Compute Profile attributes
   -s, --showclkfrq                                      Show supported GPU and Memory Clock
   -u, --showuse                                         Show current GPU use
+  --showmemuse                                          Show current GPU memory used
   -b, --showbw                                          Show estimated PCIe use
   --showreplaycount                                     Show PCIe Replay Count
   -S, --showclkvolt                                     Show supported GPU and Memory Clocks and Voltages
@@ -68,6 +69,7 @@ optional arguments:
   --showmeminfo TYPE [TYPE ...]                         Show Memory usage information for given block(s) TYPE
   --showdriverversion                                   Show kernel driver version
   --showuniqueid                                        Show GPU's Unique ID
+  --showpids                                            Show current running KFD PIDs
   --alldevices                                          Execute command on non-AMD devices as well as AMD devices
 
   -r, --resetclocks                                     Reset clocks and OverDrive to default

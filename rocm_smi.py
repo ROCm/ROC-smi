@@ -42,6 +42,7 @@ drmprefix = '/sys/class/drm'
 hwmonprefix = '/sys/class/hwmon'
 debugprefix = '/sys/kernel/debug/dri'
 moduleprefix = '/sys/module'
+kfdprefix = '/sys/class/kfd/kfd'
 
 headerString = 'ROCm System Management Interface'
 footerString = 'End of ROCm SMI Log'
@@ -1470,6 +1471,37 @@ def showProductName(deviceList):
     printLogSpacer()
 
 
+def showPids():
+    """Show PIDs created in a KFD (Compute) context
+    """
+
+    pidPath = os.path.join(kfdprefix, 'proc')
+    pidsStr = ''
+    maxPidLen = 8
+    if os.path.isdir(pidPath):
+        pids = os.listdir(pidPath)
+    else:
+        return None
+    # Get the max size of PIDs, then divide the length of that by 80
+    # so that we can space things out nicely and stay <80chars
+    if os.path.isfile('/proc/sys/kernel/pid_max'):
+        with open('/proc/sys/kernel/pid_max', 'r') as pidFile:
+            maxPidLen = len(pidFile.read().strip())
+    else:
+        print('Unable to open pid_max file. Using 8 as max PID length')
+    # Add 1 to accommodate the space between PIDs
+    maxPidLen += 1
+    # // is integer division, which truncates/rounds down
+    pidsPerLine = 80 // maxPidLen
+
+    # Add one since // truncates, and we want to round up without
+    # having to import the math lib just for ceil
+    for x in range(0, (len(pids) // pidsPerLine) + 1):
+        pidsStr += '\n'
+        pidsStr += ' '.join(pids[pidsPerLine * x:(pidsPerLine * x) + pidsPerLine])
+    print('PIDs for KFD processes:%s' % pidsStr)
+
+
 def setPerformanceLevel(deviceList, level):
     """ Set the Performance Level for a list of devices.
 
@@ -2052,6 +2084,7 @@ if __name__ == '__main__':
     groupDisplay.add_argument('--showmeminfo', help='Show Memory usage information for given block(s) TYPE', metavar='TYPE', type=str, nargs='+')
     groupDisplay.add_argument('--showdriverversion', help='Show kernel driver version', action='store_true')
     groupDisplay.add_argument('--showuniqueid', help='Show GPU\'s Unique ID', action='store_true')
+    groupDisplay.add_argument('--showpids', help='Show current running KFD PIDs', action='store_true')
     groupDisplay.add_argument('--alldevices', help='Execute command on non-AMD devices as well as AMD devices', action='store_true')
 
     groupAction.add_argument('-r', '--resetclocks', help='Reset clocks and OverDrive to default', action='store_true')
@@ -2129,6 +2162,7 @@ if __name__ == '__main__':
         args.showdriverversion = True
         args.showreplaycount = True
         args.showuniqueid = True
+        args.showpids = True
         if not PRINT_JSON:
             args.showprofile = True
             args.showclkfrq = True
@@ -2234,6 +2268,8 @@ if __name__ == '__main__':
         showPcieReplayCount(deviceList)
     if args.showuniqueid:
         showUniqueId(deviceList)
+    if args.showpids:
+        showPids()
     if args.showclkvolt:
         if PRINT_JSON:
             print("ERROR: Cannot print JSON output for --showclkvolt")
