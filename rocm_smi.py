@@ -140,6 +140,7 @@ valuePaths = {
     'ras_gfx' : {'prefix' : drmprefix, 'filepath' : 'ras/gfx_err_count', 'needsparse' : False},
     'ras_sdma' : {'prefix' : drmprefix, 'filepath' : 'ras/sdma_err_count', 'needsparse' : False},
     'ras_umc' : {'prefix' : drmprefix, 'filepath' : 'ras/umc_err_count', 'needsparse' : False},
+    'xgmi_err' : {'prefix' : drmprefix, 'filepath' : 'xgmi_error', 'needsparse' : False},
     'ras_features' : {'prefix' : drmprefix, 'filepath' : 'ras/features', 'needsparse' : True},
     'ras_ctrl' : {'prefix' : debugprefix, 'filepath' : 'ras/ras_ctrl', 'needsparse' : False},
     'gpu_reset' : {'prefix' : debugprefix, 'filepath' : 'amdgpu_gpu_recover', 'needsparse' : False},
@@ -1213,6 +1214,46 @@ def showVersion(deviceList, component):
         print('%s version: %s' % (component.capitalize(), driver))
 
 
+def showXgmiErr(deviceList):
+    """ Display the XGMI Error status
+
+    This reads the XGMI error file, and returns either 0, 1, or 2
+
+    Parameters:
+    deviceList -- Reset XGMI error count for these devices
+    """
+    for device in deviceList:
+        xe = getSysfsValue(device, 'xgmi_err')
+        if xe is None:
+            continue
+        else:
+            err = int(xe)
+        if err == 0:
+            desc = 'No errors detected since last read'
+        elif err == 1:
+            desc = 'Single error detected since last read'
+        elif err == 2:
+            desc = 'Multiple errors detected since last read'
+        elif err > 2 or err < 0:
+            printErr(device, 'Invalid return value from xgmi_error')
+            continue
+        printLog(device, 'XGMI Error count: %s (%s)' % (err, desc))
+
+
+def resetXgmiErr(deviceList):
+    """ Reset the XGMI Error value
+
+    This reads the XGMI error file, since that will reset the counter
+    to 0 due to the defined kernel behaviour.
+
+    Parameters:
+    deviceList -- Reset XGMI error count for these devices
+    """
+    for device in deviceList:
+        # Don't care about the value. Reading xgmi_error resets it to 0
+        getSysfsValue(device, 'xgmi_err')
+
+
 def showAllConciseHw(deviceList):
     """ Display critical Hardware info for all devices in a concise format.
 
@@ -2088,6 +2129,7 @@ if __name__ == '__main__':
     groupDisplay.add_argument('--showdriverversion', help='Show kernel driver version', action='store_true')
     groupDisplay.add_argument('--showuniqueid', help='Show GPU\'s Unique ID', action='store_true')
     groupDisplay.add_argument('--showpids', help='Show current running KFD PIDs', action='store_true')
+    groupDisplay.add_argument('--showxgmierr', help='Show XGMI error information since last read', action='store_true')
     groupDisplay.add_argument('--alldevices', help='Execute command on non-AMD devices as well as AMD devices', action='store_true')
 
     groupAction.add_argument('-r', '--resetclocks', help='Reset clocks and OverDrive to default', action='store_true')
@@ -2109,6 +2151,7 @@ if __name__ == '__main__':
     groupAction.add_argument('--rasdisable', help='Disable RAS for specified block and error type', type=str, nargs=2, metavar=('BLOCK', 'ERRTYPE'))
     groupAction.add_argument('--rasinject', help='Inject RAS poison for specified block (ONLY WORKS ON UNSECURE BOARDS)', type=str, metavar='BLOCK', nargs=1)
     groupAction.add_argument('--gpureset', help='Reset specified GPU (One GPU must be specified)', action='store_true')
+    groupDisplay.add_argument('--resetxgmierr', help='Reset XGMI error count', action='store_true')
 
     groupFile.add_argument('--load', help='Load Clock, Fan, Performance and Profile settings from FILE', metavar='FILE')
     groupFile.add_argument('--save', help='Save Clock, Fan, Performance and Profile settings to FILE', metavar='FILE')
@@ -2148,6 +2191,8 @@ if __name__ == '__main__':
         for device in deviceList:
             JSON_DATA[device] = {}
 
+    # Don't display XGMI Link errors for showallinfo, since it will reset
+    # the error counter
     if args.showallinfo:
         args.showid = True
         args.showtemp = True
@@ -2292,6 +2337,8 @@ if __name__ == '__main__':
         showFwInfo(deviceList, args.showfwinfo)
     if args.showproductname:
         showProductName(deviceList)
+    if args.showxgmierr:
+        showXgmiErr(deviceList)
     if args.setsclk:
         setClocks(deviceList, 'sclk', args.setsclk)
     if args.setmclk:
@@ -2320,6 +2367,8 @@ if __name__ == '__main__':
         setProfile(deviceList, args.setprofile)
     if args.resetprofile:
         resetProfile(deviceList)
+    if args.resetxgmierr:
+        resetXgmiErr(deviceList)
     if args.rasenable:
         setRas(deviceList, 'enable', args.rasenable[0], args.rasenable[1])
     if args.rasdisable:
