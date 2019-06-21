@@ -1402,6 +1402,9 @@ def showProductName(deviceList):
     fileString = ''
     pciLines = ''
     pciFilePath = '/usr/share/misc/pci.ids'
+    # If the pci.ids file is found in share, switch to that path
+    if os.path.isfile('/usr/share/pci.ids'):
+        pciFilePath = '/usr/share/pci.ids'
     # If the pci.ids file is found in hwdata, switch to that path
     if os.path.isfile('/usr/share/hwdata/pci.ids'):
         pciFilePath = '/usr/share/hwdata/pci.ids'
