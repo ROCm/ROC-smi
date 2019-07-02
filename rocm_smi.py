@@ -1496,7 +1496,8 @@ def showProductName(deviceList):
                             logging.debug('Subsystem device information not found. \
                                           Run update-pciids and try again')
                     else:
-                        printErr(device, 'Unable to find device ID in PCI IDs file')
+                        printErr(device, 'Unable to find device ID in PCI IDs file. \
+                                          Run update-pciids and try again')
                     # Check if sub_vendor ID exists in the file before attempting to print
                     if fileString.find('\n' + sub_vendor + '  ') != -1:
                         vendorName = re.split(r'\n\t[a-z0-9]', \
