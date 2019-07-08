@@ -1421,8 +1421,8 @@ def showFwInfo(deviceList, fwType):
                     printLog(device, '%s firmware version:  \t%s' % (fwLogName,
                              getSysfsValue(device, blockFile)))
                 else:
-                    # PSP, UVD, VCE and VCN report their FW in hex
-                    if block in ['ta_ras', 'ta_xgmi', 'uvd', 'vce', 'vcn']:
+                    # SOS, TA RAS, TA XGMI, UVD, VCE and VCN report their FW in hex
+                    if block in ['sos', 'ta_ras', 'ta_xgmi', 'uvd', 'vce', 'vcn']:
                         printLog(device, '%s firmware version:  \t%s' % (fwLogName,
                                  getSysfsValue(device, blockFile)))
                     else:
