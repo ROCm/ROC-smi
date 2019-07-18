@@ -160,7 +160,7 @@ def getFilePath(device, key):
     key -- [$valuePaths.keys()] The sysfs path to return
     """
     if key not in valuePaths.keys():
-        print('Cannot get file path for key %s' % key)
+        printLogNoDev('Cannot get file path for key %s' % key)
         logging.debug('Key %s not present in valuePaths map' % key)
         return None
 
@@ -276,11 +276,14 @@ def printErr(device, err):
     device -- DRM device identifier
     err -- Error string to print
     """
+    global PRINT_JSON
     devName = parseDeviceName(device)
     for line in err.split('\n'):
         errstr = 'GPU[%s] \t\t: %s' % (devName, line)
-        logging.error(errstr)
-        print(errstr)
+        if not PRINT_JSON:
+            logging.error(errstr)
+        else:
+            logging.debug(errstr)
 
 
 def formatJson(device, log):
@@ -297,6 +300,17 @@ def formatJson(device, log):
             return
         logTuple = line.split(': ')
         JSON_DATA[device][logTuple[0]] = logTuple[1]
+
+
+def printLogNoDev(log):
+    """ Print out to the SMI log without a DRM device
+    Parameters:
+    log -- String to print to the log
+    """
+    global PRINT_JSON
+    if PRINT_JSON is True:
+        return
+    print(log)
 
 
 def printLog(device, log):
@@ -327,7 +341,7 @@ def printLogSpacer():
     the print(end='') option, so instead we made this helper
     """
     global PRINT_JSON
-    if PRINT_JSON:
+    if PRINT_JSON is True:
         return
     print(logSpacer)
 
@@ -588,7 +602,7 @@ def writeToSysfs(fsFile, fsValue):
     """
     global RETCODE
     if not os.path.isfile(fsFile):
-        print('Unable to write to sysfs file')
+        printLogNoDev('Unable to write to sysfs file')
         logging.debug('%s does not exist', fsFile)
         return False
     try:
@@ -596,7 +610,7 @@ def writeToSysfs(fsFile, fsValue):
         with open(fsFile, 'w') as fs:
             fs.write(fsValue + '\n') # Certain sysfs files require \n at the end
     except (IOError, OSError):
-        print('Unable to write to to sysfs file ' + fsFile)
+        printLogNoDev('Unable to write to sysfs file %s' % fsFile)
         logging.warning('IO or OS error')
         RETCODE = 1
         return False
@@ -800,7 +814,7 @@ def showId(deviceList):
     """
     printLogSpacer()
     for device in deviceList:
-        printLog(device, 'GPU ID: 0x' + getSysfsValue(device, 'id'))
+        printLog(device, 'GPU ID: 0x%s' % getSysfsValue(device, 'id'))
     printLogSpacer()
 
 
@@ -814,7 +828,7 @@ def showVbiosVersion(deviceList):
     for device in deviceList:
         vbios = getSysfsValue(device, 'vbios')
         if vbios:
-            printLog(device, 'VBIOS version: ' + vbios)
+            printLog(device, 'VBIOS version: %s' % vbios)
         else:
             printErr(device, 'Unable to get VBIOS version')
     printLogSpacer()
@@ -827,15 +841,15 @@ def showCurrentClock(deviceList, clocktype):
     deviceList -- List of DRM devices (can be a single-item list)
     clocktype -- Specific type of clock to return
     """
-    global RETCODE
+    global RETCODE, PRINT_JSON
     if clocktype not in validClockNames:
-        print('Unable to display ' + clocktype)
+        printLogNoDev('Unable to display %s' % clocktype)
         logging.error('GPU[%s]\t: Invalid clock type %s', clocktype)
         RETCODE = 1
         return
     for device in deviceList:
         if not isDPMAvailable(device):
-            printErr(device, 'Unable to display ' + clocktype)
+            printErr(device, 'Unable to display %s' % clocktype)
             continue
         if not getFilePath(device, clocktype):
             # If the clock file doesn't exist, don't print it out.
@@ -848,11 +862,14 @@ def showCurrentClock(deviceList, clocktype):
             level = getCurrentClock(device, clocktype, 'level')
 
         if not clk or not level:
-            printErr(device, 'Unable to display ' + clocktype)
+            printErr(device, 'Unable to display %s' % clocktype)
             logging.debug('GPU[%s]\t: Clock file %s is empty. ASIC may not support it', parseDeviceName(device), clocktype)
             return
-
-        printLog(device, clocktype + ' Clock Level: ' + str(level) + ' (' + str(clk) + ')')
+        if PRINT_JSON is True:
+            printLog(device, '%s clock speed: %s' % (clocktype, str(clk)))
+            printLog(device, '%s clock level: %s' % (clocktype, str(level)))
+        else:
+            printLog(device, '%s clock level: %s (%s)' % (clocktype, str(level), str(clk)))
 
 
 def showCurrentClocks(deviceList):
@@ -888,9 +905,9 @@ def showCurrentTemps(deviceList):
             temp = getSysfsValue(device, 'temp%d' % x)
             tempLabel = getSysfsValue(device, 'temp%d_label' % x)
             if temp and tempLabel:
-                printLog(device, 'Temperature (%s): %s c' % (tempLabel, temp))
+                printLog(device, 'Temperature (Sensor %s) (c): %s' % (tempLabel, temp))
             elif temp:
-                printLog(device, 'Temperature (Sensor #%d): %s c' % (x, temp))
+                printLog(device, 'Temperature (Sensor #%d) (c): %s' % (x, temp))
     printLogSpacer()
 
 
@@ -900,13 +917,18 @@ def showCurrentFans(deviceList):
     Parameters:
     deviceList -- List of DRM devices (can be a single-item list)
     """
+    global PRINT_JSON
     printLogSpacer()
     for device in deviceList:
         (fanLevel, fanSpeed) = getFanSpeed(device)
         if not fanLevel or not fanSpeed:
             printErr(device, 'Unable to display current fan speed')
             continue
-        printLog(device, 'Fan Level: %d (%d%%)' % (fanLevel, fanSpeed))
+        if PRINT_JSON is True:
+            printLog(device, 'Fan Speed (level): %d' % fanLevel)
+            printLog(device, 'Fan Speed (%%): %d' % fanSpeed)
+        else:
+            printLog(device, 'Fan Level: %d (%d%%)' % (fanLevel, fanSpeed))
     printLogSpacer()
 
 
@@ -926,7 +948,7 @@ def showClocks(deviceList):
             if not clkPath or not os.path.isfile(clkPath):
                 continue
             with open(clkPath, 'r') as clkFile:
-                clkLog = 'Supported ' + clk + ' frequencies on GPU' + parseDeviceName(device) + '\n' + clkFile.read()
+                clkLog = 'Supported %s frequencies on GPU%s\n%s' % (clk, parseDeviceName(device), clkFile.read())
             printLog(device, clkLog)
     printLogSpacer()
 
@@ -964,7 +986,7 @@ def showPerformanceLevel(deviceList):
             printErr(device, 'Unable to get Performance Level')
             logging.debug('GPU[%s]\t: Performance Level not supported (file is empty)', parseDeviceName(device))
         else:
-            printLog(device, 'Current Performance Level: ' + level)
+            printLog(device, 'Performance Level: %s' % level)
     printLogSpacer()
 
 
@@ -985,10 +1007,10 @@ def showOverDrive(deviceList, odtype):
             od = getSysfsValue(device, 'mclk_od')
             odStr = 'GPU Memory'
         if not od or int(od) < 0:
-            printErr(device, 'Unable to get ' + odStr + ' OverDrive value')
+            printErr(device, 'Unable to get %s OverDrive value' % odStr)
             logging.debug('GPU[%s]\t: %s OverDrive not supported', odStr)
         else:
-            printLog(device, 'Current ' + odStr + ' OverDrive value: ' + str(od) + '%')
+            printLog(device, '%s OverDrive value (%%): %s' % (odStr, str(od)))
     printLogSpacer()
 
 
@@ -1009,7 +1031,7 @@ def showProfile(deviceList):
             logging.debug('GPU[%s]\t: Power Profile not supported (file is empty)', parseDeviceName(device))
             continue
         if len(profile) > 1:
-            printLog(device, '\n' + profile)
+            printLog(device, '\n%s' % profile)
         else:
             printErr(device, 'Unable to get Power Profile')
             logging.debug('GPU[%s]\t: Invalid return value from Power Profile SysFS file', parseDeviceName(device))
@@ -1033,7 +1055,7 @@ def showPower(deviceList):
                 printErr(device, 'Unable to get Average Graphics Package Power Consumption')
                 logging.debug('GPU[%s]\t: Average GPU Power not supported', parseDeviceName(device))
             else:
-                printLog(device, 'Average Graphics Package Power: ' + str(power) + 'W')
+                printLog(device, 'Average Graphics Package Power (W): %s' % str(power))
     printLogSpacer()
 
 
@@ -1051,7 +1073,7 @@ def showMaxPower(deviceList):
             printErr(device, 'Unable to get maximum Graphics Package Power')
         else:
             power_cap = str(int(getSysfsValue(device, 'power_cap')) / 1000000)
-            printLog(device, 'Max Graphics Package Power: ' + power_cap + 'W')
+            printLog(device, 'Max Graphics Package Power (W): %s' % power_cap)
     printLogSpacer()
 
 
@@ -1068,7 +1090,7 @@ def showGpuUse(deviceList):
             printErr(device, 'Unable to get GPU use.')
             logging.debug('GPU[%s]\t: GPU usage not supported (file is empty)', parseDeviceName(device))
         else:
-            printLog(device, 'Current GPU use: ' + use + '%')
+            printLog(device, 'GPU use (%%): %s' % use)
     printLogSpacer()
 
 
@@ -1085,7 +1107,7 @@ def showMemUse(deviceList):
             printErr(device, 'Unable to get GPU memory use.')
             logging.debug('GPU[%s]\t: GPU memory usage not supported (file is empty)', parseDeviceName(device))
         else:
-            printLog(device, 'Current GPU memory use: ' + memoryUse + '%')
+            printLog(device, 'GPU memory use (%%): %s' % memoryUse)
     printLogSpacer()
 
 
@@ -1113,7 +1135,7 @@ def showPcieBw(deviceList):
             # Use the bwstr below to control precision on the string
             bwstr = '%.3f' % bw
 
-            printLog(device, 'Estimated maximum PCIe bandwidth over the last second: ' + bwstr + ' MB/s')
+            printLog(device, 'Estimated maximum PCIe bandwidth over the last second (MB/s): %s' % bwstr)
     printLogSpacer()
 
 
@@ -1163,6 +1185,7 @@ def showMemInfo(deviceList, memType):
     # If we get 'all' as the string, just set the list to all supported types
     # Otherwise, split the single-item list by space, then split each element
     # up to process it below
+    global PRINT_JSON
     if 'all' in memType:
         returnTypes = validMemTypes
     else:
@@ -1175,7 +1198,8 @@ def showMemInfo(deviceList, memType):
             if memInfo[0]  == None or memInfo[1] == None:
                 printErr(device, 'Unable to get %s memory usage information' % mem)
             else:
-                printLog(device, '%s ::\ttotal: %s B   \tused: %s B' % (mem, memInfo[1], memInfo[0]))
+                printLog(device, '%s Total Memory (B): %s' % (mem, memInfo[1]))
+                printLog(device, '%s Total Used Memory (B): %s' % (mem, memInfo[0]))
     printLogSpacer()
 
 
@@ -1192,7 +1216,7 @@ def showVoltage(deviceList):
         if not voltage:
             printErr(device, 'Unable to display voltage')
             continue
-        printLog(device, 'Voltage: %s mV' % str(voltage))
+        printLog(device, 'Voltage (mV): %s' % str(voltage))
     printLogSpacer()
 
 
@@ -1211,7 +1235,7 @@ def showVersion(deviceList, component):
         driver = getSysfsValue(None, 'driver')
         if driver is None:
             driver = os.uname()[2]
-        print('%s version: %s' % (component.capitalize(), driver))
+        printLogNoDev('%s version: %s' % (component.capitalize(), driver))
 
 
 def showXgmiErr(deviceList):
@@ -1237,7 +1261,10 @@ def showXgmiErr(deviceList):
         elif err > 2 or err < 0:
             printErr(device, 'Invalid return value from xgmi_error')
             continue
-        printLog(device, 'XGMI Error count: %s (%s)' % (err, desc))
+        if PRINT_JSON is True:
+            printLog(device, 'XGMI Error count: %s' % err)
+        else:
+            printLog(device, 'XGMI Error count: %s (%s)' % (err, desc))
 
 
 def resetXgmiErr(deviceList):
@@ -1385,7 +1412,7 @@ def showRasInfo(deviceList, rasType):
     for device in deviceList:
         for ras in returnTypes:
             if ras not in validRasBlocks.keys():
-                print('Unable to get %s RAS information' % rasType)
+                printLogNoDev('Unable to get %s RAS information' % rasType)
                 logging.debug('Invalid RAS block %s' % rasType)
                 continue
             rasEnabled = getRasEnablement(device, ras)
@@ -1429,7 +1456,7 @@ def showFwInfo(deviceList, fwType):
                         printLog(device, '%s firmware version:  \t%i' % (fwLogName,
                                  int(getSysfsValue(device, blockFile), 16)))
             else:
-                print('Unable to get %s_fw_version sysfs file.' % block)
+                printLogNoDev('Unable to get %s_fw_version sysfs file.' % block)
     printLogSpacer()
 
 
@@ -1455,7 +1482,7 @@ def showProductName(deviceList):
         # pciLines stores all AMD GPU names (from 1002 to 1003 in pci.ids file)
         pciLines = fileString.split('\n1002')[1].split('\n1003')[0]
     except:
-        print('Unable to locate pci.ids file')
+        printLogNoDev('Unable to locate pci.ids file')
     # Fetch required sysfs files for product name and store them
     for device in deviceList:
         vendor = getSysfsValue(device, 'vendor')
@@ -1533,7 +1560,7 @@ def showPids():
         with open('/proc/sys/kernel/pid_max', 'r') as pidFile:
             maxPidLen = len(pidFile.read().strip())
     else:
-        print('Unable to open pid_max file. Using 8 as max PID length')
+        printLogNoDev('Unable to open pid_max file. Using 8 as max PID length')
     # Add 1 to accommodate the space between PIDs
     maxPidLen += 1
     # // is integer division, which truncates/rounds down
@@ -1544,7 +1571,7 @@ def showPids():
     for x in range(0, (len(pids) // pidsPerLine) + 1):
         pidsStr += '\n'
         pidsStr += ' '.join(pids[pidsPerLine * x:(pidsPerLine * x) + pidsPerLine])
-    print('PIDs for KFD processes:%s' % pidsStr)
+    printLogNoDev('PIDs for KFD processes:%s' % pidsStr)
 
 
 def setPerformanceLevel(deviceList, level):
@@ -1557,9 +1584,9 @@ def setPerformanceLevel(deviceList, level):
     printLogSpacer()
     for device in deviceList:
         if setPerfLevel(device, level):
-            printLog(device, 'Successfully set current Performance Level to ' + level)
+            printLog(device, 'Successfully set current Performance Level to %s' % level)
         else:
-            printErr(device, 'Unable to set current Performance Level to ' + level)
+            printErr(device, 'Unable to set current Performance Level to %s' % level)
     printLogSpacer()
 
 
@@ -1573,7 +1600,7 @@ def setClocks(deviceList, clktype, clk):
     """
     global RETCODE
     if not clk:
-        print('Invalid clock frequency')
+        printLogNoDev('Invalid clock frequency')
         RETCODE = 1
         return
     check_value = ''.join(map(str, clk))
@@ -1581,7 +1608,7 @@ def setClocks(deviceList, clktype, clk):
     try:
         int(check_value)
     except ValueError:
-        print('Unable to set Clock level')
+        printLogNoDev('Unable to set clock level')
         logging.error('Non-integer characters are present in value %s', value)
         RETCODE = 1
         return
@@ -1614,9 +1641,9 @@ def setClocks(deviceList, clktype, clk):
             continue
         setPerfLevel(device, 'manual')
         if writeToSysfs(getFilePath(device, clktype), value):
-            printLog(device, 'Successfully set ' + clktype + ' frequency mask to Level ' + value)
+            printLog(device, 'Successfully set %s frequency mask to Level %s' % (clktype, value))
         else:
-            printErr(device, 'Unable to set ' + clktype + ' clock to Level ' + value)
+            printErr(device, 'Unable to set %s clock to Level %s' % (clktype, value))
             RETCODE = 1
 
 
@@ -1631,14 +1658,14 @@ def setPowerPlayTableLevel(deviceList, clktype, levelList, autoRespond):
     """
     global RETCODE
     if not levelList:
-        print('Invalid clock state')
+        printLogNoDev('Invalid clock state')
         RETCODE = 1
         return
     value = ' '.join(map(str, levelList))
     try:
         all(int(item) for item in levelList)
     except ValueError:
-        print('Unable to set PowerPlay table level')
+        printLogNoDev('Unable to set PowerPlay table level')
         logging.error('Non-integer characters are present in %s', levelList)
         RETCODE = 1
         return
@@ -1669,11 +1696,11 @@ def setPowerPlayTableLevel(deviceList, clktype, levelList, autoRespond):
         setPerfLevel(device, 'manual')
         if writeToSysfs(clkFile, value) and writeToSysfs(clkFile, 'c'):
             if clktype == 'sclk':
-                printLog(device, 'Successfully set GPU Clock frequency mask to Level ' + value)
+                printLog(device, 'Successfully set GPU clock frequency mask to Level %s' % value)
             else:
-                printLog(device, 'Successfully set GPU Memory Clock frequency mask to Level ' + value)
+                printLog(device, 'Successfully set GPU memory clock frequency mask to Level %s' % value)
         else:
-            printErr(device, 'Unable to set ' + clktype + ' clock to Level ' + value)
+            printErr(device, 'Unable to set %s clock to Level %s' % (clktype, value))
             RETCODE = 1
 
 
@@ -1690,7 +1717,7 @@ def setClockOverDrive(deviceList, clktype, value, autoRespond):
     try:
         int(value)
     except ValueError:
-        print('Unable to set OverDrive level')
+        printLogNoDev('Unable to set OverDrive level')
         logging.error('%s it is not an integer', value)
         RETCODE = 1
         return
@@ -1725,10 +1752,10 @@ def setClockOverDrive(deviceList, clktype, value, autoRespond):
             value = '20'
 
         if writeToSysfs(odPath, value):
-            printLog(device, 'Successfully set ' + odStr + ' OverDrive to ' + value + '%')
+            printLog(device, 'Successfully set %s OverDrive to %s%%' % (clktype, value))
             setClocks([device], clktype, [getMaxLevel(device, clktype)])
         else:
-            printErr(device, 'Unable to set OverDrive to ' + value + '%')
+            printErr(device, 'Unable to set OverDrive to %s%%' % value)
 
 def setPowerOverDrive(deviceList, value, autoRespond):
     """ Use Power OverDrive to change the the maximum power available power
@@ -1744,7 +1771,7 @@ def setPowerOverDrive(deviceList, value, autoRespond):
     try:
         int(value)
     except ValueError:
-        print('Unable to set Power OverDrive')
+        printLogNoDev('Unable to set Power OverDrive')
         logging.error('%s it is not an integer', value)
         RETCODE = 1
         return
@@ -1978,15 +2005,15 @@ def setRas(deviceList, rasAction, rasBlock, rasType):
     rasType -- [ce|ue] Error type to enable/disable
     """
     if rasAction not in validRasActions:
-        print('Unable to perform RAS command %s on block %s for type %s' % (rasAction, rasBlock, rasType))
+        printLogNoDev('Unable to perform RAS command %s on block %s for type %s' % (rasAction, rasBlock, rasType))
         logging.debug('Action %s is not a valid RAS command' % rasAction)
         return
     if rasBlock not in validRasBlocks.keys():
-        print('Unable to perform RAS command %s on block %s for type %s' % (rasAction, rasBlock, rasType))
+        printLogNoDev('Unable to perform RAS command %s on block %s for type %s' % (rasAction, rasBlock, rasType))
         logging.debug('Block %s is not a valid RAS block' % rasBlock)
         return
     if rasType not in validRasTypes:
-        print('Unable to perform RAS command %s on block %s for type %s' % (rasAction, rasBlock, rasType))
+        printLogNoDev('Unable to perform RAS command %s on block %s for type %s' % (rasAction, rasBlock, rasType))
         logging.debug('Memory error type %s is not a valid RAS memory type' % rasAction)
         return
     printLogSpacer()
@@ -2009,14 +2036,14 @@ def load(savefilepath, autoRespond):
     """
 
     if not os.path.isfile(savefilepath):
-        print('No settings file found at ', savefilepath)
+        printLogNoDev('No settings file found at %s' % savefilepath)
         sys.exit()
     with open(savefilepath, 'r') as savefile:
         jsonData = json.loads(savefile.read())
         for (device, values) in jsonData.items():
             if values['vJson'] != CLOCK_JSON_VERSION:
-                print('Unable to load legacy clock file - file v' + str(values['vJson']) +
-                      ' != current v' + str(CLOCK_JSON_VERSION))
+                printLogNoDev('Unable to load legacy clock file - file v%s != current v%s' %
+                              (str(values['vJson']), str(CLOCK_JSON_VERSION)))
                 break
             if values['fan']:
                 setFanSpeed([device], values['fan'])
@@ -2054,7 +2081,7 @@ def save(deviceList, savefilepath):
     jsonData = {}
 
     if os.path.isfile(savefilepath):
-        print(savefilepath, 'already exists. Settings not saved')
+        printLogNoDev('%s already exists. Settings not saved' % savefilepath)
         sys.exit()
     for device in deviceList:
         if not isDPMAvailable(device):
@@ -2177,12 +2204,12 @@ if __name__ == '__main__':
         for dev in args.device:
             device = parseDeviceNumber(dev)
             if not doesDeviceExist(device):
-                print('No such device ' + device)
+                printLogNoDev('No such device %s' % device)
                 sys.exit()
             if (isAmdDevice(device) or args.alldevices) and device not in deviceList:
                 deviceList.append(device)
             else:
-                print('No supported devices available to display')
+                printLogNoDev('No supported devices available to display')
     else:
         deviceList = listDevices(args.alldevices)
 
@@ -2224,17 +2251,18 @@ if __name__ == '__main__':
        args.setslevel or args.setmlevel or args.gpureset:
         relaunchAsSudo()
 
-    # Header for the SMI
-    print('\n\n', headerSpacer + headerString + headerSpacer, sep='')
+    if not args.json:
+        # Header for the SMI
+        printLogNoDev('\n\n %s%s%s' %(headerSpacer, headerString, headerSpacer))
 
     # If all fields are requested, only print it for devices with DPM support. There is no point
     # in printing a bunch of "Feature unavailable" messages and cluttering the output
     # unnecessarily. We do it here to get it under the SMI Header, and to not print it multiple times
     # in case the SMI is relaunched as sudo
-    # Note that this only affects the --all tab. While it won't output the supported fields like
+    # Note that this only affects the --showallinfo tab. While it won't output the supported fields like
     # temperature or fan speed, that would require a rework to implement. For now, devices without
     # DPM support can get the fields from the concise output, or by specifying the flag. But the
-    # --all flag will not show any fields for a device that doesn't have DPM, even fan speed or temperature
+    # --showallinfo flag will not show any fields for a device that doesn't have DPM, even fan speed or temperature
     if args.showallinfo:
         for device in deviceList:
             if not isDPMAvailable(device):
@@ -2245,11 +2273,11 @@ if __name__ == '__main__':
     if args.gpureset:
         if not args.device:
             logging.error('No device specified. One device must be specified for GPU reset')
-            print(footerSpacer + footerString + footerSpacer, sep='')
+            printLogNoDev('%s%s%s' %(footerSpacer, footerString, footerSpacer))
             sys.exit(1)
         logging.debug('Only executing GPU reset, no other commands will be executed')
         resetGpu(deviceList)
-        print(footerSpacer + footerString + footerSpacer, sep='')
+        printLogNoDev('%s%s%s' % (footerSpacer, footerString, footerSpacer))
         sys.exit(0)
 
     if not checkAmdGpus(deviceList):
@@ -2258,15 +2286,13 @@ if __name__ == '__main__':
     if len(sys.argv) == 1 or \
         len(sys.argv) == 2 and (args.alldevices or args.json) or \
         len(sys.argv) == 3 and (args.alldevices and args.json):
-        if PRINT_JSON:
+        if PRINT_JSON is True:
             print("ERROR: Cannot print JSON output for concise output (no flags)")
-            printLogSpacer()
             sys.exit(1)
         showAllConcise(deviceList)
     if args.showhw:
-        if PRINT_JSON:
+        if PRINT_JSON is True:
             print("ERROR: Cannot print JSON output for --showhw")
-            printLogSpacer()
             sys.exit(1)
         showAllConciseHw(deviceList)
     if args.showid:
@@ -2294,16 +2320,16 @@ if __name__ == '__main__':
     if args.showmaxpower:
         showMaxPower(deviceList)
     if args.showprofile:
-        if PRINT_JSON:
-            print("ERROR: Cannot print JSON output for --showprofile")
+        if PRINT_JSON is True:
+            printLogNoDev("ERROR: Cannot print JSON output for --showprofile")
             printLogSpacer()
             sys.exit(1)
         showProfile(deviceList)
     if args.showpower:
         showPower(deviceList)
     if args.showclkfrq:
-        if PRINT_JSON:
-            print("ERROR: Cannot print JSON output for --showclkfrq")
+        if PRINT_JSON is True:
+            printLogNoDev("ERROR: Cannot print JSON output for --showclkfrq")
             printLogSpacer()
             sys.exit(1)
         showClocks(deviceList)
@@ -2320,8 +2346,8 @@ if __name__ == '__main__':
     if args.showpids:
         showPids()
     if args.showclkvolt:
-        if PRINT_JSON:
-            print("ERROR: Cannot print JSON output for --showclkvolt")
+        if PRINT_JSON is True:
+            printLogNoDev("ERROR: Cannot print JSON output for --showclkvolt")
             printLogSpacer()
             sys.exit(1)
         showPowerPlayTable(deviceList)
@@ -2381,13 +2407,14 @@ if __name__ == '__main__':
     if args.save:
         save(deviceList, args.save)
 
-    if PRINT_JSON:
+    if PRINT_JSON is True:
         print(json.dumps(JSON_DATA))
 
     # If RETCODE isn't 0, inform the user
     if RETCODE:
         logging.warning('One or more commands failed')
 
-    # Footer for the SMI
-    print(footerSpacer + footerString + footerSpacer, sep='')
+    if not args.json:
+        # Footer for the SMI
+        printLogNoDev('%s%s%s' % (footerSpacer, footerString, footerSpacer))
     sys.exit(RETCODE)
