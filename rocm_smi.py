@@ -29,6 +29,12 @@ RETCODE = 0
 PRINT_JSON = False
 JSON_DATA = {}
 
+# SMI version. Can't use git describe since rocm-smi in /opt/rocm won't
+# have git in that folder. Increment this as needed.
+# Major version - Increment when backwards-compatibility breaks
+# Minor version - Increment when adding a new feature
+__version__ = '1.1'
+
 def relaunchAsSudo():
     """ Relaunch the SMI as sudo
 
@@ -2152,7 +2158,7 @@ def checkAmdGpus(deviceList):
 
 # Below is for when called as a script instead of when imported as a module
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='AMD ROCm System Management Interface v%s' % getVersion(None, 'driver'), formatter_class=lambda prog: argparse.HelpFormatter(prog, max_help_position=90, width=120))
+    parser = argparse.ArgumentParser(description='AMD ROCm System Management Interface  |  ROCM-SMI version: %s  |  Kernel version: %s' % (__version__, getVersion(None, 'driver')), formatter_class=lambda prog: argparse.HelpFormatter(prog, max_help_position=90, width=120))
     groupDev = parser.add_argument_group()
     groupDisplay = parser.add_argument_group()
     groupAction = parser.add_argument_group()
