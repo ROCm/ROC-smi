@@ -772,6 +772,22 @@ def getRasEnablement(device, rasType):
     return ('ENABLED' if rasBitfield & (1 << validRasBlocks[rasType]) else 'DISABLED')
 
 
+def getVersion(deviceList, component):
+    """ Show the software version for the specified component
+
+    Parameters:
+    deviceList -- List of DRM devices (can be a single-item list)
+    component - Component (currently only driver)
+    """
+    if component is 'driver':
+        # Only 1 version, so report it for GPU 0
+        driver = getSysfsValue(None, 'driver')
+        if driver is None:
+            driver = os.uname()[2]
+        return driver
+    return None
+
+
 def isAmdDevice(device):
     """ Return whether the specified device is an AMD device or not
 
@@ -1231,10 +1247,7 @@ def showVersion(deviceList, component):
         printLog(device, 'Unable to display version information for unsupported component %s' % component)
         return
     if component is 'driver':
-        # Only 1 version, so report it for GPU 0
-        driver = getSysfsValue(None, 'driver')
-        if driver is None:
-            driver = os.uname()[2]
+        driver = getVersion(deviceList, component)
         printLogNoDev('%s version: %s' % (component.capitalize(), driver))
 
 
@@ -2120,7 +2133,7 @@ def checkAmdGpus(deviceList):
 
 # Below is for when called as a script instead of when imported as a module
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='AMD ROCm System Management Interface', formatter_class=lambda prog: argparse.HelpFormatter(prog, max_help_position=90, width=120))
+    parser = argparse.ArgumentParser(description='AMD ROCm System Management Interface v%s' % getVersion(None, 'driver'), formatter_class=lambda prog: argparse.HelpFormatter(prog, max_help_position=90, width=120))
     groupDev = parser.add_argument_group()
     groupDisplay = parser.add_argument_group()
     groupAction = parser.add_argument_group()

@@ -12,6 +12,18 @@ You may find rocm-smi at the following location after installing the rocm packag
 
 Alternatively, you may clone this repository and run the tool directly.
 
+### Version
+The SMI will report a "version" which is the version of the kernel installed:
+```shell
+AMD ROCm System Management Interface v$(uname)
+```
+For ROCk installations, this will be the AMDGPU module version (e.g. 5.0.71)
+For non-ROCk or monolithic ROCk installations, this will be the kernel version,
+which will be equivalent to the following bash command:
+```shell
+$(uname -a) | cut -d ' ' -f 3)
+```
+
 #### Usage
 
 For detailed and up to date usage information, we recommend consulting the help:
