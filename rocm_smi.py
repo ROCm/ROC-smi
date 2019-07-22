@@ -115,6 +115,7 @@ valuePaths = {
     'pcie_bw' : {'prefix' : drmprefix, 'filepath' : 'pcie_bw', 'needsparse' : False},
     'replay_count' : {'prefix' : drmprefix, 'filepath' : 'pcie_replay_count', 'needsparse' : False},
     'unique_id' : {'prefix' : drmprefix, 'filepath' : 'unique_id', 'needsparse' : False},
+    'serial' : {'prefix' : drmprefix, 'filepath' : 'serial_number', 'needsparse' : False},
     'vendor' : {'prefix' : drmprefix, 'filepath' : 'vendor', 'needsparse' : False},
     'sub_vendor' : {'prefix' : drmprefix, 'filepath' : 'subsystem_vendor', 'needsparse' : False},
     'fan' : {'prefix' : hwmonprefix, 'filepath' : 'pwm1', 'needsparse' : False},
@@ -1190,6 +1191,24 @@ def showUniqueId(deviceList):
     printLogSpacer()
 
 
+def showSerialNumber(deviceList):
+    """ Display Serial Number for a list of devices.
+
+    Parameters:
+    deviceList -- List of DRM devices (can be a single-item list)
+    """
+    printLogSpacer()
+    for device in deviceList:
+        sn = getSysfsValue(device, 'serial')
+        if sn:
+            printLog(device, 'Serial Number: %s' % sn)
+        else:
+            printLog(device, 'Serial Number: N/A')
+            # Not supported pre-Vega20, and only on server cards with the appropriate EEPROM
+            logging.debug('GPU[%s]\t: NOTE: Serial Number is only supported on Vega20 server cards at this time', parseDeviceName(device))
+    printLogSpacer()
+
+
 def showMemInfo(deviceList, memType):
     """ Display Memory information for a list of devices
 
@@ -2169,6 +2188,7 @@ if __name__ == '__main__':
     groupDisplay.add_argument('--showmeminfo', help='Show Memory usage information for given block(s) TYPE', metavar='TYPE', type=str, nargs='+')
     groupDisplay.add_argument('--showdriverversion', help='Show kernel driver version', action='store_true')
     groupDisplay.add_argument('--showuniqueid', help='Show GPU\'s Unique ID', action='store_true')
+    groupDisplay.add_argument('--showserial', help='Show GPU\'s Serial Number', action='store_true')
     groupDisplay.add_argument('--showpids', help='Show current running KFD PIDs', action='store_true')
     groupDisplay.add_argument('--showxgmierr', help='Show XGMI error information since last read', action='store_true')
     groupDisplay.add_argument('--alldevices', help='Execute command on non-AMD devices as well as AMD devices', action='store_true')
@@ -2251,6 +2271,7 @@ if __name__ == '__main__':
         args.showdriverversion = True
         args.showreplaycount = True
         args.showuniqueid = True
+        args.showserial = True
         args.showpids = True
         if not PRINT_JSON:
             args.showprofile = True
@@ -2356,6 +2377,8 @@ if __name__ == '__main__':
         showPcieReplayCount(deviceList)
     if args.showuniqueid:
         showUniqueId(deviceList)
+    if args.showserial:
+        showSerialNumber(deviceList)
     if args.showpids:
         showPids()
     if args.showclkvolt:

@@ -36,7 +36,7 @@ For convenience purposes, following is a quick excerpt:
 usage: rocm-smi [-h] [-d DEVICE [DEVICE ...]] [-i] [-v] [--showhw] [-t] [-c] [-g] [-f] [-p] [-P] [-o] [-m] [-M] [-l]
                 [-s] [-u] [--showmemuse] [-b] [--showreplaycount] [-S] [--showvoltage] [--showrasinfo BLOCK [BLOCK ...]]
                 [--showfwinfo [BLOCK [BLOCK ...]]] [--showproductname] [-a] [--showmeminfo TYPE [TYPE ...]]
-                [--showdriverversion] [--showuniqueid] [--showpids] [--showxgmierr] [--alldevices] [-r]
+                [--showdriverversion] [--showuniqueid] [--showserial] [--showpids] [--showxgmierr] [--alldevices] [-r]
                 [--setsclk LEVEL [LEVEL ...]] [--setmclk LEVEL [LEVEL ...]] [--setpcie LEVEL [LEVEL ...]]
                 [--setslevel SCLKLEVEL SCLK SVOLT] [--setmlevel MCLKLEVEL MCLK MVOLT] [--resetfans] [--setfan LEVEL]
                 [--setperflevel LEVEL] [--setoverdrive %] [--setmemoverdrive %] [--setpoweroverdrive WATTS]
@@ -81,6 +81,7 @@ optional arguments:
   --showmeminfo TYPE [TYPE ...]                         Show Memory usage information for given block(s) TYPE
   --showdriverversion                                   Show kernel driver version
   --showuniqueid                                        Show GPU's Unique ID
+  --showserial                                          Show GPU's Serial Number
   --showpids                                            Show current running KFD PIDs
   --showxgmierr                                         Show XGMI error information since last read
   --alldevices                                          Execute command on non-AMD devices as well as AMD devices
@@ -271,9 +272,14 @@ This flag will attempt to reset the GPU for a specified device. This will invoke
 the kernel debugfs file amdgpu_gpu_recover. Note that GPU reset will not always work, depending on the
 manner in which the GPU is hung.
 
----showdriverversion:
+--showdriverversion:
 This flag will print out the AMDGPU module version for amdgpu-pro or ROCK kernels. For other kernels,
 it will simply print out the name of the kernel (uname)
+
+--showserial:
+This flag will print out the serial number for the graphics card
+    NOTE: This is currently only supported on Vega20 server cards that support it. Consumer cards and
+          cards older than Vega20 will not support this feature.
 
 ### OverDrive settings ####
 
