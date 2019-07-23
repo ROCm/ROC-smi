@@ -281,6 +281,12 @@ This flag will print out the serial number for the graphics card
     NOTE: This is currently only supported on Vega20 server cards that support it. Consumer cards and
           cards older than Vega20 will not support this feature.
 
+--showproductname:
+This uses the pci.ids file to print out more information regarding the GPUs on the system.
+'update-pciids' may need to be executed on the machine to get the latest PCI ID snapshot,
+as certain newer GPUs will not be present in the stock pci.ids file, and the file may even
+be absent on certain OS installation types
+
 ### OverDrive settings ####
 
 For OverDrive functionality, the OverDrive bit (bit 14) must be enabled (by default, the
