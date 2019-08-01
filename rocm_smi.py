@@ -33,7 +33,7 @@ JSON_DATA = {}
 # have git in that folder. Increment this as needed.
 # Major version - Increment when backwards-compatibility breaks
 # Minor version - Increment when adding a new feature
-__version__ = '1.1'
+__version__ = '1.2'
 
 def relaunchAsSudo():
     """ Relaunch the SMI as sudo
@@ -99,6 +99,9 @@ validFwBlocks = {'vce', 'uvd', 'mc', 'me', 'pfp',
 'mec', 'mec2', 'sos', 'asd', 'ta_ras', 'ta_xgmi',
 'smc', 'sdma', 'sdma2', 'vcn', 'dmcu'}
 
+# These are the different Retired Page types defined in the kernel,
+# and their respective letter-representation in the sysfs interface
+validRetiredType = ['retired', 'pending', 'unreservable', 'all']
 
 valuePaths = {
     'id' : {'prefix' : drmprefix, 'filepath' : 'device', 'needsparse' : True},
@@ -149,6 +152,7 @@ valuePaths = {
     'ras_umc' : {'prefix' : drmprefix, 'filepath' : 'ras/umc_err_count', 'needsparse' : False},
     'xgmi_err' : {'prefix' : drmprefix, 'filepath' : 'xgmi_error', 'needsparse' : False},
     'ras_features' : {'prefix' : drmprefix, 'filepath' : 'ras/features', 'needsparse' : True},
+    'bad_pages' : {'prefix' : drmprefix, 'filepath' : 'ras/gpu_vram_bad_pages', 'needsparse' : False},
     'ras_ctrl' : {'prefix' : debugprefix, 'filepath' : 'ras/ras_ctrl', 'needsparse' : False},
     'gpu_reset' : {'prefix' : debugprefix, 'filepath' : 'amdgpu_gpu_recover', 'needsparse' : False},
     'driver' : {'prefix' : moduleprefix, 'filepath' : 'amdgpu/version', 'needsparse' : False}
@@ -170,7 +174,6 @@ def getFilePath(device, key):
         printLogNoDev('Cannot get file path for key %s' % key)
         logging.debug('Key %s not present in valuePaths map' % key)
         return None
-
     pathDict = valuePaths[key]
     fileValue = ''
 
@@ -793,6 +796,27 @@ def getVersion(deviceList, component):
             driver = os.uname()[2]
         return driver
     return None
+
+
+def getRetiredPages(device, retiredType):
+    """ Return the retired pages for the specified type
+
+    Parameters:
+    device -- DRM device identifier
+    retiredType - Type of retired page to return (retired, pending, unreservable, all)
+    """
+    returnPages = ''
+    pages = getSysfsValue(device, 'bad_pages')
+    if not pages:
+        return None
+    for line in pages.split('\n'):
+        pgType = line.split(' : ')[-1]
+        if (retiredType is 'all' or \
+           retiredType is 'retired' and pgType is 'R' or \
+           retiredType is 'pending' and pgType is 'P' or \
+           retiredType is 'unreservable' and pgType is 'F'):
+            returnPages += '\n%s' % line
+    return returnPages.lstrip('\n')
 
 
 def isAmdDevice(device):
@@ -1612,6 +1636,48 @@ def showPids():
     printLogNoDev('PIDs for KFD processes:%s' % pidsStr)
 
 
+def showRetiredPages(deviceList, retiredType='all'):
+    """ Show retired pages of a specified type for a list of devices
+
+    Parameters
+    deviceList -- List of DRM devices (can be a single-item list)
+    retiredType -- Type of retired pages to show (default = all)
+    """
+    global PRINT_JSON
+    printLogSpacer()
+    if retiredType not in validRetiredType:
+        printErr(device, 'Invalid retired page type %s' % retiredType)
+        logging.debug('Valid types are %s' % validRetiredType)
+        return None
+    for device in deviceList:
+        pgs = getRetiredPages(device, retiredType)
+        if not pgs:
+            continue
+        pgNum = 0
+        if not PRINT_JSON:
+            printLog(device, 'Page addr  : Page size  : Status')
+        for line in pgs.split('\n'):
+            if PRINT_JSON:
+                addr = line.split(' : ')[0]
+                size = line.split(' : ')[1]
+                ptype = line.split(' : ')[2]
+                if ptype is 'R':
+                    pgType = 'Retired'
+                elif ptype is 'P':
+                    pgType = 'Pending'
+                else:
+                    pgType = 'Unreservable'
+                printLog(device, 'Retired page %s Address: %s' % (pgNum, addr))
+                printLog(device, 'Retired page %s Size: %s' % (pgNum, size))
+                printLog(device, 'Retired page %s Type: %s' % (pgNum, pgType))
+                pgNum += 1
+            else:
+                printLog(device, line)
+        if not PRINT_JSON:
+            print('\n')
+    printLogSpacer()
+
+
 def setPerformanceLevel(deviceList, level):
     """ Set the Performance Level for a list of devices.
 
@@ -2197,6 +2263,10 @@ if __name__ == '__main__':
     groupDisplay.add_argument('--showserial', help='Show GPU\'s Serial Number', action='store_true')
     groupDisplay.add_argument('--showpids', help='Show current running KFD PIDs', action='store_true')
     groupDisplay.add_argument('--showxgmierr', help='Show XGMI error information since last read', action='store_true')
+    groupDisplay.add_argument('--showpagesinfo', help='Show retired, pending and unreservable pages', action='store_true')
+    groupDisplay.add_argument('--showretiredpages', help='Show retired pages', action='store_true')
+    groupDisplay.add_argument('--showpendingpages', help='Show pending retired pages', action='store_true')
+    groupDisplay.add_argument('--showunreservablepages', help='Show unreservable pages', action='store_true')
     groupDisplay.add_argument('--alldevices', help='Execute command on non-AMD devices as well as AMD devices', action='store_true')
 
     groupAction.add_argument('-r', '--resetclocks', help='Reset clocks and OverDrive to default', action='store_true')
@@ -2279,6 +2349,7 @@ if __name__ == '__main__':
         args.showuniqueid = True
         args.showserial = True
         args.showpids = True
+        args.showpagesinfo = True
         if not PRINT_JSON:
             args.showprofile = True
             args.showclkfrq = True
@@ -2408,6 +2479,14 @@ if __name__ == '__main__':
         showProductName(deviceList)
     if args.showxgmierr:
         showXgmiErr(deviceList)
+    if args.showpagesinfo:
+        showRetiredPages(deviceList)
+    if args.showretiredpages:
+        showRetiredPages(deviceList, 'retired')
+    if args.showpendingpages:
+        showRetiredPages(deviceList, 'pending')
+    if args.showunreservablepages:
+        showRetiredPages(deviceList, 'unreservable')
     if args.setsclk:
         setClocks(deviceList, 'sclk', args.setsclk)
     if args.setmclk:

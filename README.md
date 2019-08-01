@@ -36,7 +36,8 @@ For convenience purposes, following is a quick excerpt:
 usage: rocm-smi [-h] [-d DEVICE [DEVICE ...]] [-i] [-v] [--showhw] [-t] [-c] [-g] [-f] [-p] [-P] [-o] [-m] [-M] [-l]
                 [-s] [-u] [--showmemuse] [-b] [--showreplaycount] [-S] [--showvoltage] [--showrasinfo BLOCK [BLOCK ...]]
                 [--showfwinfo [BLOCK [BLOCK ...]]] [--showproductname] [-a] [--showmeminfo TYPE [TYPE ...]]
-                [--showdriverversion] [--showuniqueid] [--showserial] [--showpids] [--showxgmierr] [--alldevices] [-r]
+                [--showdriverversion] [--showuniqueid] [--showserial] [--showpids] [--showxgmierr] [--showpagesinfo]
+                [--showretiredpages] [--showpendingpages] [--showunreservablepages] [--alldevices] [-r]
                 [--setsclk LEVEL [LEVEL ...]] [--setmclk LEVEL [LEVEL ...]] [--setpcie LEVEL [LEVEL ...]]
                 [--setslevel SCLKLEVEL SCLK SVOLT] [--setmlevel MCLKLEVEL MCLK MVOLT] [--resetfans] [--setfan LEVEL]
                 [--setperflevel LEVEL] [--setoverdrive %] [--setmemoverdrive %] [--setpoweroverdrive WATTS]
@@ -44,7 +45,7 @@ usage: rocm-smi [-h] [-d DEVICE [DEVICE ...]] [-i] [-v] [--showhw] [-t] [-c] [-g
                 [--rasdisable BLOCK ERRTYPE] [--rasinject BLOCK] [--gpureset] [--resetxgmierr]
                 [--load FILE | --save FILE] [--autorespond RESPONSE] [--loglevel ILEVEL] [--json]
 
-AMD ROCm System Management Interface
+AMD ROCm System Management Interface | ROCM-SMI version: 1.2.0 | Kernel version:
 
 optional arguments:
   -h, --help                                            show this help message and exit
@@ -84,6 +85,10 @@ optional arguments:
   --showserial                                          Show GPU's Serial Number
   --showpids                                            Show current running KFD PIDs
   --showxgmierr                                         Show XGMI error information since last read
+  --showpagesinfo                                       Show retired, pending and unreservable pages
+  --showretiredpages                                    Show retired pages
+  --showpendingpages                                    Show pending retired pages
+  --showunreservablepages                               Show unreservable pages
   --alldevices                                          Execute command on non-AMD devices as well as AMD devices
   --resetxgmierr                                        Reset XGMI error count
 
@@ -286,6 +291,14 @@ This uses the pci.ids file to print out more information regarding the GPUs on t
 'update-pciids' may need to be executed on the machine to get the latest PCI ID snapshot,
 as certain newer GPUs will not be present in the stock pci.ids file, and the file may even
 be absent on certain OS installation types
+
+--showpagesinfo | --showretiredpages | --showpendingpages | --showunreservablepages:
+These flags display the different "bad pages" as reported by the kernel. The three
+types of pages are:
+Retired pages (reserved pages) - These pages are reserved and are unable to be used
+Pending pages - These pages are pending for reservation, and will be reserved/retired
+Unreservable pages - These pages are not reservable for some reason
+
 
 ### OverDrive settings ####
 
