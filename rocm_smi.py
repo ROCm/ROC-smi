@@ -32,8 +32,9 @@ JSON_DATA = {}
 # SMI version. Can't use git describe since rocm-smi in /opt/rocm won't
 # have git in that folder. Increment this as needed.
 # Major version - Increment when backwards-compatibility breaks
-# Minor version - Increment when adding a new feature
-__version__ = '1.2'
+# Minor version - Increment when adding a new feature, set to 0 when major is incremented
+# Patch version - Increment when adding a fix, set to 0 when minor is incremented
+__version__ = '1.2.0'
 
 def relaunchAsSudo():
     """ Relaunch the SMI as sudo
