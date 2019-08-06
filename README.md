@@ -299,6 +299,16 @@ Retired pages (reserved pages) - These pages are reserved and are unable to be u
 Pending pages - These pages are pending for reservation, and will be reserved/retired
 Unreservable pages - These pages are not reservable for some reason
 
+--showmemuse | --showuse | --showmeminfo
+--showuse and --showmemuse are used to indicate how busy the respective blocks are. For
+example, for --showuse (gpu_busy_percent sysfs file), the SMU samples every ms or so to see
+if any GPU block (RLC, MEC, PFP, CP) is busy. If so, that's 1 (or high). If not, that's 0 (low).
+If we have 5 high and 5 low samples, that means 50% utilization (50% GPU busy, or 50% GPU use).
+The windows and sampling vary from generation to generation, but that is how GPU and VRAM use
+is calculated in a generic sense.
+--showmeminfo (and VRAM% in concise output) will show the amount of VRAM used (visible, total, GTT),
+as well as the total available for those partitions. The percentage shown there indicates the
+amount of used memory in terms of current allocations
 
 ### OverDrive settings ####
 
