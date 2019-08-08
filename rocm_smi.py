@@ -953,9 +953,9 @@ def showCurrentTemps(deviceList):
             temp = getSysfsValue(device, 'temp%d' % x)
             tempLabel = getSysfsValue(device, 'temp%d_label' % x)
             if temp and tempLabel:
-                printLog(device, 'Temperature (Sensor %s) (c): %s' % (tempLabel, temp))
+                printLog(device, 'Temperature (Sensor %s) (C): %s' % (tempLabel, temp))
             elif temp:
-                printLog(device, 'Temperature (Sensor #%d) (c): %s' % (x, temp))
+                printLog(device, 'Temperature (Sensor #%d) (C): %s' % (x, temp))
     printLogSpacer()
 
 
