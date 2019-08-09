@@ -81,10 +81,9 @@ validClockNames = ['dcefclk', 'fclk', 'mclk', 'pcie', 'sclk', 'socclk']
 validMemTypes = ['vram', 'vis_vram', 'gtt']
 
 # These are the types of supported RAS blocks and their respective enums
-# gfx
-# sdma
-# umc
-validRasBlocks = {'gfx' : 1<<2, 'sdma' : 1<<1, 'umc': 1<<0}
+validRasBlocks = {'fuse' : 1<<13, 'mp1' : 1<<12, 'mp0' : 1<<11, 'sem' : 1<<10, 'smn' : 1<<9,
+                  'df' : 1<<8, 'xgmi_wafl' : 1<<7, 'hdp' : 1<<6, 'pcie_bif' : 1<<5,
+                  'athub' : 1<<4, 'mmhub' : 1<<3, 'gfx' : 1<<2, 'sdma' : 1<<1, 'umc' : 1<<0}
 # These are the valid input types to a RAS file
 validRasActions = ['disable', 'enable', 'inject']
 # Right now, these are the only supported memory error types,
@@ -151,6 +150,19 @@ valuePaths = {
     'ras_gfx' : {'prefix' : drmprefix, 'filepath' : 'ras/gfx_err_count', 'needsparse' : False},
     'ras_sdma' : {'prefix' : drmprefix, 'filepath' : 'ras/sdma_err_count', 'needsparse' : False},
     'ras_umc' : {'prefix' : drmprefix, 'filepath' : 'ras/umc_err_count', 'needsparse' : False},
+    'ras_mmhub' : {'prefix' : drmprefix, 'filepath' : 'ras/mmhub_err_count', 'needsparse' : False},
+    'ras_athub' : {'prefix' : drmprefix, 'filepath' : 'ras/athub_err_count', 'needsparse' : False},
+    'ras_sdma' : {'prefix' : drmprefix, 'filepath' : 'ras/sdma_err_count', 'needsparse' : False},
+    'ras_pcie_bif' : {'prefix' : drmprefix, 'filepath' : 'ras/pcie_bif_err_count', 'needsparse' : False},
+    'ras_hdp' : {'prefix' : drmprefix, 'filepath' : 'ras/hdp_err_count', 'needsparse' : False},
+    'ras_xgmi_wafl' : {'prefix' : drmprefix, 'filepath' : 'ras/xgmi_wafl_err_count', 'needsparse' : False},
+    'ras_df' : {'prefix' : drmprefix, 'filepath' : 'ras/df_err_count', 'needsparse' : False},
+    'ras_smn' : {'prefix' : drmprefix, 'filepath' : 'ras/smn_err_count', 'needsparse' : False},
+    'ras_sem' : {'prefix' : drmprefix, 'filepath' : 'ras/sem_err_count', 'needsparse' : False},
+    'ras_mp0' : {'prefix' : drmprefix, 'filepath' : 'ras/mp0_err_count', 'needsparse' : False},
+    'ras_mp1' : {'prefix' : drmprefix, 'filepath' : 'ras/mp1_err_count', 'needsparse' : False},
+    'ras_fuse' : {'prefix' : drmprefix, 'filepath' : 'ras/fuse_err_count', 'needsparse' : False},
+
     'xgmi_err' : {'prefix' : drmprefix, 'filepath' : 'xgmi_error', 'needsparse' : False},
     'ras_features' : {'prefix' : drmprefix, 'filepath' : 'ras/features', 'needsparse' : True},
     'bad_pages' : {'prefix' : drmprefix, 'filepath' : 'ras/gpu_vram_bad_pages', 'needsparse' : False},
@@ -780,7 +792,7 @@ def getRasEnablement(device, rasType):
     rasBitfield = getSysfsValue(device, 'ras_features')
     if rasBitfield is None:
         return None
-    return ('ENABLED' if rasBitfield & (1 << validRasBlocks[rasType]) else 'DISABLED')
+    return ('ENABLED' if rasBitfield & (validRasBlocks[rasType]) else 'DISABLED')
 
 
 def getVersion(deviceList, component):
@@ -1485,8 +1497,9 @@ def showRasInfo(deviceList, rasType):
             else:
                 printLog(device, 'Block %s is: %s' % (ras, rasEnabled))
                 if rasEnabled == 'ENABLED':
-                    # Now print the error count
-                    printLog(device, getSysfsValue(device, 'ras_%s' % ras))
+                    if getFilePath(device, 'ras_%s' % ras):
+                        # Now print the error count
+                        printLog(device, getSysfsValue(device, 'ras_%s' % ras))
     printLogSpacer()
 
 def showFwInfo(deviceList, fwType):
