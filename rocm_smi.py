@@ -34,7 +34,7 @@ JSON_DATA = {}
 # Major version - Increment when backwards-compatibility breaks
 # Minor version - Increment when adding a new feature, set to 0 when major is incremented
 # Patch version - Increment when adding a fix, set to 0 when minor is incremented
-__version__ = '1.2.0'
+__version__ = '1.3.0'
 
 def relaunchAsSudo():
     """ Relaunch the SMI as sudo
@@ -831,6 +831,80 @@ def getRetiredPages(device, retiredType):
             returnPages += '\n%s' % line
     return returnPages.lstrip('\n')
 
+
+def getRange(device):
+    """ Return the sclk and voltage range for a specified device
+    """
+    rangeReturn = {}
+    rangeReturn['sclk'] = (None,None)
+    rangeReturn['mclk'] = (None,None)
+    rangeReturn['voltage'] = (None,None)
+    rangeReturn['voltage0'] = (None,None)
+    rangeReturn['voltage1'] = (None,None)
+    rangeReturn['voltage2'] = (None,None)
+    ranges = getSysfsValue(device, 'clk_voltage')
+    if not ranges:
+        return rangeReturn
+    # Strip out the info above ranges
+    ranges = ranges.split('OD_RANGE:\n')[1]
+    sclkRange = ranges.splitlines()[0]
+    sclkMin = sclkRange.split()[1]
+    sclkMax = sclkRange.split()[2]
+    mclkRange = ranges.splitlines()[1]
+    mclkMin = sclkRange.split()[1]
+    mclkMax = sclkRange.split()[2]
+    rangeReturn['sclk'] = (sclkMin, sclkMax)
+    rangeReturn['mclk'] = (mclkMin, mclkMax)
+    voltRange = '\n'.join(ranges.split('\n',2)[2:])
+    if 'VDDC_CURVE' not in voltRange.splitlines()[0]:
+        voltMin = voltRange.split()[1]
+        voltMax = voltRange.split()[2]
+        rangeReturn['voltage'] = [voltMin, voltMax]
+    else:
+        # The voltage shows SCLK then Volt, but SCLK range should be the
+        # same as SCLK range above, so ignore it for now and just
+        # alternate lines.
+        # When default values get set on boot, they use the range above
+        volt0Range = '\n'.join(voltRange.splitlines()[1:3])
+        volt0Min = volt0Range.split()[1]
+        volt0Max = volt0Range.split()[2]
+        volt1Range = '\n'.join(voltRange.splitlines()[3:5])
+        volt1Min = volt1Range.split()[1]
+        volt1Max = volt1Range.split()[2]
+        volt2Range = '\n'.join(voltRange.splitlines()[5:7])
+        volt2Min = volt2Range.split()[1]
+        volt2Max = volt2Range.split()[2]
+        rangeReturn['voltage'] = (volt0Min, volt0Max)
+        rangeReturn['voltage0'] = (volt0Min, volt0Max)
+        rangeReturn['voltage1'] = (volt1Min, volt1Max)
+        rangeReturn['voltage2'] = (volt2Min, volt2Max)
+    return rangeReturn
+
+
+def getVoltageCurve(device):
+    """ Return the sclk and voltage range for a specified device
+    """
+    curveReturn = {}
+    curveReturn[0] = (None,None)
+    curveReturn[1] = (None,None)
+    curveReturn[2] = (None,None)
+    curve = getSysfsValue(device, 'clk_voltage')
+    if not curve:
+        return curveReturn
+    # Strip out the info outside of our curve points
+    curve = curve.split('OD_RANGE:\n')[0]
+    try:
+        curve = curve.split('OD_VDDC_CURVE:\n')[1]
+    except IndexError:
+        logging.debug('Voltage curve not supported on device %s' % parseDeviceName(device))
+        return curveReturn
+    curve0 = curve.splitlines()[0]
+    curve1 = curve.splitlines()[1]
+    curve2 = curve.splitlines()[2]
+    curveReturn[0] = (curve0.split()[1], curve0.split()[2])
+    curveReturn[1] = (curve1.split()[1], curve1.split()[2])
+    curveReturn[2] = (curve2.split()[1], curve2.split()[2])
+    return curveReturn
 
 def isAmdDevice(device):
     """ Return whether the specified device is an AMD device or not
@@ -1692,6 +1766,47 @@ def showRetiredPages(deviceList, retiredType='all'):
     printLogSpacer()
 
 
+def showRange(deviceList, rangeType):
+    """ Show the range for either the sclk or voltage for the specified devices
+
+    Parameters:
+    deviceList -- List of DRM devices (can be a single-item list)
+    rangeType -- [sclk|voltage] Type of range to return
+    """
+    global RETCODE
+    if rangeType not in {'sclk', 'mclk', 'voltage'}:
+        printLogNoDev('Invalid range identifier %s' % rangeType)
+        RETCODE = 1
+        return
+    for device in deviceList:
+        ranges = getRange(device)
+        minRange = ranges[rangeType][0]
+        maxRange = ranges[rangeType][1]
+        if minRange is None or maxRange is None:
+            # If the range isn't there, we don't support it.
+            # Print out to debug log so we don't silently fail at least
+            printLog(device, 'Unable to display %s range' % rangeType)
+            logging.debug('GPU[%s]\t: %s range not supported; file is empty/absent', parseDeviceName(device), rangeType)
+            continue
+        printLog(device, 'Valid %s range: %s - %s' % (rangeType, minRange, maxRange))
+
+
+def showVoltageCurve(deviceList):
+    """ Show the voltage curve points for the specified devices
+
+    Parameters:
+    deviceList -- List of DRM devices (can be a single-item list)
+    """
+    for device in deviceList:
+        curve = getVoltageCurve(device)
+        if curve[0][0] is None:
+            printLog(device, 'Unable to get voltage curve')
+            logging.debug('GPU[%s]\t: Voltage Curve is not supported; file is empty/absent' % parseDeviceName(device))
+            continue
+        for pt in curve.keys():
+            printLog(device, 'Voltage point %d: %s %s' % (pt, curve[pt][0], curve[pt][1]))
+
+
 def setPerformanceLevel(deviceList, level):
     """ Set the Performance Level for a list of devices.
 
@@ -2005,6 +2120,109 @@ def setFanSpeed(deviceList, fan):
             printErr(device, 'Unable to set fan speed to Level ' + str(fan))
 
 
+def setVoltageCurve(deviceList, point, clk, volt, autoRespond):
+    """ Set voltage curve for a point in the PowerPlay table for a list of devices.
+
+    Parameters:
+    deviceList -- List of DRM devices (can be a single-item list)
+    point -- Point on the voltage curve to modify
+    clk -- Clock speed specified for this curve point
+    volt -- Voltage specified for this curve point
+    autoRespond -- Response to automatically provide for all prompts
+    """
+    global RETCODE
+    value = '%s %s %s' % (point, clk, volt)
+    try:
+        any(int(item) for item in value.split())
+    except ValueError:
+        printLogNoDev('Unable to set Voltage curve')
+        logging.error('Non-integer characters are present in %s', value)
+        RETCODE = 1
+        return
+    value = 'vc %s' % value
+    confirmOutOfSpecWarning(autoRespond)
+    for device in deviceList:
+        if not isDPMAvailable(device):
+            printErr(device, 'Unable to set voltage curve')
+            RETCODE = 1
+            continue
+        clkFile = getFilePath(device, 'clk_voltage')
+
+        voltInfo = getSysfsValue(device, 'clk_voltage')
+        # Get the max point out of the square braces from the last line
+        maxPoint = voltInfo.splitlines()[-1].split('[', 1)[1].split(']')[0]
+        minVolt = getRange(device)['voltage'][0]
+        maxVolt = getRange(device)['voltage'][1]
+        if maxPoint is None:
+            printErr(device, 'Unable to set voltage curve')
+            logging.warning('GPU[%s]\t: Unable to get maximum voltage point', parseDeviceName(device))
+            RETCODE = 1
+            continue
+        if int(point) > maxPoint:
+            printErr(device, 'Unable to set voltage point')
+            logging.error('GPU[%s]\t: %s is greater than maximum point %s ', parseDeviceName(device), levelList[0], maxPoint)
+            RETCODE = 1
+            continue
+        if int(volt) < int(minVolt.split('m')[0]) or int(volt) > int(maxVolt.split('m')[0]):
+            printErr(device, 'Unable to set voltage point')
+            logging.error('GPU[%s]\t: %s is not in the voltage range %s-%s', parseDeviceName(device), volt, minVolt, maxVolt)
+            RETCODE = 1
+            continue
+        setPerfLevel(device, 'manual')
+        if writeToSysfs(clkFile, value) and writeToSysfs(clkFile, 'c'):
+            printLog(device, 'Successfully set voltage point %s to %s(MHz) %s(mV)' % (point, clk, volt))
+        else:
+            printErr(device, 'Unable to set voltage point %s to %s(MHz) %s(mV)' % (point, clk, volt))
+            RETCODE = 1
+
+
+def setClockRange(deviceList, clktype, level, value, autoRespond):
+    """ Set the range for the specified clktype in the PowerPlay table for a list of devices.
+
+    Parameters:
+    deviceList -- List of DRM devices (can be a single-item list)
+    clktype -- [sclk|mclk] Which clock type to apply the range to
+    level -- [0|1] Whether to set the minimum (0) or maximum (1) speed
+    value -- Value to apply to the clock range
+    autoRespond -- Response to automatically provide for all prompts
+    """
+    global RETCODE
+    if int(level) not in {0, 1}:
+        printErr('Unable to set range, only 0 (minimum) or 1 (maximum) are acceptable values')
+        logging.debug('Value %s is not supported' % level)
+    try:
+        int(value)
+    except ValueError:
+        printLogNoDev('Unable to set clock range')
+        logging.error('Non-integer characters are present in %s', value)
+        RETCODE = 1
+        return
+    if clkType is 'sclk':
+        sysvalue = 's %s %s' % (level, value)
+    elif clkType is 'mclk':
+        sysvalue = 'm %s %s' % (level, value)
+    else:
+        printLogNoDev('Invalid clock type %s' % clkType)
+        RETCODE = 1
+        return
+    confirmOutOfSpecWarning(autoRespond)
+    for device in deviceList:
+        clkFile = getFilePath(device, 'clk_voltage')
+        minClk = getRange(device)['sclk'][0]
+        maxClk = getRange(device)['sclk'][1]
+        if int(value) < int(minClk.split('M')[0]) or int(value) > int(maxClk.split('M')[0]):
+            printErr(device, 'Unable to set clock range')
+            logging.error('GPU[%s]\t: %s is not in the clock range %s-%s', parseDeviceName(device), value, minClk, maxClk)
+            RETCODE = 1
+            continue
+        setPerfLevel(device, 'manual')
+        if writeToSysfs(clkFile, sysvalue) and writeToSysfs(clkFile, 'c'):
+            printLog(device, 'Successfully set level %s to %s(MHz))' % (level, value))
+        else:
+            printErr(device, 'Unable to set level %s to %s(MHz))' % (level, value))
+            RETCODE = 1
+
+
 def setProfile(deviceList, profile):
     """ Set Power Profile, or set CUSTOM Power Profile values for a list of devices.
 
@@ -2280,6 +2498,10 @@ if __name__ == '__main__':
     groupDisplay.add_argument('--showpagesinfo', help='Show retired, pending and unreservable pages', action='store_true')
     groupDisplay.add_argument('--showretiredpages', help='Show retired pages', action='store_true')
     groupDisplay.add_argument('--showpendingpages', help='Show pending retired pages', action='store_true')
+    groupDisplay.add_argument('--showvoltagerange', help='Show voltage range', action='store_true')
+    groupDisplay.add_argument('--showvc', help='Show voltage curve', action='store_true')
+    groupDisplay.add_argument('--showsclkrange', help='Show sclk range', action='store_true')
+    groupDisplay.add_argument('--showmclkrange', help='Show mclk range', action='store_true')
     groupDisplay.add_argument('--showunreservablepages', help='Show unreservable pages', action='store_true')
     groupDisplay.add_argument('--alldevices', help='Execute command on non-AMD devices as well as AMD devices', action='store_true')
 
@@ -2289,6 +2511,9 @@ if __name__ == '__main__':
     groupAction.add_argument('--setpcie', help='Set PCIE Clock Frequency Level(s) (requires manual Perf level)', type=int, metavar='LEVEL', nargs='+')
     groupAction.add_argument('--setslevel', help='Change GPU Clock frequency (MHz) and Voltage (mV) for a specific Level', metavar=('SCLKLEVEL', 'SCLK', 'SVOLT'), nargs=3)
     groupAction.add_argument('--setmlevel', help='Change GPU Memory clock frequency (MHz) and Voltage for (mV) a specific Level', metavar=('MCLKLEVEL', 'MCLK', 'MVOLT'), nargs=3)
+    groupAction.add_argument('--setvc', help='Change SCLK Voltage Curve (MHz mV) for a specific point', metavar=('POINT', 'SCLK', 'SVOLT'), nargs=3)
+    groupAction.add_argument('--setsrange', help='Set min(0) or max(1) SCLK speed', metavar=('MINMAX', 'SCLK'), nargs=2)
+    groupAction.add_argument('--setmrange', help='Set min(0) or max(1) MCLK speed', metavar=('MINMAX', 'SCLK'), nargs=2)
     groupAction.add_argument('--resetfans', help='Reset fans to automatic (driver) control', action='store_true')
     groupAction.add_argument('--setfan', help='Set GPU Fan Speed (Level or %%)', metavar='LEVEL')
     groupAction.add_argument('--setperflevel', help='Set Performance Level', metavar='LEVEL')
@@ -2358,6 +2583,7 @@ if __name__ == '__main__':
         args.showmaxpower = True
         args.showpower = True
         args.showvoltage = True
+        args.showvc = True
         args.showdriverversion = True
         args.showreplaycount = True
         args.showuniqueid = True
@@ -2372,8 +2598,8 @@ if __name__ == '__main__':
     if args.setsclk or args.setmclk or args.setpcie or args.resetfans or args.setfan or args.setperflevel or \
        args.load or args.resetclocks or args.setprofile or args.resetprofile or args.setoverdrive or \
        args.setmemoverdrive or args.setpoweroverdrive or args.resetpoweroverdrive or \
-       args.rasenable or args.rasdisable or args.rasinject or \
-       args.setslevel or args.setmlevel or args.gpureset:
+       args.rasenable or args.rasdisable or args.rasinject or args.gpureset or \
+       args.setslevel or args.setmlevel or args.setvc or args.setsrange or args.setmrange:
         relaunchAsSudo()
 
     if not args.json:
@@ -2501,6 +2727,14 @@ if __name__ == '__main__':
         showRetiredPages(deviceList, 'pending')
     if args.showunreservablepages:
         showRetiredPages(deviceList, 'unreservable')
+    if args.showsclkrange:
+        showRange(deviceList, 'sclk')
+    if args.showmclkrange:
+        showRange(deviceList, 'mclk')
+    if args.showvoltagerange:
+        showRange(deviceList, 'voltage')
+    if args.showvc:
+        showVoltageCurve(deviceList)
     if args.setsclk:
         setClocks(deviceList, 'sclk', args.setsclk)
     if args.setmclk:
@@ -2527,6 +2761,12 @@ if __name__ == '__main__':
         resetPowerOverDrive(deviceList, args.autorespond)
     if args.setprofile:
         setProfile(deviceList, args.setprofile)
+    if args.setvc:
+        setVoltageCurve(deviceList, args.setvc[0], args.setvc[1], args.setvc[2], args.autorespond)
+    if args.setsrange:
+        setClockRange(deviceList, 'sclk', args.setsrange[0], args.setsrange[1], args.autorespond)
+    if args.setmrange:
+        setClockRange(deviceList, 'mclk', args.setmrange[0], args.setmrange[1], args.autorespond)
     if args.resetprofile:
         resetProfile(deviceList)
     if args.resetxgmierr:

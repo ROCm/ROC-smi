@@ -31,21 +31,23 @@ For detailed and up to date usage information, we recommend consulting the help:
 /opt/rocm/bin/rocm-smi -h
 ```
 
-For convenience purposes, following is a quick excerpt:
+For convenience purposes, following is the output from the -h flag:
 ```shell
 usage: rocm-smi [-h] [-d DEVICE [DEVICE ...]] [-i] [-v] [--showhw] [-t] [-c] [-g] [-f] [-p] [-P] [-o] [-m] [-M] [-l]
                 [-s] [-u] [--showmemuse] [-b] [--showreplaycount] [-S] [--showvoltage] [--showrasinfo BLOCK [BLOCK ...]]
                 [--showfwinfo [BLOCK [BLOCK ...]]] [--showproductname] [-a] [--showmeminfo TYPE [TYPE ...]]
                 [--showdriverversion] [--showuniqueid] [--showserial] [--showpids] [--showxgmierr] [--showpagesinfo]
-                [--showretiredpages] [--showpendingpages] [--showunreservablepages] [--alldevices] [-r]
-                [--setsclk LEVEL [LEVEL ...]] [--setmclk LEVEL [LEVEL ...]] [--setpcie LEVEL [LEVEL ...]]
-                [--setslevel SCLKLEVEL SCLK SVOLT] [--setmlevel MCLKLEVEL MCLK MVOLT] [--resetfans] [--setfan LEVEL]
-                [--setperflevel LEVEL] [--setoverdrive %] [--setmemoverdrive %] [--setpoweroverdrive WATTS]
-                [--resetpoweroverdrive] [--setprofile SETPROFILE] [--resetprofile] [--rasenable BLOCK ERRTYPE]
-                [--rasdisable BLOCK ERRTYPE] [--rasinject BLOCK] [--gpureset] [--resetxgmierr]
-                [--load FILE | --save FILE] [--autorespond RESPONSE] [--loglevel ILEVEL] [--json]
+                [--showretiredpages] [--showpendingpages] [--showvoltagerange] [--showvc] [--showsclkrange]
+                [--showmclkrange] [--showunreservablepages] [--alldevices] [-r] [--setsclk LEVEL [LEVEL ...]]
+                [--setmclk LEVEL [LEVEL ...]] [--setpcie LEVEL [LEVEL ...]] [--setslevel SCLKLEVEL SCLK SVOLT]
+                [--setmlevel MCLKLEVEL MCLK MVOLT] [--setvc POINT SCLK SVOLT] [--setsrange MINMAX SCLK]
+                [--setmrange MINMAX SCLK] [--resetfans] [--setfan LEVEL] [--setperflevel LEVEL] [--setoverdrive %]
+                [--setmemoverdrive %] [--setpoweroverdrive WATTS] [--resetpoweroverdrive] [--setprofile SETPROFILE]
+                [--resetprofile] [--rasenable BLOCK ERRTYPE] [--rasdisable BLOCK ERRTYPE] [--rasinject BLOCK]
+                [--gpureset] [--resetxgmierr] [--load FILE | --save FILE] [--autorespond RESPONSE] [--loglevel ILEVEL]
+                [--json]
 
-AMD ROCm System Management Interface | ROCM-SMI version: 1.2.0 | Kernel version:
+AMD ROCm System Management Interface | ROCM-SMI version: 1.3.0 | Kernel version:
 
 optional arguments:
   -h, --help                                            show this help message and exit
@@ -88,6 +90,10 @@ optional arguments:
   --showpagesinfo                                       Show retired, pending and unreservable pages
   --showretiredpages                                    Show retired pages
   --showpendingpages                                    Show pending retired pages
+  --showvoltagerange                                    Show voltage range
+  --showvc                                              Show voltage curve
+  --showsclkrange                                       Show sclk range
+  --showmclkrange                                       Show mclk range
   --showunreservablepages                               Show unreservable pages
   --alldevices                                          Execute command on non-AMD devices as well as AMD devices
   --resetxgmierr                                        Reset XGMI error count
@@ -101,6 +107,9 @@ optional arguments:
                                                         Level
   --setmlevel MCLKLEVEL MCLK MVOLT                      Change GPU Memory clock frequency (MHz) and Voltage for (mV) a
                                                         specific Level
+  --setvc POINT SCLK SVOLT                              Change SCLK Voltage Curve (MHz mV) for a specific point
+  --setsrange MINMAX SCLK                               Set min(0) or max(1) SCLK speed
+  --setmrange MINMAX SCLK                               Set min(0) or max(1) MCLK speed
   --resetfans                                           Reset fans to automatic (driver) control
   --setfan LEVEL                                        Set GPU Fan Speed (Level or %)
   --setperflevel LEVEL                                  Set Performance Level
