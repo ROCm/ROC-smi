@@ -2378,7 +2378,7 @@ if __name__ == '__main__':
 
     if not args.json:
         # Header for the SMI
-        printLogNoDev('\n\n %s%s%s' %(headerSpacer, headerString, headerSpacer))
+        printLogNoDev('\n\n%s%s%s' %(headerSpacer, headerString, headerSpacer))
 
     # If all fields are requested, only print it for devices with DPM support. There is no point
     # in printing a bunch of "Feature unavailable" messages and cluttering the output
