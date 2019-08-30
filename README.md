@@ -321,6 +321,11 @@ amount of used memory in terms of current allocations
 
 ### OverDrive settings ####
 
+Enabling OverDrive requires both a card that support OverDrive and a driver parameter that enables its use.
+Because OverDrive features can damage your card, most workstation and server GPUs cannot use OverDrive.
+Consumer GPUs that can use OverDrive must enable this feature by setting bit 14 in the amdgpu driver's
+ppfeaturemask module parameter
+
 For OverDrive functionality, the OverDrive bit (bit 14) must be enabled (by default, the
 OverDrive bit is disabled on the ROCK and upstream kernels). This can be done by setting
 amdgpu.ppfeaturemask accordingly in the kernel parameters, or by changing the default value
@@ -328,6 +333,21 @@ inside amdgpu_drv.c (if building your own kernel).
 
 As an example, if the ppfeaturemask is set to 0xffffbfff (11111111111111111011111111111111),
 then enabling the OverDrive bit would make it 0xffffffff (11111111111111111111111111111111).
+
+These are the flags that require OverDrive functionality to be enabled for the flag to work:
+--showclkvolt
+--showvoltagerange
+--showvc
+--showsclkrange
+--showmclkrange
+--setslevel
+--setmlevel
+--setoverdrive
+--setpoweroverdrive
+--resetpoweroverdrive
+--setvc
+--setsrange
+--setmrange
 
 #### Testing changes
 
