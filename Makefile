@@ -1,6 +1,10 @@
 # Our directory
 SMI_ROOT ?= $(abspath ./)
 
+ifndef ROCM_INSTALL_PATH
+    ROCM_INSTALL_PATH=/opt/rocm
+endif
+
 ifdef O
   BUILD_ROOT := $(O)
 else
@@ -10,7 +14,7 @@ BUILD_ROOT := $(abspath $(BUILD_ROOT))
 BUILDDIR = $(BUILD_ROOT)/$(MAKECMDGOALS)
 PACKAGE_DIR = $(BUILD_ROOT)/rocm-smi
 DEBIAN_DIR = $(SMI_ROOT)/DEBIAN
-SMI_LOCATION = $(PACKAGE_DIR)/opt/rocm/bin
+SMI_LOCATION = $(PACKAGE_DIR)/${ROCM_INSTALL_PATH}/bin
 MODULE_VERSION = $(shell cd ${SMI_ROOT} && git describe --long --dirty --match [0-9]*)
 
 ifdef ROCM_BUILD_ID

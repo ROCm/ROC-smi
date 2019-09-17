@@ -2,6 +2,10 @@
 %define packageroot $RPM_BUILD_ROOT
 %define smiroot     $SMI_ROOT
 %define version     %(echo $MODULE_VERSION | sed "s/-/_/g")
+%define _installpath %{lua:print(os.getenv("ROCM_INSTALL_PATH"))}
+%if %{?_installpath:0}
+%define _installpath /opt/rocm
+%endif
 
 Name:       %{name}
 Version:    %{version}
@@ -18,14 +22,14 @@ This package includes the System Management Interface for the ROC Platform
 %setup -T -D -c -n %{name}
 
 %install
-mkdir -p %{packageroot}/opt/rocm/bin
-cp -R %{smiroot}/rocm_smi.py %{packageroot}/opt/rocm/bin
-ln -srf %{packageroot}/opt/rocm/bin/rocm_smi.py %{packageroot}/opt/rocm/bin/rocm-smi
+mkdir -p %{packageroot}%{_installpath}/bin
+cp -R %{smiroot}/rocm_smi.py %{packageroot}%{_installpath}/bin
+ln -srf %{packageroot}%{_installpath}/bin/rocm_smi.py %{packageroot}%{_installpath}/bin/rocm-smi
 
 %clean
 rm -rf %{packageroot}
 
 %files
-/opt/rocm/bin/rocm-smi
-/opt/rocm/bin/rocm_smi.py
+%{_installpath}/bin/rocm-smi
+%{_installpath}/bin/rocm_smi.py
 %defattr(-,root,root,-)
