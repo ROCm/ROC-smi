@@ -13,6 +13,15 @@ DEBIAN_DIR = $(SMI_ROOT)/DEBIAN
 SMI_LOCATION = $(PACKAGE_DIR)/opt/rocm/bin
 MODULE_VERSION = $(shell cd ${SMI_ROOT} && git describe --long --dirty --match [0-9]*)
 
+ifdef ROCM_BUILD_ID
+  MAJ = $(shell echo ${MODULE_VERSION} | cut -d. -f 1)
+  MIN = $(shell echo ${MODULE_VERSION} | cut -d. -f 2)
+  PAT = $(shell echo ${MODULE_VERSION} | cut -d. -f 3 | cut -d- -f 1)
+  REV = $(shell echo ${MODULE_VERSION} | cut -d. -f 3 | cut -d- -f 2)
+  HASH = $(shell echo ${MODULE_VERSION} | cut -d- -f 3)
+  MODULE_VERSION := ${MAJ}.${MIN}.${PAT}-${REV}-${ROCM_BUILD_ID}-${HASH}
+endif
+
 export SMI_ROOT
 export MODULE_VERSION
 
