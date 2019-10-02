@@ -145,6 +145,7 @@ valuePaths = {
     'vram_total' : {'prefix' : drmprefix, 'filepath' : 'mem_info_vram_total', 'needsparse' : False},
     'vis_vram_used' : {'prefix' : drmprefix, 'filepath' : 'mem_info_vis_vram_used', 'needsparse' : False},
     'vis_vram_total' : {'prefix' : drmprefix, 'filepath' : 'mem_info_vis_vram_total', 'needsparse' : False},
+    'vram_vendor' : {'prefix' : drmprefix, 'filepath' : 'mem_info_vram_vendor', 'needsparse' : False},
     'gtt_used' : {'prefix' : drmprefix, 'filepath' : 'mem_info_gtt_used', 'needsparse' : False},
     'gtt_total' : {'prefix' : drmprefix, 'filepath' : 'mem_info_gtt_total', 'needsparse' : False},
     'ras_gfx' : {'prefix' : drmprefix, 'filepath' : 'ras/gfx_err_count', 'needsparse' : False},
@@ -1242,6 +1243,23 @@ def showMemUse(deviceList):
             logging.debug('GPU[%s]\t: GPU memory usage not supported (file is empty)', parseDeviceName(device))
         else:
             printLog(device, 'GPU memory use (%%): %s' % memoryUse)
+    printLogSpacer()
+
+
+def showMemVendor(deviceList):
+    """ Display GPU memory vendor for a list of devices.
+
+    Parameters:
+    deviceList -- List of DRM devices (can be a single-item list)
+    """
+    printLogSpacer()
+    for device in deviceList:
+        memoryVendor = getSysfsValue(device, 'vram_vendor')
+        if memoryVendor == None:
+            printErr(device, 'Unable to get GPU memory vendor.')
+            logging.debug('GPU[%s]\t: GPU memory vendor not supported (file is empty)', parseDeviceName(device))
+        else:
+            printLog(device, 'GPU memory vendor: %s' % memoryVendor)
     printLogSpacer()
 
 
@@ -2481,6 +2499,7 @@ if __name__ == '__main__':
     groupDisplay.add_argument('-s', '--showclkfrq', help='Show supported GPU and Memory Clock', action='store_true')
     groupDisplay.add_argument('-u', '--showuse', help='Show current GPU use', action='store_true')
     groupDisplay.add_argument('--showmemuse', help='Show current GPU memory used', action='store_true')
+    groupDisplay.add_argument('--showmemvendor', help='Show GPU memory vendor', action='store_true')
     groupDisplay.add_argument('-b', '--showbw', help='Show estimated PCIe use', action='store_true')
     groupDisplay.add_argument('--showreplaycount', help='Show PCIe Replay Count', action='store_true')
     groupDisplay.add_argument('-S', '--showclkvolt', help='Show supported GPU and Memory Clocks and Voltages', action='store_true')
@@ -2577,6 +2596,7 @@ if __name__ == '__main__':
         args.list = True
         args.showuse = True
         args.showmemuse = True
+        args.showmemvendor = True
         args.showperflevel = True
         args.showoverdrive = True
         args.showmemoverdrive = True
@@ -2688,6 +2708,8 @@ if __name__ == '__main__':
         showGpuUse(deviceList)
     if args.showmemuse:
         showMemUse(deviceList)
+    if args.showmemvendor:
+        showMemVendor(deviceList)
     if args.showbw:
         showPcieBw(deviceList)
     if args.showreplaycount:

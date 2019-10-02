@@ -34,18 +34,18 @@ For detailed and up to date usage information, we recommend consulting the help:
 For convenience purposes, following is the output from the -h flag:
 ```shell
 usage: rocm-smi [-h] [-d DEVICE [DEVICE ...]] [-i] [-v] [--showhw] [-t] [-c] [-g] [-f] [-p] [-P] [-o] [-m] [-M] [-l]
-                [-s] [-u] [--showmemuse] [-b] [--showreplaycount] [-S] [--showvoltage] [--showrasinfo BLOCK [BLOCK ...]]
-                [--showfwinfo [BLOCK [BLOCK ...]]] [--showproductname] [-a] [--showmeminfo TYPE [TYPE ...]]
-                [--showdriverversion] [--showuniqueid] [--showserial] [--showpids] [--showxgmierr] [--showpagesinfo]
-                [--showretiredpages] [--showpendingpages] [--showvoltagerange] [--showvc] [--showsclkrange]
-                [--showmclkrange] [--showunreservablepages] [--alldevices] [-r] [--setsclk LEVEL [LEVEL ...]]
-                [--setmclk LEVEL [LEVEL ...]] [--setpcie LEVEL [LEVEL ...]] [--setslevel SCLKLEVEL SCLK SVOLT]
-                [--setmlevel MCLKLEVEL MCLK MVOLT] [--setvc POINT SCLK SVOLT] [--setsrange MINMAX SCLK]
-                [--setmrange MINMAX SCLK] [--resetfans] [--setfan LEVEL] [--setperflevel LEVEL] [--setoverdrive %]
-                [--setmemoverdrive %] [--setpoweroverdrive WATTS] [--resetpoweroverdrive] [--setprofile SETPROFILE]
-                [--resetprofile] [--rasenable BLOCK ERRTYPE] [--rasdisable BLOCK ERRTYPE] [--rasinject BLOCK]
-                [--gpureset] [--resetxgmierr] [--load FILE | --save FILE] [--autorespond RESPONSE] [--loglevel ILEVEL]
-                [--json]
+                [-s] [-u] [--showmemuse] [--showmemvendor] [-b] [--showreplaycount] [-S] [--showvoltage]
+                [--showrasinfo BLOCK [BLOCK ...]] [--showfwinfo [BLOCK [BLOCK ...]]] [--showproductname] [-a]
+                [--showmeminfo TYPE [TYPE ...]] [--showdriverversion] [--showuniqueid] [--showserial] [--showpids]
+                [--showxgmierr] [--showpagesinfo] [--showretiredpages] [--showpendingpages] [--showvoltagerange]
+                [--showvc] [--showsclkrange] [--showmclkrange] [--showunreservablepages] [--alldevices] [-r]
+                [--setsclk LEVEL [LEVEL ...]] [--setmclk LEVEL [LEVEL ...]] [--setpcie LEVEL [LEVEL ...]]
+                [--setslevel SCLKLEVEL SCLK SVOLT] [--setmlevel MCLKLEVEL MCLK MVOLT] [--setvc POINT SCLK SVOLT]
+                [--setsrange MINMAX SCLK] [--setmrange MINMAX SCLK] [--resetfans] [--setfan LEVEL]
+                [--setperflevel LEVEL] [--setoverdrive %] [--setmemoverdrive %] [--setpoweroverdrive WATTS]
+                [--resetpoweroverdrive] [--setprofile SETPROFILE] [--resetprofile] [--rasenable BLOCK ERRTYPE]
+                [--rasdisable BLOCK ERRTYPE] [--rasinject BLOCK] [--gpureset] [--resetxgmierr]
+                [--load FILE | --save FILE] [--autorespond RESPONSE] [--loglevel ILEVEL] [--json]
 
 AMD ROCm System Management Interface | ROCM-SMI version: 1.3.0 | Kernel version:
 
@@ -72,6 +72,7 @@ optional arguments:
   -s, --showclkfrq                                      Show supported GPU and Memory Clock
   -u, --showuse                                         Show current GPU use
   --showmemuse                                          Show current GPU memory used
+  --showmemvendor                                       Show GPU memory vendor
   -b, --showbw                                          Show estimated PCIe use
   --showreplaycount                                     Show PCIe Replay Count
   -S, --showclkvolt                                     Show supported GPU and Memory Clocks and Voltages
