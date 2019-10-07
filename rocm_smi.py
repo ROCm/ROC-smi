@@ -2646,6 +2646,8 @@ if __name__ == '__main__':
             print("ERROR: Cannot print JSON output for --showhw")
             sys.exit(1)
         showAllConciseHw(deviceList)
+    if args.showdriverversion:
+        showVersion(deviceList, 'driver')
     if args.showid:
         showId(deviceList)
     if args.showvbios:
@@ -2666,8 +2668,6 @@ if __name__ == '__main__':
         showOverDrive(deviceList, 'sclk')
     if args.showmemoverdrive:
         showOverDrive(deviceList, 'mclk')
-    if args.showdriverversion:
-        showVersion(deviceList, 'driver')
     if args.showmaxpower:
         showMaxPower(deviceList)
     if args.showprofile:
