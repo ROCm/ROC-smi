@@ -1635,6 +1635,7 @@ def showProductName(deviceList):
     deviceList -- List of DRM devices (can be a single-item list)
     """
     printLogSpacer()
+    global PRINT_JSON
     fileString = ''
     pciLines = ''
     pciFilePath = '/usr/share/misc/pci.ids'
@@ -1683,10 +1684,16 @@ def showProductName(deviceList):
                         variants = re.split(r'\n\t[a-z0-9]',\
                                             pciLines.split('\n\t%s' % device_id)[1])[0]
                         series = variants.split('\n', 1)[0].strip()
-                        printLog(device, 'Card series:\t\t%s' % series)
+                        if PRINT_JSON is True:
+                            printLog(device, 'Card series: %s' %series)
+                        else:
+                            printLog(device, 'Card series:\t\t%s' % series)
                         if variants.find('%s %s' % (sub_vendor, sub_id)) != -1:
                             model = variants.split(sub_id, 1)[1].split('\n', 1)[0].strip()
-                            printLog(device, 'Card model:\t\t%s' % model)
+                            if PRINT_JSON is True:
+                                printLog(device, 'Card model %s' % model)
+                            else:
+                                printLog(device, 'Card model:\t\t%s' % model)
                         else:
                             logging.debug('Subsystem device information not found. \
                                           Run update-pciids and try again')
@@ -1697,12 +1704,18 @@ def showProductName(deviceList):
                     if fileString.find('\n' + sub_vendor + '  ') != -1:
                         vendorName = re.split(r'\n\t[a-z0-9]', \
                                               fileString.split('\n%s' % sub_vendor)[1])[0].strip()
-                        printLog(device, 'Card vendor:\t\t%s' % vendorName)
+                        if PRINT_JSON is True:
+                            printLog(device, 'Card vendor: %s' % vendorName)
+                        else:
+                            printLog(device, 'Card vendor:\t\t%s' % vendorName)
                     else:
                         printErr(device, 'Unable to find device vendor in PCI IDs file')
                 # sku is just 6 characters after the first occurance of '-' in vbios_version
                 sku = vbios.split('-')[1][:6]
-                printLog(device, 'Card SKU:\t\t%s' % sku)
+                if PRINT_JSON is True:
+                    printLog(device, 'Card SKU: %s' % sku)
+                else:
+                    printLog(device, 'Card SKU:\t\t%s' % sku)
             else:
                 printErr(device, 'PCI device is not an AMD device (%s instead of 1002)' % vendor)
         else:
