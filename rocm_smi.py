@@ -2189,7 +2189,7 @@ def setVoltageCurve(deviceList, point, clk, volt, autoRespond):
             logging.warning('GPU[%s]\t: Unable to get maximum voltage point', parseDeviceName(device))
             RETCODE = 1
             continue
-        if int(point) > maxPoint:
+        if int(point) > int(maxPoint):
             printErr(device, 'Unable to set voltage point')
             logging.error('GPU[%s]\t: %s is greater than maximum point %s ', parseDeviceName(device), levelList[0], maxPoint)
             RETCODE = 1
