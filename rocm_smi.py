@@ -2623,6 +2623,7 @@ if __name__ == '__main__':
         args.showserial = True
         args.showpids = True
         args.showpagesinfo = True
+        args.showproductname = True
         if not PRINT_JSON:
             args.showprofile = True
             args.showclkfrq = True
