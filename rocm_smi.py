@@ -355,6 +355,21 @@ def printLog(device, log):
         logging.debug(logstr)
         print(logstr)
 
+def printSysLog (log):
+    """ Print out to the SMI log for repeated features
+    Parameters:
+    log -- String to print to the log
+    """
+    global PRINT_JSON
+    global JSON_DATA
+    if PRINT_JSON is True:
+        if "system" not in JSON_DATA:
+            JSON_DATA["system"] = {}
+        formatJson("system",log)
+        return
+    print(log)
+
+
 
 def printLogSpacer():
     """ A helper function to print out the log spacer
@@ -1402,7 +1417,7 @@ def showVersion(deviceList, component):
         return
     if component is 'driver':
         driver = getVersion(deviceList, component)
-        printLogNoDev('%s version: %s' % (component.capitalize(), driver))
+        printSysLog('%s version: %s' % (component.capitalize(), driver))
 
 
 def showXgmiErr(deviceList):
@@ -1728,6 +1743,7 @@ def showPids():
     """Show PIDs created in a KFD (Compute) context
     """
 
+    global PRINT_JSON
     pidPath = os.path.join(kfdprefix, 'proc')
     pidsStr = ''
     maxPidLen = 8
@@ -1753,6 +1769,8 @@ def showPids():
         pidsStr += '\n'
         pidsStr += ' '.join(pids[pidsPerLine * x:(pidsPerLine * x) + pidsPerLine])
     printLogNoDev('PIDs for KFD processes:%s' % pidsStr)
+    if PRINT_JSON:
+        printSysLog ('PIDs for KFD processes: %s' % (', '.join(pids)))
 
 
 def showRetiredPages(deviceList, retiredType='all'):
