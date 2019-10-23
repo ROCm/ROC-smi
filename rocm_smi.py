@@ -664,8 +664,7 @@ def listDevices(showall):
     """
 
     devicelist = [device for device in os.listdir(drmprefix) if re.match(r'^card\d+$', device) and (isAmdDevice(device) or showall)]
-    devicelist.sort()
-    return devicelist
+    return sorted(devicelist, key=lambda x: int(x.partition('card')[2]))
 
 
 def listAmdHwMons():
