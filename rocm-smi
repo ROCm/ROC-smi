@@ -1,1 +1,7 @@
-./rocm_smi.py
+#!/bin/sh -e
+
+if which python3 >/dev/null; then
+  exec python3 $(dirname $0)/rocm_smi.py
+else
+  exec python2 $(dirname $0)/rocm_smi.py
+fi
