@@ -663,6 +663,10 @@ def listDevices(showall):
     showall -- [True|False] Show all devices, not just AMD devices
     """
 
+    if not os.path.isdir(drmprefix) or not os.listdir(drmprefix):
+        printLogNoDev('Unable to get devices, /sys/class/drm is empty or missing')
+        return None
+
     devicelist = [device for device in os.listdir(drmprefix) if re.match(r'^card\d+$', device) and (isAmdDevice(device) or showall)]
     return sorted(devicelist, key=lambda x: int(x.partition('card')[2]))
 
@@ -2615,6 +2619,10 @@ if __name__ == '__main__':
                 printLogNoDev('No supported devices available to display')
     else:
         deviceList = listDevices(args.alldevices)
+
+    if deviceList is None:
+        print('ERROR: No DRM devices available. Exiting')
+        sys.exit(1)
 
     # If we want JSON output, initialize the keys (devices)
     if args.json:
