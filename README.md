@@ -145,7 +145,7 @@ Auto-response options:
                                                         RECOMMENDED)
 
 Output options:
-  --loglevel ILEVEL                                     How much output will be printed for what program is doing, one
+  --loglevel LEVEL                                      How much output will be printed for what program is doing, one
                                                         of debug/info/warning/error/critical
   --json                                                Print output in JSON format
 ```

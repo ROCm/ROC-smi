@@ -2589,7 +2589,7 @@ if __name__ == '__main__':
 
     groupResponse.add_argument('--autorespond', help='Response to automatically provide for all prompts (NOT RECOMMENDED)', metavar='RESPONSE')
 
-    groupActionOutput.add_argument('--loglevel', help='How much output will be printed for what program is doing, one of debug/info/warning/error/critical', metavar='ILEVEL')
+    groupActionOutput.add_argument('--loglevel', help='How much output will be printed for what program is doing, one of debug/info/warning/error/critical', metavar='LEVEL')
     groupActionOutput.add_argument('--json', help='Print output in JSON format', action='store_true')
 
     args = parser.parse_args()
