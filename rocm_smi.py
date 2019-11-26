@@ -2623,30 +2623,32 @@ if __name__ == '__main__':
             JSON_DATA[device] = {}
 
     # Don't display XGMI Link errors for showallinfo, since it will reset
-    # the error counter
+    # the error counter.
+    # Ensure that these flags match the order of the flags defined above
+    # for easy comparisons
     if args.showallinfo:
-        args.showid = True
-        args.showtemp = True
-        args.showclocks = True
-        args.showfan = True
         args.list = True
+        args.showid = True
+        args.showdriverversion = True
+        args.showmemvendor = True
+        args.showproductname = True
+        args.showserial = True
+        args.showuniqueid = True
+        args.showpagesinfo = True
+        args.showfan = True
+        args.showpower = True
+        args.showtemp = True
         args.showuse = True
         args.showmemuse = True
-        args.showmemvendor = True
-        args.showperflevel = True
-        args.showoverdrive = True
-        args.showmemoverdrive = True
-        args.showmaxpower = True
-        args.showpower = True
         args.showvoltage = True
-        args.showvc = True
-        args.showdriverversion = True
-        args.showreplaycount = True
-        args.showuniqueid = True
-        args.showserial = True
+        args.showclocks = True
+        args.showmaxpower = True
+        args.showmemoverdrive = True
+        args.showoverdrive = True
+        args.showperflevel = True
         args.showpids = True
-        args.showpagesinfo = True
-        args.showproductname = True
+        args.showreplaycount = True
+        args.showvc = True
         if not PRINT_JSON:
             args.showprofile = True
             args.showclkfrq = True
