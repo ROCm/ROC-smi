@@ -2629,11 +2629,16 @@ if __name__ == '__main__':
     if args.showallinfo:
         args.list = True
         args.showid = True
+        args.showvbios = True
         args.showdriverversion = True
+        args.showfwinfo = True
+        args.showmclkrange = True
         args.showmemvendor = True
+        args.showsclkrange = True
         args.showproductname = True
         args.showserial = True
         args.showuniqueid = True
+        args.showvoltagerange = True
         args.showpagesinfo = True
         args.showfan = True
         args.showpower = True
@@ -2642,6 +2647,7 @@ if __name__ == '__main__':
         args.showmemuse = True
         args.showvoltage = True
         args.showclocks = True
+        args.showprofile = True
         args.showmaxpower = True
         args.showmemoverdrive = True
         args.showoverdrive = True
