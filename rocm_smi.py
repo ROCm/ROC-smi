@@ -718,7 +718,7 @@ def getCurrentClock(device, clock, clocktype):
     # Hack: In the kernel, FCLK doesn't have an * at all if DPM is disabled.
     # If there is only 1 speed (1 line total, meaning 0 levels), just print it
     if len(currClocks.splitlines()) == 1 and len(currClocks) > 1:
-        if clocktype is 'freq':
+        if clocktype == 'freq':
             if currClocks.find('DPM disabled'):
                 logging.debug('Only 1 level for clock %s; DPM is disabled for this specific clock' % clock)
             return currClocks.split(' *')[0][3:]
@@ -803,7 +803,7 @@ def getVersion(deviceList, component):
     deviceList -- List of DRM devices (can be a single-item list)
     component - Component (currently only driver)
     """
-    if component is 'driver':
+    if component == 'driver':
         # Only 1 version, so report it for GPU 0
         driver = getSysfsValue(None, 'driver')
         if driver is None:
@@ -825,10 +825,10 @@ def getRetiredPages(device, retiredType):
         return None
     for line in pages.split('\n'):
         pgType = line.split(' : ')[-1]
-        if (retiredType is 'all' or \
-           retiredType is 'retired' and pgType is 'R' or \
-           retiredType is 'pending' and pgType is 'P' or \
-           retiredType is 'unreservable' and pgType is 'F'):
+        if (retiredType == 'all' or \
+           retiredType == 'retired' and pgType == 'R' or \
+           retiredType == 'pending' and pgType == 'P' or \
+           retiredType == 'unreservable' and pgType == 'F'):
             returnPages += '\n%s' % line
     return returnPages.lstrip('\n')
 
@@ -1400,7 +1400,7 @@ def showVersion(deviceList, component):
     if component not in validVersionComponents:
         printLog(device, 'Unable to display version information for unsupported component %s' % component)
         return
-    if component is 'driver':
+    if component == 'driver':
         driver = getVersion(deviceList, component)
         printLogNoDev('%s version: %s' % (component.capitalize(), driver))
 
@@ -1780,9 +1780,9 @@ def showRetiredPages(deviceList, retiredType='all'):
                 addr = line.split(' : ')[0]
                 size = line.split(' : ')[1]
                 ptype = line.split(' : ')[2]
-                if ptype is 'R':
+                if ptype == 'R':
                     pgType = 'Retired'
-                elif ptype is 'P':
+                elif ptype == 'P':
                     pgType = 'Pending'
                 else:
                     pgType = 'Unreservable'
@@ -2228,9 +2228,9 @@ def setClockRange(deviceList, clktype, level, value, autoRespond):
         logging.error('Non-integer characters are present in %s', value)
         RETCODE = 1
         return
-    if clkType is 'sclk':
+    if clkType == 'sclk':
         sysvalue = 's %s %s' % (level, value)
-    elif clkType is 'mclk':
+    elif clkType == 'mclk':
         sysvalue = 'm %s %s' % (level, value)
     else:
         printLogNoDev('Invalid clock type %s' % clkType)
