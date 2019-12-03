@@ -2639,7 +2639,7 @@ if __name__ == '__main__':
         args.showid = True
         args.showvbios = True
         args.showdriverversion = True
-        args.showfwinfo = True
+        args.showfwinfo = 'all'
         args.showmclkrange = True
         args.showmemvendor = True
         args.showsclkrange = True
