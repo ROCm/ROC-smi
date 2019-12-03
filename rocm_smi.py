@@ -1642,6 +1642,7 @@ def showFwInfo(deviceList, fwType):
     printLogSpacer()
     for device in deviceList:
         for block in returnTypes:
+            block = block.lower()
             fwLogName = block.replace('_', ' ').upper()
             blockFile = '%s_fw_version' % block
             version = getSysfsValue(device, blockFile)
