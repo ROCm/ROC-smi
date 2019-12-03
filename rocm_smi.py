@@ -2655,7 +2655,6 @@ if __name__ == '__main__':
         args.showmemuse = True
         args.showvoltage = True
         args.showclocks = True
-        args.showprofile = True
         args.showmaxpower = True
         args.showmemoverdrive = True
         args.showoverdrive = True
