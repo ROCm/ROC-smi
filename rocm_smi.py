@@ -34,7 +34,7 @@ JSON_DATA = {}
 # Major version - Increment when backwards-compatibility breaks
 # Minor version - Increment when adding a new feature, set to 0 when major is incremented
 # Patch version - Increment when adding a fix, set to 0 when minor is incremented
-__version__ = '1.3.0'
+__version__ = '1.3.1'
 
 def relaunchAsSudo():
     """ Relaunch the SMI as sudo
@@ -1466,6 +1466,22 @@ def resetXgmiErr(deviceList):
         getSysfsValue(device, 'xgmi_err')
 
 
+def showBus(deviceList):
+    """ Display PCI Bus info
+
+    Parameters:
+    deviceList -- List of DRM devices (can be a single-item list)
+    """
+    printLogSpacer()
+    for device in deviceList:
+        bus = getBus(device)
+        if not bus:
+            printErr(device, 'Unable to display PCI bus')
+            continue
+        printLog(device, 'PCI Bus: %s' % bus)
+    printLogSpacer()
+
+
 def showAllConciseHw(deviceList):
     """ Display critical Hardware info for all devices in a concise format.
 
@@ -2537,6 +2553,7 @@ if __name__ == '__main__':
     groupDisplayTop.add_argument('--showserial', help='Show GPU\'s Serial Number', action='store_true')
     groupDisplayTop.add_argument('--showuniqueid', help='Show GPU\'s Unique ID', action='store_true')
     groupDisplayTop.add_argument('--showvoltagerange', help='Show voltage range', action='store_true')
+    groupDisplayTop.add_argument('--showbus', help='Show PCI bus number', action='store_true')
     groupDisplayPages.add_argument('--showpagesinfo', help='Show retired, pending and unreservable pages', action='store_true')
     groupDisplayPages.add_argument('--showpendingpages', help='Show pending retired pages', action='store_true')
     groupDisplayPages.add_argument('--showretiredpages', help='Show retired pages', action='store_true')
@@ -2647,6 +2664,7 @@ if __name__ == '__main__':
         args.showserial = True
         args.showuniqueid = True
         args.showvoltagerange = True
+        args.showbus = True
         args.showpagesinfo = True
         args.showfan = True
         args.showpower = True
@@ -2780,6 +2798,8 @@ if __name__ == '__main__':
         showPowerPlayTable(deviceList)
     if args.showvoltage:
         showVoltage(deviceList)
+    if args.showbus:
+        showBus(deviceList)
     if args.showmeminfo:
         showMemInfo(deviceList, args.showmeminfo)
     if args.showrasinfo:

@@ -35,7 +35,7 @@ For convenience purposes, following is the output from the -h flag:
 ```shell
 usage: rocm-smi [-h] [-d DEVICE [DEVICE ...]] [--alldevices] [--showhw] [-a] [-i] [-v] [--showdriverversion]
                 [--showfwinfo [BLOCK [BLOCK ...]]] [--showmclkrange] [--showmemvendor] [--showsclkrange]
-                [--showproductname] [--showserial] [--showuniqueid] [--showvoltagerange] [--showpagesinfo]
+                [--showproductname] [--showserial] [--showuniqueid] [--showvoltagerange] [--showbus] [--showpagesinfo]
                 [--showpendingpages] [--showretiredpages] [--showunreservablepages] [-f] [-P] [-t] [-u] [--showmemuse]
                 [--showvoltage] [-b] [-c] [-g] [-l] [-M] [-m] [-o] [-p] [-S] [-s] [--showmeminfo TYPE [TYPE ...]]
                 [--showpids] [--showreplaycount] [--showrasinfo BLOCK [BLOCK ...]] [--showvc] [--showxgmierr] [-r]
@@ -45,9 +45,9 @@ usage: rocm-smi [-h] [-d DEVICE [DEVICE ...]] [--alldevices] [--showhw] [-a] [-i
                 [--setmrange MINMAX SCLK] [--setfan LEVEL] [--setperflevel LEVEL] [--setoverdrive %]
                 [--setmemoverdrive %] [--setpoweroverdrive WATTS] [--setprofile SETPROFILE] [--rasenable BLOCK ERRTYPE]
                 [--rasdisable BLOCK ERRTYPE] [--rasinject BLOCK] [--gpureset] [--load FILE | --save FILE]
-                [--autorespond RESPONSE] [--loglevel ILEVEL] [--json]
+                [--autorespond RESPONSE] [--loglevel LEVEL] [--json]
 
-AMD ROCm System Management Interface | ROCM-SMI version: 1.3.0 | Kernel version: 4.15.0-70-generic
+AMD ROCm System Management Interface | ROCM-SMI version: 1.3.1 |
 
 optional arguments:
   -h, --help                                            show this help message and exit
@@ -74,6 +74,7 @@ Topology:
   --showserial                                          Show GPU's Serial Number
   --showuniqueid                                        Show GPU's Unique ID
   --showvoltagerange                                    Show voltage range
+  --showbus                                             Show PCI bus number
 
 Pages information:
   --showpagesinfo                                       Show retired, pending and unreservable pages
