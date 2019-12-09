@@ -603,11 +603,14 @@ def writeProfileSysfs(device, value):
     value -- Value to write to the Profile sysfs file
     """
     if not verifySetProfile(device, value):
-        return
+        return False
 
     # Perf Level must be set to manual for a Power Profile to be specified
     # This is new compared to previous versions of the Power Profile
-    setPerfLevel(device, 'manual')
+    if not setPerfLevel(device, 'manual'):
+        printErr(device, 'Unable to set Performance Level, cannot set profile')
+        return False
+
     profilePath = getFilePath(device, 'profile')
     maxLevel = getMaxLevel(device, 'profile')
     if maxLevel is None:
@@ -955,7 +958,10 @@ def setPerfLevel(device, level):
         return False
     if not os.path.isfile(perfPath):
         return False
-    writeToSysfs(perfPath, level)
+    if not writeToSysfs(perfPath, level):
+        printErr(device, 'Unable to set Performance Level, exiting')
+        logging.error('Performance Level sysfs file could not be written')
+        return False
     return True
 
 
@@ -1941,7 +1947,10 @@ def setClocks(deviceList, clktype, clk):
             logging.error('GPU[%s]\t: Max clock level is %d', parseDeviceName(device), getMaxLevel(device, clktype))
             RETCODE = 1
             continue
-        setPerfLevel(device, 'manual')
+        if not setPerfLevel(device, 'manual'):
+            printErr(device, 'Unable to set Performance Level, cannot set clock levels')
+            RETCODE = 1
+            continue
         if writeToSysfs(getFilePath(device, clktype), value):
             printLog(device, 'Successfully set %s frequency mask to Level %s' % (clktype, value))
         else:
@@ -1995,7 +2004,10 @@ def setPowerPlayTableLevel(deviceList, clktype, levelList, autoRespond):
             logging.error('GPU[%s]\t: %s is greater than maximum level %s ', parseDeviceName(device), levelList[0], getMaxLevel(device, clktype))
             RETCODE = 1
             continue
-        setPerfLevel(device, 'manual')
+        if not setPerfLevel(device, 'manual'):
+            printErr(device, 'Unable to set Performance Level, cannot set clock level')
+            RETCODE = 1
+            continue
         if writeToSysfs(clkFile, value) and writeToSysfs(clkFile, 'c'):
             if clktype == 'sclk':
                 printLog(device, 'Successfully set GPU clock frequency mask to Level %s' % value)
@@ -2237,7 +2249,10 @@ def setVoltageCurve(deviceList, point, clk, volt, autoRespond):
             logging.error('GPU[%s]\t: %s is not in the voltage range %s-%s', parseDeviceName(device), volt, minVolt, maxVolt)
             RETCODE = 1
             continue
-        setPerfLevel(device, 'manual')
+        if not setPerfLevel(device, 'manual'):
+            printErr(device, 'Unable to set Performance Level, cannot set voltage point')
+            RETCODE = 1
+            continue
         if writeToSysfs(clkFile, value) and writeToSysfs(clkFile, 'c'):
             printLog(device, 'Successfully set voltage point %s to %s(MHz) %s(mV)' % (point, clk, volt))
         else:
@@ -2284,7 +2299,10 @@ def setClockRange(deviceList, clktype, level, value, autoRespond):
             logging.error('GPU[%s]\t: %s is not in the clock range %s-%s', parseDeviceName(device), value, minClk, maxClk)
             RETCODE = 1
             continue
-        setPerfLevel(device, 'manual')
+        if not setPerfLevel(device, 'manual'):
+            printErr(device, 'Unable to set Performance Level, cannot set clock range')
+            RETCODE = 1
+            continue
         if writeToSysfs(clkFile, sysvalue) and writeToSysfs(clkFile, 'c'):
             printLog(device, 'Successfully set level %s to %s(MHz))' % (level, value))
         else:
@@ -2322,7 +2340,9 @@ def resetProfile(deviceList):
             logging.debug('GPU[%s]\t: Unable to get current Power Profile', parseDeviceName(device))
             continue
         # Performance level must be set to manual for a reset of the profile to work
-        setPerfLevel(device, 'manual')
+        if not setPerfLevel(device, 'manual'):
+            printErr(device, 'Unable to set Performance Level, cannot reset Power Profile')
+            continue
         if not writeProfileSysfs(device, '0 ' * getNumProfileArgs(device)):
             printErr(device, 'Unable to reset CUSTOM Power Profile values')
         if writeProfileSysfs(device, '0'):
