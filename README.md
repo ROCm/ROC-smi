@@ -38,16 +38,16 @@ usage: rocm-smi [-h] [-d DEVICE [DEVICE ...]] [--alldevices] [--showhw] [-a] [-i
                 [--showproductname] [--showserial] [--showuniqueid] [--showvoltagerange] [--showbus] [--showpagesinfo]
                 [--showpendingpages] [--showretiredpages] [--showunreservablepages] [-f] [-P] [-t] [-u] [--showmemuse]
                 [--showvoltage] [-b] [-c] [-g] [-l] [-M] [-m] [-o] [-p] [-S] [-s] [--showmeminfo TYPE [TYPE ...]]
-                [--showpids] [--showreplaycount] [--showrasinfo BLOCK [BLOCK ...]] [--showvc] [--showxgmierr] [-r]
-                [--resetfans] [--resetprofile] [--resetpoweroverdrive] [--resetxgmierr] [--setsclk LEVEL [LEVEL ...]]
-                [--setmclk LEVEL [LEVEL ...]] [--setpcie LEVEL [LEVEL ...]] [--setslevel SCLKLEVEL SCLK SVOLT]
-                [--setmlevel MCLKLEVEL MCLK MVOLT] [--setvc POINT SCLK SVOLT] [--setsrange MINMAX SCLK]
-                [--setmrange MINMAX SCLK] [--setfan LEVEL] [--setperflevel LEVEL] [--setoverdrive %]
-                [--setmemoverdrive %] [--setpoweroverdrive WATTS] [--setprofile SETPROFILE] [--rasenable BLOCK ERRTYPE]
-                [--rasdisable BLOCK ERRTYPE] [--rasinject BLOCK] [--gpureset] [--load FILE | --save FILE]
-                [--autorespond RESPONSE] [--loglevel LEVEL] [--json] [--csv]
+                [--showpids] [--showpidgpus [SHOWPIDGPUS [SHOWPIDGPUS ...]]] [--showreplaycount]
+                [--showrasinfo BLOCK [BLOCK ...]] [--showvc] [--showxgmierr] [-r] [--resetfans] [--resetprofile]
+                [--resetpoweroverdrive] [--resetxgmierr] [--setsclk LEVEL [LEVEL ...]] [--setmclk LEVEL [LEVEL ...]]
+                [--setpcie LEVEL [LEVEL ...]] [--setslevel SCLKLEVEL SCLK SVOLT] [--setmlevel MCLKLEVEL MCLK MVOLT]
+                [--setvc POINT SCLK SVOLT] [--setsrange MINMAX SCLK] [--setmrange MINMAX SCLK] [--setfan LEVEL]
+                [--setperflevel LEVEL] [--setoverdrive %] [--setmemoverdrive %] [--setpoweroverdrive WATTS]
+                [--setprofile SETPROFILE] [--rasenable BLOCK ERRTYPE] [--rasdisable BLOCK ERRTYPE] [--rasinject BLOCK]
+                [--gpureset] [--load FILE | --save FILE] [--autorespond RESPONSE] [--loglevel LEVEL] [--json] [--csv]
 
-AMD ROCm System Management Interface | ROCM-SMI version: 1.3.2 |
+AMD ROCm System Management Interface | ROCM-SMI version: 1.4.0 |
 
 optional arguments:
   -h, --help                                            show this help message and exit
@@ -103,6 +103,7 @@ Software-related/controlled information:
   -s, --showclkfrq                                      Show supported GPU and Memory Clock
   --showmeminfo TYPE [TYPE ...]                         Show Memory usage information for given block(s) TYPE
   --showpids                                            Show current running KFD PIDs
+  --showpidgpus [SHOWPIDGPUS [SHOWPIDGPUS ...]]         Show GPUs used by specified KFD PIDs (all if no arg given)
   --showreplaycount                                     Show PCIe Replay Count
   --showrasinfo BLOCK [BLOCK ...]                       Show RAS enablement information and error counts for the
                                                         specified block(s)

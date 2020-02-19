@@ -34,7 +34,7 @@ JSON_DATA = {}
 # Major version - Increment when backwards-compatibility breaks
 # Minor version - Increment when adding a new feature, set to 0 when major is incremented
 # Patch version - Increment when adding a fix, set to 0 when minor is incremented
-__version__ = '1.3.2'
+__version__ = '1.4.0'
 
 def relaunchAsSudo():
     """ Relaunch the SMI as sudo
@@ -427,6 +427,50 @@ def doesDeviceExist(device):
 def getPid(name):
     """ Get the process id of a specific application """
     return check_output(["pidof", name])
+
+
+def getNodeFromGpuId(gpuid):
+    """ Get the KFD node from the gpu_id identifier """
+    nodePath = os.path.join(kfdprefix, 'topology', 'nodes')
+    for node in os.listdir(nodePath):
+        with open(os.path.join(nodePath, node, 'gpu_id'), 'r') as idFile:
+            nodeId = idFile.read().strip()
+            if nodeId == gpuid:
+                return node
+    return None
+
+
+def getGpusByPid(pid):
+    """ Get the GPU(s) used by a process
+
+    Parameters:
+    pid -- Process ID
+    """
+    gpus=[]
+    pidPath = os.path.join(kfdprefix, 'proc', pid)
+    queuesPath = os.path.join(pidPath, 'queues')
+    if not os.path.isdir(pidPath) or not os.path.isdir(queuesPath):
+        printLogNoDev('Unable to find PID GPU path. May require a newer kernel')
+        return None
+
+    queuelist = os.listdir(queuesPath)
+    for queue in queuelist:
+        queuePath = os.path.join(queuesPath, queue)
+        if not os.path.isfile(os.path.join(queuePath, 'gpuid')):
+            printLogNoDev('Unable to find PID gpuid file')
+            return None
+        with open(os.path.join(queuePath, 'gpuid'), 'r') as gpuFile:
+            gpu = gpuFile.read().strip()
+            if gpu is None:
+                printLogNoDev('Unable to get GPU for PID ' + pid + ', file is empty')
+            gpuNum = getNodeFromGpuId(gpu)
+            if not gpuNum:
+                printLogNoDev('Could not get KFD Node from provided GPU ID %s' % gpu)
+                continue
+            gpus.append(gpuNum)
+
+    # Use set to remove duplicates
+    return list(set(gpus))
 
 
 def confirmOutOfSpecWarning(autoRespond):
@@ -1827,6 +1871,43 @@ def showPids():
         printSysLog ('PIDs for KFD processes: %s' % (', '.join(pids)))
 
 
+def showGpusByPid(pidList):
+    """ Show GPUs used by a specific Process ID (pid)
+
+    Print out the GPU(s) used by a specific KFD process.
+    If pidList is empty, print all used GPUs for all KFD processes
+    Parameters:
+    pidList -- List of PIDs to check
+    """
+    pidGpus = {}
+    printLogSpacer()
+    procPath = os.path.join(kfdprefix, 'proc')
+    if not os.path.isdir(procPath):
+        printLogNoDev('Unable to get GPUs by PID, KFD proc folder is missing')
+        printLogSpacer()
+        return
+    # If pidList is empty, then we were given 0 arguments, so they want all PIDs
+    if not pidList:
+        pidList = os.listdir(procPath)
+        if not pidList:
+            printLogNoDev('No KFD PIDs currently running')
+            printLogSpacer()
+            return
+    for pid in pidList:
+        pidGpus[pid] = getGpusByPid(pid)
+        if pidGpus[pid] is None:
+            printLogNoDev('Unable to get PID information for PID %s' % pid)
+            pidGpus.pop(pid)
+            continue
+    if pidGpus.keys():
+        for pid in pidGpus.keys():
+            #TODO COrrelate KFD NOde to DRM Device
+            printLogNoDev('PID %s is using KFD Nodes %s' % (pid, pidGpus[pid]))
+    else:
+	printLogNoDev('No KFD PID information to process')
+    printLogSpacer()
+
+
 def showRetiredPages(deviceList, retiredType='all'):
     """ Show retired pages of a specified type for a list of devices
 
@@ -2625,6 +2706,7 @@ if __name__ == '__main__':
     groupDisplay.add_argument('-s', '--showclkfrq', help='Show supported GPU and Memory Clock', action='store_true')
     groupDisplay.add_argument('--showmeminfo', help='Show Memory usage information for given block(s) TYPE', metavar='TYPE', type=str, nargs='+')
     groupDisplay.add_argument('--showpids', help='Show current running KFD PIDs', action='store_true')
+    groupDisplay.add_argument('--showpidgpus', help='Show GPUs used by specified KFD PIDs (all if no arg given)', nargs='*')
     groupDisplay.add_argument('--showreplaycount', help='Show PCIe Replay Count', action='store_true')
     groupDisplay.add_argument('--showrasinfo', help='Show RAS enablement information and error counts for the specified block(s)', metavar='BLOCK', type=str, nargs='+')
     groupDisplay.add_argument('--showvc', help='Show voltage curve', action='store_true')
@@ -2843,7 +2925,13 @@ if __name__ == '__main__':
     if args.showserial:
         showSerialNumber(deviceList)
     if args.showpids:
+        if PRINT_JSON is True:
+            printLogNoDev("ERROR: Cannot print JSON/CSV output for --showpids")
+            printLogSpacer()
+            sys.exit(1)
         showPids()
+    if args.showpidgpus or str(args.showpidgpus) == '[]':
+        showGpusByPid(args.showpidgpus)
     if args.showclkvolt:
         if PRINT_JSON is True:
             printLogNoDev("ERROR: Cannot print JSON/CSV output for --showclkvolt")
