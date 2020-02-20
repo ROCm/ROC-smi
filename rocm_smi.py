@@ -323,7 +323,7 @@ def formatJson(device, log):
         if ':' not in line:
             return
         logTuple = line.split(': ')
-        JSON_DATA[device][logTuple[0]] = logTuple[1]
+        JSON_DATA[device][logTuple[0]] = logTuple[1].strip()
 
 
 def printLogNoDev(log):
