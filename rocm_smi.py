@@ -2115,7 +2115,7 @@ def setPowerOverDrive(deviceList, value, autoRespond):
 
         if value > max_power_cap:
             printErr(device, 'Unable to set Power OverDrive')
-            logging.error('GPU[%s]\t: Value cannot be greater than %dW ', parseDeviceName(name), max_power_cap / 1000000)
+            logging.error('GPU[%s]\t: Value cannot be greater than %dW ', parseDeviceName(device), max_power_cap / 1000000)
             RETCODE = 1
             return;
 
