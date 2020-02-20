@@ -45,9 +45,9 @@ usage: rocm-smi [-h] [-d DEVICE [DEVICE ...]] [--alldevices] [--showhw] [-a] [-i
                 [--setmrange MINMAX SCLK] [--setfan LEVEL] [--setperflevel LEVEL] [--setoverdrive %]
                 [--setmemoverdrive %] [--setpoweroverdrive WATTS] [--setprofile SETPROFILE] [--rasenable BLOCK ERRTYPE]
                 [--rasdisable BLOCK ERRTYPE] [--rasinject BLOCK] [--gpureset] [--load FILE | --save FILE]
-                [--autorespond RESPONSE] [--loglevel LEVEL] [--json]
+                [--autorespond RESPONSE] [--loglevel LEVEL] [--json] [--csv]
 
-AMD ROCm System Management Interface | ROCM-SMI version: 1.3.1 |
+AMD ROCm System Management Interface | ROCM-SMI version: 1.3.2 |
 
 optional arguments:
   -h, --help                                            show this help message and exit
@@ -149,6 +149,7 @@ Output options:
   --loglevel LEVEL                                      How much output will be printed for what program is doing, one
                                                         of debug/info/warning/error/critical
   --json                                                Print output in JSON format
+  --csv                                                 Print output in CSV format
 ```
 
 

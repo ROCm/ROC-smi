@@ -34,7 +34,7 @@ JSON_DATA = {}
 # Major version - Increment when backwards-compatibility breaks
 # Minor version - Increment when adding a new feature, set to 0 when major is incremented
 # Patch version - Increment when adding a fix, set to 0 when minor is incremented
-__version__ = '1.3.1'
+__version__ = '1.3.2'
 
 def relaunchAsSudo():
     """ Relaunch the SMI as sudo
@@ -324,6 +324,34 @@ def formatJson(device, log):
             return
         logTuple = line.split(': ')
         JSON_DATA[device][logTuple[0]] = logTuple[1].strip()
+
+
+def formatCsv(deviceList):
+    """ Print out the JSON_DATA in CSV format """
+    global JSON_DATA
+    jsondata = json.dumps(JSON_DATA)
+
+    header = ['device']
+    headerkeys = []
+    # Get any fields that are device-specific, like certain clocks
+    for dev in deviceList:
+        headerkeys.extend(l for l in JSON_DATA[dev].keys() if l not in headerkeys)
+    header.extend(headerkeys)
+    outStr = '%s\n' % ','.join(header)
+    if len(header) <= 1:
+        return ''
+    for dev in deviceList:
+        outStr += '%s,' % dev
+        for val in headerkeys:
+            try:
+                # Remove commas like the ones in PCIe speed
+                outStr += '%s,' % JSON_DATA[dev][val].replace(',','')
+            except KeyError as e:
+                # If the key doesn't exist (like dcefclock on Fiji, or unsupported functionality)
+                outStr += 'N/A,'
+        # Drop the trailing ',' and replace it with a \n
+        outStr = '%s\n' % outStr[0:-1]
+    return outStr
 
 
 def printLogNoDev(log):
@@ -2633,6 +2661,7 @@ if __name__ == '__main__':
 
     groupActionOutput.add_argument('--loglevel', help='How much output will be printed for what program is doing, one of debug/info/warning/error/critical', metavar='LEVEL')
     groupActionOutput.add_argument('--json', help='Print output in JSON format', action='store_true')
+    groupActionOutput.add_argument('--csv', help='Print output in CSV format', action='store_true')
 
     args = parser.parse_args()
 
@@ -2662,8 +2691,12 @@ if __name__ == '__main__':
         print('ERROR: No DRM devices available. Exiting')
         sys.exit(1)
 
+    if args.json and args.csv:
+        printLogNoDev('Unable to print CSV and JSON at the same time. Please select one')
+        sys.exit(1)
+
     # If we want JSON output, initialize the keys (devices)
-    if args.json:
+    if args.json or args.csv:
         PRINT_JSON = True
         for device in deviceList:
             JSON_DATA[device] = {}
@@ -2713,7 +2746,7 @@ if __name__ == '__main__':
        args.setslevel or args.setmlevel or args.setvc or args.setsrange or args.setmrange:
         relaunchAsSudo()
 
-    if not args.json:
+    if not PRINT_JSON:
         # Header for the SMI
         printLogNoDev('\n\n%s%s%s' %(headerSpacer, headerString, headerSpacer))
 
@@ -2746,15 +2779,15 @@ if __name__ == '__main__':
         logging.warning('No AMD GPUs specified')
 
     if len(sys.argv) == 1 or \
-        len(sys.argv) == 2 and (args.alldevices or args.json) or \
-        len(sys.argv) == 3 and (args.alldevices and args.json):
+        len(sys.argv) == 2 and (args.alldevices or (args.json or args.csv)) or \
+        len(sys.argv) == 3 and (args.alldevices and (args.json or args.csv)):
         if PRINT_JSON is True:
-            print("ERROR: Cannot print JSON output for concise output (no flags)")
+            print("ERROR: Cannot print JSON/CSV output for concise output (no flags)")
             sys.exit(1)
         showAllConcise(deviceList)
     if args.showhw:
         if PRINT_JSON is True:
-            print("ERROR: Cannot print JSON output for --showhw")
+            print("ERROR: Cannot print JSON/CSV output for --showhw")
             sys.exit(1)
         showAllConciseHw(deviceList)
     if args.showdriverversion:
@@ -2783,7 +2816,7 @@ if __name__ == '__main__':
         showMaxPower(deviceList)
     if args.showprofile:
         if PRINT_JSON is True:
-            printLogNoDev("ERROR: Cannot print JSON output for --showprofile")
+            printLogNoDev("ERROR: Cannot print JSON/CSV output for --showprofile")
             printLogSpacer()
             sys.exit(1)
         showProfile(deviceList)
@@ -2791,7 +2824,7 @@ if __name__ == '__main__':
         showPower(deviceList)
     if args.showclkfrq:
         if PRINT_JSON is True:
-            printLogNoDev("ERROR: Cannot print JSON output for --showclkfrq")
+            printLogNoDev("ERROR: Cannot print JSON/CSV output for --showclkfrq")
             printLogSpacer()
             sys.exit(1)
         showClocks(deviceList)
@@ -2813,7 +2846,7 @@ if __name__ == '__main__':
         showPids()
     if args.showclkvolt:
         if PRINT_JSON is True:
-            printLogNoDev("ERROR: Cannot print JSON output for --showclkvolt")
+            printLogNoDev("ERROR: Cannot print JSON/CSV output for --showclkvolt")
             printLogSpacer()
             sys.exit(1)
         showPowerPlayTable(deviceList)
@@ -2898,13 +2931,22 @@ if __name__ == '__main__':
         save(deviceList, args.save)
 
     if PRINT_JSON is True:
-        print(json.dumps(JSON_DATA))
+        if not args.csv:
+            print(json.dumps(JSON_DATA))
+        else:
+            devCsv = formatCsv(deviceList)
+            sysCsv = ''
+
+            # JSON won't have any 'system' data without one of these flags
+            if args.showdriverversion or args.showpids:
+                sysCsv = formatCsv(['system'])
+            print('%s\n%s' % (sysCsv, devCsv))
 
     # If RETCODE isn't 0, inform the user
     if RETCODE:
         logging.warning('One or more commands failed')
 
-    if not args.json:
+    if not PRINT_JSON:
         # Footer for the SMI
         printLogNoDev('%s%s%s' % (footerSpacer, footerString, footerSpacer))
     sys.exit(RETCODE)
