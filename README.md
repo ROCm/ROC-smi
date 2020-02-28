@@ -47,7 +47,7 @@ usage: rocm-smi [-h] [-d DEVICE [DEVICE ...]] [--alldevices] [--showhw] [-a] [-i
                 [--setprofile SETPROFILE] [--rasenable BLOCK ERRTYPE] [--rasdisable BLOCK ERRTYPE] [--rasinject BLOCK]
                 [--gpureset] [--load FILE | --save FILE] [--autorespond RESPONSE] [--loglevel LEVEL] [--json] [--csv]
 
-AMD ROCm System Management Interface | ROCM-SMI version: 1.4.0 |
+AMD ROCm System Management Interface | ROCM-SMI version: 1.4.1 |
 
 optional arguments:
   -h, --help                                            show this help message and exit

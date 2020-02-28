@@ -34,7 +34,7 @@ JSON_DATA = {}
 # Major version - Increment when backwards-compatibility breaks
 # Minor version - Increment when adding a new feature, set to 0 when major is incremented
 # Patch version - Increment when adding a fix, set to 0 when minor is incremented
-__version__ = '1.4.0'
+__version__ = '1.4.1'
 
 def relaunchAsSudo():
     """ Relaunch the SMI as sudo
@@ -1904,7 +1904,7 @@ def showGpusByPid(pidList):
             #TODO COrrelate KFD NOde to DRM Device
             printLogNoDev('PID %s is using KFD Nodes %s' % (pid, pidGpus[pid]))
     else:
-	printLogNoDev('No KFD PID information to process')
+        printLogNoDev('No KFD PID information to process')
     printLogSpacer()
 
 
@@ -2813,10 +2813,10 @@ if __name__ == '__main__':
         args.showmemoverdrive = True
         args.showoverdrive = True
         args.showperflevel = True
-        args.showpids = True
         args.showreplaycount = True
         args.showvc = True
         if not PRINT_JSON:
+            args.showpids = True
             args.showprofile = True
             args.showclkfrq = True
             args.showclkvolt = True
@@ -2898,18 +2898,16 @@ if __name__ == '__main__':
         showMaxPower(deviceList)
     if args.showprofile:
         if PRINT_JSON is True:
-            printLogNoDev("ERROR: Cannot print JSON/CSV output for --showprofile")
-            printLogSpacer()
-            sys.exit(1)
-        showProfile(deviceList)
+            logging.debug("Cannot print JSON/CSV output for --showprofile")
+        else:
+            showProfile(deviceList)
     if args.showpower:
         showPower(deviceList)
     if args.showclkfrq:
         if PRINT_JSON is True:
-            printLogNoDev("ERROR: Cannot print JSON/CSV output for --showclkfrq")
-            printLogSpacer()
-            sys.exit(1)
-        showClocks(deviceList)
+            logging.debug("Cannot print JSON/CSV output for --showclkfrq")
+        else:
+            showClocks(deviceList)
     if args.showuse:
         showGpuUse(deviceList)
     if args.showmemuse:
@@ -2926,18 +2924,16 @@ if __name__ == '__main__':
         showSerialNumber(deviceList)
     if args.showpids:
         if PRINT_JSON is True:
-            printLogNoDev("ERROR: Cannot print JSON/CSV output for --showpids")
-            printLogSpacer()
-            sys.exit(1)
-        showPids()
+            logging.debug("Cannot print JSON/CSV output for --showpids")
+        else:
+            showPids()
     if args.showpidgpus or str(args.showpidgpus) == '[]':
         showGpusByPid(args.showpidgpus)
     if args.showclkvolt:
         if PRINT_JSON is True:
-            printLogNoDev("ERROR: Cannot print JSON/CSV output for --showclkvolt")
-            printLogSpacer()
-            sys.exit(1)
-        showPowerPlayTable(deviceList)
+            logging.debug("Cannot print JSON/CSV output for --showclkvolt")
+        else:
+            showPowerPlayTable(deviceList)
     if args.showvoltage:
         showVoltage(deviceList)
     if args.showbus:
@@ -3019,6 +3015,15 @@ if __name__ == '__main__':
         save(deviceList, args.save)
 
     if PRINT_JSON is True:
+        # Check that we have some actual data to print, instead of the
+        # empty list that we initialized above
+        for device in deviceList:
+            if not JSON_DATA[device]:
+                JSON_DATA.pop(device)
+        if not JSON_DATA:
+            logging.warn("No JSON data to report")
+            sys.exit(RETCODE)
+
         if not args.csv:
             print(json.dumps(JSON_DATA))
         else:
