@@ -176,6 +176,8 @@ for block in validFwBlocks:
     valuePaths['%s_fw_version' % block] = {'prefix' : drmprefix, 'filepath' : 'fw_version/%s_fw_version' % block, 'needsparse' : False}
 #SMC has different formatting for its version
 valuePaths['smc_fw_version']['needsparse'] = True
+valuePaths['ta_ras_fw_version']['needsparse'] = True
+valuePaths['ta_xgmi_fw_version']['needsparse'] = True
 
 def getFilePath(device, key):
     """ Return the filepath for a specific device and key
@@ -268,7 +270,7 @@ def parseSysfsValue(key, value):
         return int((value.split('\n')[0]).split(' ')[-1], 16)
     # The smc_fw_version sysfs file stores the version as a hex value like 0x12345678
     # but is parsed as int(0x12).int(0x34).int(0x56).int(0x78)
-    if key == 'smc_fw_version':
+    if key == 'smc_fw_version' or key == 'ta_xgmi_fw_version' or key == 'ta_ras_fw_version':
         return (str('%02d' % int((value[2:4]), 16)) + '.' + str('%02d' % int((value[4:6]), 16)) + '.' +
                 str('%02d' % int((value[6:8]), 16)) + '.' + str('%02d' % int((value[8:10]), 16)))
 
