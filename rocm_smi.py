@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """ ROCm-SMI (System Management Interface) Tool
 
 This tool provides a user-friendly interface for manipulating
