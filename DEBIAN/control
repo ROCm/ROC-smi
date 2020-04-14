@@ -4,7 +4,7 @@ Maintainer: Advanced Micro Devices Inc.
 Section: devel
 Priority: optional
 Version: MODULE_VERSION
-Depends: python
+Depends: python3
 Homepage: https://github.com/RadeonOpenCompute/ROC-smi
 Description: System Management Interface for ROCm
 
