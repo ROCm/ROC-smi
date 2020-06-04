@@ -475,6 +475,30 @@ def getGpusByPid(pid):
     return list(set(gpus))
 
 
+def getUsedMemByPid(pid):
+    """ Get the memory used by a process
+
+    Parameters:
+    pid -- Process ID
+    """
+    gpus=[]
+    pidPath = os.path.join(kfdprefix, 'proc', pid)
+    if not os.path.isdir(pidPath):
+        return None
+    memPerGpu = {}
+
+    memFileList = [f for f in os.listdir(pidPath) if re.match(r'vram_.*', f)]
+    for memFile in memFileList:
+        gpuid = memFile[5:]
+        nodeNum = getNodeFromGpuId(gpuid)
+        with open(os.path.join(pidPath, memFile), 'r') as usedMemFile:
+            usedmem = usedMemFile.read().strip()
+            if usedmem != '0':
+                memPerGpu[nodeNum] = usedmem
+
+    return memPerGpu
+
+
 def confirmOutOfSpecWarning(autoRespond):
     """ Print the warning for running outside of specification and prompt user to accept the terms.
 
@@ -1910,6 +1934,47 @@ def showGpusByPid(pidList):
     printLogSpacer()
 
 
+def showPidUsedMem(pidList):
+    """ Show GPU Memory used by specified PID(s)
+
+    Print out the memory used per GPU by a specified KFD process(es)
+    If pidList is empty, print all memory used on all GPUs for all
+    running KFD processes
+
+    Parameters:
+    pidList -- List of PIDs to check
+    """
+    printLogSpacer()
+    pidUsedMem = {}
+    procPath = os.path.join(kfdprefix, 'proc')
+    if not os.path.isdir(procPath):
+        printLogNoDev('Unable to get GPUs by PID, KFD proc folder is missing')
+        printLogSpacer()
+        return
+    # If pidList is empty, then we were given 0 arguments, so they want all PIDs
+    if not pidList:
+        pidList = os.listdir(procPath)
+        if not pidList:
+            printLogNoDev('No KFD PIDs currently running')
+            printLogSpacer()
+            return
+
+    for pid in pidList:
+        pidUsedMem[pid] = getUsedMemByPid(pid)
+        if pidUsedMem[pid] is None:
+            printLogNoDev('Unable to get Memory usage for PID %s' % pid)
+            pidUsedMem.pop(pid)
+            continue
+    if pidUsedMem.keys():
+        for pid in pidUsedMem.keys():
+            #TODO COrrelate KFD NOde to DRM Device
+            printLogNoDev('PID\tNode\tVRAM used (B)')
+            for node in pidUsedMem[pid].keys():
+                printLogNoDev('%s\t%s\t%s' % (pid, node, pidUsedMem[pid][node]))
+    else:
+        printLogNoDev('No KFD PID information to process')
+    printLogSpacer()
+
 def showRetiredPages(deviceList, retiredType='all'):
     """ Show retired pages of a specified type for a list of devices
 
@@ -2708,7 +2773,8 @@ if __name__ == '__main__':
     groupDisplay.add_argument('-s', '--showclkfrq', help='Show supported GPU and Memory Clock', action='store_true')
     groupDisplay.add_argument('--showmeminfo', help='Show Memory usage information for given block(s) TYPE', metavar='TYPE', type=str, nargs='+')
     groupDisplay.add_argument('--showpids', help='Show current running KFD PIDs', action='store_true')
-    groupDisplay.add_argument('--showpidgpus', help='Show GPUs used by specified KFD PIDs (all if no arg given)', nargs='*')
+    groupDisplay.add_argument('--showpidgpus', help='Show GPUs used by specified KFD PIDs (all if no arg given)', nargs='*', metavar='PID')
+    groupDisplay.add_argument('--showpidusedmem', help='Show amount of memory used by specified KFD PIDs (all if no arg given))', nargs='*', metavar='PID')
     groupDisplay.add_argument('--showreplaycount', help='Show PCIe Replay Count', action='store_true')
     groupDisplay.add_argument('--showrasinfo', help='Show RAS enablement information and error counts for the specified block(s)', metavar='BLOCK', type=str, nargs='+')
     groupDisplay.add_argument('--showvc', help='Show voltage curve', action='store_true')
@@ -2931,6 +2997,8 @@ if __name__ == '__main__':
             showPids()
     if args.showpidgpus or str(args.showpidgpus) == '[]':
         showGpusByPid(args.showpidgpus)
+    if args.showpidusedmem or str(args.showpidusedmem) == '[]':
+        showPidUsedMem(args.showpidusedmem)
     if args.showclkvolt:
         if PRINT_JSON is True:
             logging.debug("Cannot print JSON/CSV output for --showclkvolt")
