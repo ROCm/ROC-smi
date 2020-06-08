@@ -14,7 +14,7 @@ Summary:    System Management Interface for ROCm
 
 Group:      Applications/System
 License:    Advanced Micro Devices Inc.
-Requires:   python3
+Requires:   /usr/bin/python3
 
 %description
 This package includes the System Management Interface for the ROC Platform
