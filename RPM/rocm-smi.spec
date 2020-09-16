@@ -24,13 +24,11 @@ This package includes the System Management Interface for the ROC Platform
 
 %install
 mkdir -p %{packageroot}%{_installpath}/bin
-cp -R %{smiroot}/rocm_smi.py %{packageroot}%{_installpath}/bin
-ln -srf %{packageroot}%{_installpath}/bin/rocm_smi.py %{packageroot}%{_installpath}/bin/rocm-smi
+cp -R %{smiroot}/rocm_smi.py %{packageroot}%{_installpath}/bin/rocm_smi_deprecated.py
 
 %clean
 rm -rf %{packageroot}
 
 %files
-%{_installpath}/bin/rocm-smi
-%{_installpath}/bin/rocm_smi.py
+%{_installpath}/bin/rocm_smi_deprecated.py
 %defattr(-,root,root,-)
