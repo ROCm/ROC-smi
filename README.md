@@ -4,7 +4,7 @@ This repository is the previous home of the rocm-smi tool.
 
 As of ROCm 3.9, this version of the rocm-smi has been deprecated.
 
-You can find the new implementation at https://github.com/RadeonOpenCompute/rocm_smi_lib/tree/master/python_smi_tools
+You can find the new implementation at https://github.com/RadeonOpenCompute/rocm_smi_lib
 
 Old ROCm releases of the rocm-smi can be used by changing the branch. Only the master branch will feature this deprecation notice
 
